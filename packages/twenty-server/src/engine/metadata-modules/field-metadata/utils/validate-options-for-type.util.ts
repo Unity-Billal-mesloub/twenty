@@ -1,12 +1,13 @@
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
-import { FieldMetadataType } from 'twenty-shared/types';
-
-import { FieldMetadataOptions } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata-options.interface';
+import {
+  FieldMetadataType,
+  type FieldMetadataOptions,
+} from 'twenty-shared/types';
 
 import {
   FieldMetadataComplexOption,
-  FieldMetadataDefaultOption,
+  type FieldMetadataDefaultOption,
 } from 'src/engine/metadata-modules/field-metadata/dtos/options.input';
 import {
   FieldMetadataException,

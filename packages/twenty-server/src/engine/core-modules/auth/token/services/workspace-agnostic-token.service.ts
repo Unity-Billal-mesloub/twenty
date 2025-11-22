@@ -9,15 +9,15 @@ import {
   AuthException,
   AuthExceptionCode,
 } from 'src/engine/core-modules/auth/auth.exception';
-import { AuthToken } from 'src/engine/core-modules/auth/dto/token.entity';
+import { type AuthToken } from 'src/engine/core-modules/auth/dto/auth-token.dto';
 import {
-  AuthContext,
+  type AuthContext,
   JwtTokenTypeEnum,
-  WorkspaceAgnosticTokenJwtPayload,
+  type WorkspaceAgnosticTokenJwtPayload,
 } from 'src/engine/core-modules/auth/types/auth-context.type';
 import { JwtWrapperService } from 'src/engine/core-modules/jwt/services/jwt-wrapper.service';
 import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
-import { User } from 'src/engine/core-modules/user/user.entity';
+import { UserEntity } from 'src/engine/core-modules/user/user.entity';
 import { userValidator } from 'src/engine/core-modules/user/user.validate';
 
 @Injectable()
@@ -25,8 +25,8 @@ export class WorkspaceAgnosticTokenService {
   constructor(
     private readonly jwtWrapperService: JwtWrapperService,
     private readonly twentyConfigService: TwentyConfigService,
-    @InjectRepository(User, 'core')
-    private readonly userRepository: Repository<User>,
+    @InjectRepository(UserEntity)
+    private readonly userRepository: Repository<UserEntity>,
   ) {}
 
   async generateWorkspaceAgnosticToken({

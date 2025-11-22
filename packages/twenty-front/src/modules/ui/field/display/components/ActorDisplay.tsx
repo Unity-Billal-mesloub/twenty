@@ -1,8 +1,8 @@
-import { FieldActorValue } from '@/object-record/record-field/types/FieldMetadata';
+import { type FieldActorValue } from '@/object-record/record-field/ui/types/FieldMetadata';
 
 import { useMemo } from 'react';
 import { ConnectedAccountProvider } from 'twenty-shared/types';
-import { AvatarChip } from 'twenty-ui/components';
+import { AvatarChip, Chip } from 'twenty-ui/components';
 import {
   IconApi,
   IconCalendar,
@@ -71,13 +71,18 @@ export const ActorDisplay = ({
     source === 'API' || source === 'IMPORT' || source === 'SYSTEM';
 
   return (
-    <AvatarChip
-      placeholderColorSeed={workspaceMemberId ?? undefined}
-      name={name ?? ''}
-      avatarType={workspaceMemberId ? 'rounded' : 'squared'}
-      LeftIcon={LeftIcon}
-      avatarUrl={avatarUrl ?? undefined}
-      isIconInverted={isIconInverted}
+    <Chip
+      label={name ?? ''}
+      leftComponent={
+        <AvatarChip
+          placeholderColorSeed={workspaceMemberId ?? undefined}
+          avatarType={workspaceMemberId ? 'rounded' : 'squared'}
+          placeholder={name}
+          Icon={LeftIcon}
+          avatarUrl={avatarUrl ?? undefined}
+          isIconInverted={isIconInverted}
+        />
+      }
     />
   );
 };

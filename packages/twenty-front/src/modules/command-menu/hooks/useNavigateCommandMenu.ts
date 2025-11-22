@@ -2,22 +2,21 @@ import { COMMAND_MENU_COMPONENT_INSTANCE_ID } from '@/command-menu/constants/Com
 import { SIDE_PANEL_FOCUS_ID } from '@/command-menu/constants/SidePanelFocusId';
 import { useCommandMenuCloseAnimationCompleteCleanup } from '@/command-menu/hooks/useCommandMenuCloseAnimationCompleteCleanup';
 import { useCopyContextStoreStates } from '@/command-menu/hooks/useCopyContextStoreAndActionMenuStates';
-import { commandMenuNavigationMorphItemByPageState } from '@/command-menu/states/commandMenuNavigationMorphItemsState';
-import { commandMenuNavigationRecordsState } from '@/command-menu/states/commandMenuNavigationRecordsState';
+import { commandMenuNavigationMorphItemsByPageState } from '@/command-menu/states/commandMenuNavigationMorphItemsByPageState';
 import { commandMenuNavigationStackState } from '@/command-menu/states/commandMenuNavigationStackState';
 import { commandMenuPageInfoState } from '@/command-menu/states/commandMenuPageInfoState';
 import { commandMenuPageState } from '@/command-menu/states/commandMenuPageState';
+import { commandMenuShouldFocusTitleInputComponentState } from '@/command-menu/states/commandMenuShouldFocusTitleInputComponentState';
 import { hasUserSelectedCommandState } from '@/command-menu/states/hasUserSelectedCommandState';
 import { isCommandMenuClosingState } from '@/command-menu/states/isCommandMenuClosingState';
 import { isCommandMenuOpenedState } from '@/command-menu/states/isCommandMenuOpenedState';
-import { CommandMenuHotkeyScope } from '@/command-menu/types/CommandMenuHotkeyScope';
-import { CommandMenuPages } from '@/command-menu/types/CommandMenuPages';
+import { type CommandMenuPages } from '@/command-menu/types/CommandMenuPages';
 import { MAIN_CONTEXT_STORE_INSTANCE_ID } from '@/context-store/constants/MainContextStoreInstanceId';
 import { isDragSelectionStartEnabledState } from '@/ui/utilities/drag-select/states/internal/isDragSelectionStartEnabledState';
 import { usePushFocusItemToFocusStack } from '@/ui/utilities/focus/hooks/usePushFocusItemToFocusStack';
 import { FocusComponentType } from '@/ui/utilities/focus/types/FocusComponentType';
 import { useRecoilCallback } from 'recoil';
-import { IconComponent } from 'twenty-ui/display';
+import { type IconComponent } from 'twenty-ui/display';
 import { v4 } from 'uuid';
 
 export type CommandMenuNavigationStackItem = {
@@ -61,13 +60,9 @@ export const useNavigateCommandMenu = () => {
             type: FocusComponentType.SIDE_PANEL,
             instanceId: COMMAND_MENU_COMPONENT_INSTANCE_ID,
           },
-          hotkeyScope: {
-            scope: CommandMenuHotkeyScope.CommandMenuFocused,
-            customScopes: {
-              commandMenuOpen: true,
-            },
+          globalHotkeysConfig: {
+            enableGlobalHotkeysConflictingWithKeyboard: false,
           },
-          memoizeKey: COMMAND_MENU_COMPONENT_INSTANCE_ID,
         });
 
         copyContextStoreStates({
@@ -94,9 +89,11 @@ export const useNavigateCommandMenu = () => {
         pageIcon,
         pageIconColor,
         pageId,
+        focusTitleInput = false,
         resetNavigationStack = false,
       }: CommandMenuNavigationStackItem & {
         resetNavigationStack?: boolean;
+        focusTitleInput?: boolean;
       }) => {
         const computedPageId = pageId || v4();
 
@@ -107,6 +104,15 @@ export const useNavigateCommandMenu = () => {
           Icon: pageIcon,
           instanceId: computedPageId,
         });
+
+        if (focusTitleInput) {
+          set(
+            commandMenuShouldFocusTitleInputComponentState.atomFamily({
+              instanceId: computedPageId,
+            }),
+            true,
+          );
+        }
 
         const isCommandMenuClosing = snapshot
           .getLoadable(isCommandMenuClosingState)
@@ -127,8 +133,7 @@ export const useNavigateCommandMenu = () => {
             },
           ]);
 
-          set(commandMenuNavigationRecordsState, []);
-          set(commandMenuNavigationMorphItemByPageState, new Map());
+          set(commandMenuNavigationMorphItemsByPageState, new Map());
         } else {
           set(commandMenuNavigationStackState, [
             ...currentNavigationStack,

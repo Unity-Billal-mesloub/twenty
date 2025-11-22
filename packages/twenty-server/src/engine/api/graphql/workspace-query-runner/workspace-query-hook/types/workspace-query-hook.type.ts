@@ -1,16 +1,18 @@
 import {
-  CreateManyResolverArgs,
-  CreateOneResolverArgs,
-  DeleteManyResolverArgs,
-  DeleteOneResolverArgs,
-  DestroyManyResolverArgs,
-  DestroyOneResolverArgs,
-  FindDuplicatesResolverArgs,
-  FindManyResolverArgs,
-  FindOneResolverArgs,
-  RestoreManyResolverArgs,
-  UpdateManyResolverArgs,
-  UpdateOneResolverArgs,
+  type CreateManyResolverArgs,
+  type CreateOneResolverArgs,
+  type DeleteManyResolverArgs,
+  type DeleteOneResolverArgs,
+  type DestroyManyResolverArgs,
+  type DestroyOneResolverArgs,
+  type FindDuplicatesResolverArgs,
+  type FindManyResolverArgs,
+  type FindOneResolverArgs,
+  type GroupByResolverArgs,
+  type MergeManyResolverArgs,
+  type RestoreManyResolverArgs,
+  type UpdateManyResolverArgs,
+  type UpdateOneResolverArgs,
 } from 'src/engine/api/graphql/workspace-resolver-builder/interfaces/workspace-resolvers-builder.interface';
 
 export enum WorkspaceQueryHookType {
@@ -42,4 +44,8 @@ export type WorkspacePreQueryHookPayload<T> = T extends 'createMany'
                       ? DestroyManyResolverArgs
                       : T extends 'destroyOne'
                         ? DestroyOneResolverArgs
-                        : never;
+                        : T extends 'mergeMany'
+                          ? MergeManyResolverArgs
+                          : T extends 'groupBy'
+                            ? GroupByResolverArgs
+                            : never;

@@ -1,14 +1,19 @@
 import { APP_FILTER } from '@nestjs/core';
-import { NestExpressApplication } from '@nestjs/platform-express';
-import { Test, TestingModule, TestingModuleBuilder } from '@nestjs/testing';
+import { type NestExpressApplication } from '@nestjs/platform-express';
+import {
+  Test,
+  type TestingModule,
+  type TestingModuleBuilder,
+} from '@nestjs/testing';
 
 import { AppModule } from 'src/app.module';
+import { CommandModule } from 'src/command/command.module';
 import { StripeSDKMockService } from 'src/engine/core-modules/billing/stripe/stripe-sdk/mocks/stripe-sdk-mock.service';
 import { StripeSDKService } from 'src/engine/core-modules/billing/stripe/stripe-sdk/services/stripe-sdk.service';
+import { CAPTCHA_DRIVER } from 'src/engine/core-modules/captcha/constants/captcha-driver.constants';
 import { ExceptionHandlerService } from 'src/engine/core-modules/exception-handler/exception-handler.service';
 import { ExceptionHandlerMockService } from 'src/engine/core-modules/exception-handler/mocks/exception-handler-mock.service';
 import { MockedUnhandledExceptionFilter } from 'src/engine/core-modules/exception-handler/mocks/mock-unhandled-exception.filter';
-import { CommandModule } from 'src/command/command.module';
 
 interface TestingModuleCreatePreHook {
   (moduleBuilder: TestingModuleBuilder): TestingModuleBuilder;
@@ -44,7 +49,11 @@ export const createApp = async (
     .overrideProvider(StripeSDKService)
     .useValue(stripeSDKMockService)
     .overrideProvider(ExceptionHandlerService)
-    .useValue(mockExceptionHandlerService);
+    .useValue(mockExceptionHandlerService)
+    .overrideProvider(CAPTCHA_DRIVER)
+    .useValue({
+      validate: async () => ({ success: true }),
+    });
 
   if (config.moduleBuilderHook) {
     moduleBuilder = config.moduleBuilderHook(moduleBuilder);

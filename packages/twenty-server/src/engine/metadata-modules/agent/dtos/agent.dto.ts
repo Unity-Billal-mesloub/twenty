@@ -1,10 +1,17 @@
 import { Field, HideField, ObjectType } from '@nestjs/graphql';
 
-import { IsDateString, IsNotEmpty, IsString, IsUUID } from 'class-validator';
+import {
+  IsBoolean,
+  IsDateString,
+  IsNotEmpty,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 import GraphQLJSON from 'graphql-type-json';
 
 import { UUIDScalarType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars';
 import { ModelId } from 'src/engine/core-modules/ai/constants/ai-models.const';
+import { ModelConfiguration } from 'src/engine/metadata-modules/agent/types/modelConfiguration';
 
 @ObjectType('Agent')
 export class AgentDTO {
@@ -13,9 +20,20 @@ export class AgentDTO {
   @Field(() => UUIDScalarType)
   id: string;
 
+  @Field(() => UUIDScalarType, { nullable: true })
+  standardId: string | null;
+
   @IsString()
   @Field()
   name: string;
+
+  @IsString()
+  @Field()
+  label: string;
+
+  @IsString()
+  @Field({ nullable: true })
+  icon?: string;
 
   @IsString()
   @Field({ nullable: true })
@@ -35,8 +53,15 @@ export class AgentDTO {
   @Field(() => UUIDScalarType, { nullable: true })
   roleId?: string;
 
+  @IsBoolean()
+  @Field()
+  isCustom: boolean;
+
   @HideField()
   workspaceId: string;
+
+  @Field(() => UUIDScalarType, { nullable: true })
+  applicationId?: string;
 
   @IsDateString()
   @Field()
@@ -45,4 +70,7 @@ export class AgentDTO {
   @IsDateString()
   @Field()
   updatedAt: Date;
+
+  @Field(() => GraphQLJSON, { nullable: true })
+  modelConfiguration: ModelConfiguration;
 }

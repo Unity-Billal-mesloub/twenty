@@ -1,10 +1,10 @@
-import { ObjectType } from 'typeorm';
+import { type ObjectType } from 'typeorm';
+import { type RelationOnDeleteAction } from 'twenty-shared/types';
 
-import { RelationOnDeleteAction } from 'src/engine/metadata-modules/field-metadata/interfaces/relation-on-delete-action.interface';
-import { RelationType } from 'src/engine/metadata-modules/field-metadata/interfaces/relation-type.interface';
-import { Gate } from 'src/engine/twenty-orm/interfaces/gate.interface';
+import { type RelationType } from 'src/engine/metadata-modules/field-metadata/interfaces/relation-type.interface';
+import { type Gate } from 'src/engine/twenty-orm/interfaces/gate.interface';
 
-import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
+import { type ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
 
 export interface WorkspaceRelationMetadataArgs {
   /**
@@ -15,7 +15,7 @@ export interface WorkspaceRelationMetadataArgs {
   /**
    * Class to which relation is applied.
    */
-  // eslint-disable-next-line @typescript-eslint/ban-types
+
   readonly target: Function;
 
   /**
@@ -71,6 +71,11 @@ export interface WorkspaceRelationMetadataArgs {
   readonly isSystem: boolean;
 
   /**
+   * Is UI read-only field.
+   */
+  readonly isUIReadOnly: boolean;
+
+  /**
    * Is nullable field.
    */
   readonly isNullable: boolean;
@@ -86,4 +91,14 @@ export interface WorkspaceRelationMetadataArgs {
   readonly isActive?: boolean;
 
   readonly isLabelSyncedWithName: boolean;
+
+  /**
+   * Is morph relation.
+   */
+  readonly isMorphRelation: boolean;
+
+  /**
+   * Morph id.
+   */
+  readonly morphId?: string;
 }

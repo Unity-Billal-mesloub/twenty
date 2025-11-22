@@ -1,19 +1,17 @@
 import { SettingsPageContainer } from '@/settings/components/SettingsPageContainer';
-import { SettingsPath } from '@/types/SettingsPath';
+import { FormatPreferencesSettings } from '@/settings/experience/components/FormatPreferencesSettings';
 import { SubMenuTopBarContainer } from '@/ui/layout/page/components/SubMenuTopBarContainer';
 import { useColorScheme } from '@/ui/theme/hooks/useColorScheme';
-
 import { Trans, useLingui } from '@lingui/react/macro';
-import { DateTimeSettings } from '~/pages/settings/profile/appearance/components/DateTimeSettings';
-import { LocalePicker } from '~/pages/settings/profile/appearance/components/LocalePicker';
-import { getSettingsPath } from '~/utils/navigation/getSettingsPath';
-import { ColorSchemePicker } from 'twenty-ui/input';
+import { SettingsPath } from 'twenty-shared/types';
+import { getSettingsPath } from 'twenty-shared/utils';
 import { H2Title } from 'twenty-ui/display';
+import { ColorSchemePicker } from 'twenty-ui/input';
 import { Section } from 'twenty-ui/layout';
+import { LocalePicker } from '~/pages/settings/profile/appearance/components/LocalePicker';
 
 export const SettingsExperience = () => {
   const { colorScheme, setColorScheme } = useColorScheme();
-
   const { t } = useLingui();
 
   return (
@@ -38,13 +36,6 @@ export const SettingsExperience = () => {
             systemLabel={t`System settings`}
           />
         </Section>
-        <Section>
-          <H2Title
-            title={t`Date and time`}
-            description={t`Configure how dates are displayed across the app`}
-          />
-          <DateTimeSettings />
-        </Section>
 
         <Section>
           <H2Title
@@ -53,6 +44,15 @@ export const SettingsExperience = () => {
           />
           <LocalePicker />
         </Section>
+
+        <Section>
+          <H2Title
+            title={t`Formats`}
+            description={t`Configure date, time, number, timezone, and calendar start day`}
+          />
+          <FormatPreferencesSettings />
+        </Section>
+        {/* Unified into FormatPreferencesSettings */}
       </SettingsPageContainer>
     </SubMenuTopBarContainer>
   );

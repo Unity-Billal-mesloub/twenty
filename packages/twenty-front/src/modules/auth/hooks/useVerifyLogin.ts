@@ -1,7 +1,7 @@
 import { useAuth } from '@/auth/hooks/useAuth';
-import { AppPath } from '@/types/AppPath';
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
 import { useLingui } from '@lingui/react/macro';
+import { AppPath } from 'twenty-shared/types';
 import { useNavigateApp } from '~/hooks/useNavigateApp';
 
 export const useVerifyLogin = () => {
@@ -13,7 +13,7 @@ export const useVerifyLogin = () => {
   const verifyLoginToken = async (loginToken: string) => {
     try {
       await getAuthTokensFromLoginToken(loginToken);
-    } catch (error) {
+    } catch {
       enqueueErrorSnackBar({
         message: t`Authentication failed`,
       });

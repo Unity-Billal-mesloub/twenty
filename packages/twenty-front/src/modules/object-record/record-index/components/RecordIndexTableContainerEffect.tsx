@@ -1,47 +1,26 @@
 import { useEffect } from 'react';
 
-import { useColumnDefinitionsFromFieldMetadata } from '@/object-metadata/hooks/useColumnDefinitionsFromFieldMetadata';
+import { useColumnDefinitionsFromObjectMetadata } from '@/object-metadata/hooks/useColumnDefinitionsFromObjectMetadata';
 import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
 import { useRecordIndexContextOrThrow } from '@/object-record/record-index/contexts/RecordIndexContext';
-import { useHandleToggleColumnSort } from '@/object-record/record-index/hooks/useHandleToggleColumnSort';
-import { useRecordTable } from '@/object-record/record-table/hooks/useRecordTable';
 import { viewFieldAggregateOperationState } from '@/object-record/record-table/record-table-footer/states/viewFieldAggregateOperationState';
 import { convertAggregateOperationToExtendedAggregateOperation } from '@/object-record/utils/convertAggregateOperationToExtendedAggregateOperation';
 import { useGetCurrentViewOnly } from '@/views/hooks/useGetCurrentViewOnly';
-import { ViewField } from '@/views/types/ViewField';
+import { type ViewField } from '@/views/types/ViewField';
 import { useRecoilCallback } from 'recoil';
 import { isDefined } from 'twenty-shared/utils';
 
 export const RecordIndexTableContainerEffect = () => {
-  const { recordIndexId, objectNameSingular } = useRecordIndexContextOrThrow();
-
-  const { setAvailableTableColumns, setOnToggleColumnSort } = useRecordTable({
-    recordTableId: recordIndexId,
-  });
+  const { objectNameSingular } = useRecordIndexContextOrThrow();
 
   const { objectMetadataItem } = useObjectMetadataItem({
     objectNameSingular,
   });
 
   const { columnDefinitions } =
-    useColumnDefinitionsFromFieldMetadata(objectMetadataItem);
-
-  useEffect(() => {
-    setAvailableTableColumns(columnDefinitions);
-  }, [columnDefinitions, setAvailableTableColumns]);
-
-  const handleToggleColumnSort = useHandleToggleColumnSort({
-    objectNameSingular,
-  });
+    useColumnDefinitionsFromObjectMetadata(objectMetadataItem);
 
   const { currentView } = useGetCurrentViewOnly();
-
-  useEffect(() => {
-    setOnToggleColumnSort(
-      () => (fieldMetadataId: string) =>
-        handleToggleColumnSort(fieldMetadataId),
-    );
-  }, [setOnToggleColumnSort, handleToggleColumnSort]);
 
   const setViewFieldAggregateOperation = useRecoilCallback(
     ({ set, snapshot }) =>

@@ -1,5 +1,9 @@
 name: 'Preview Environment Keep Alive'
 
+permissions:
+  contents: read
+  pull-requests: write
+
 on:
   repository_dispatch:
     types: [preview-environment]
@@ -26,10 +30,14 @@ jobs:
           yq eval '.services.worker.build.context = "../../"' -i packages/twenty-docker/docker-compose.yml
           yq eval '.services.worker.build.dockerfile = "./packages/twenty-docker/twenty/Dockerfile"' -i packages/twenty-docker/docker-compose.yml
           
+          echo "Adding SIGN_IN_PREFILLED environment variable to server service..."
+          yq eval '.services.server.environment.SIGN_IN_PREFILLED = "${SIGN_IN_PREFILLED}"' -i packages/twenty-docker/docker-compose.yml
+          
           echo "Setting up .env file..."
           cp packages/twenty-docker/.env.example packages/twenty-docker/.env
           
           echo "Generating secrets..."
+          echo "" >> packages/twenty-docker/.env
           echo "# === Randomly generated secrets ===" >> packages/twenty-docker/.env
           echo "APP_SECRET=$(openssl rand -base64 32)" >> packages/twenty-docker/.env
           echo "PG_DATABASE_PASSWORD=$(openssl rand -hex 16)" >> packages/twenty-docker/.env
@@ -53,6 +61,7 @@ jobs:
           # Update the SERVER_URL with the tunnel URL
           echo "Setting SERVER_URL to ${{ steps.expose-tunnel.outputs.tunnel-url }}"
           sed -i '/SERVER_URL=/d' .env
+          echo "" >> .env
           echo "SERVER_URL=${{ steps.expose-tunnel.outputs.tunnel-url }}" >> .env
           
           # Start the services

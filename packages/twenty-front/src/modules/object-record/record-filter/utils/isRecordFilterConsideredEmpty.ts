@@ -1,4 +1,4 @@
-import { RecordFilter } from '@/object-record/record-filter/types/RecordFilter';
+import { type RecordFilter } from '@/object-record/record-filter/types/RecordFilter';
 import { RecordFilterOperand } from '@/object-record/record-filter/types/RecordFilterOperand';
 import { isDefined } from 'twenty-shared/utils';
 
@@ -10,11 +10,11 @@ export const isRecordFilterConsideredEmpty = (
   if (
     (!isDefined(value) || value === '' || value === '[]') &&
     ![
-      RecordFilterOperand.IsEmpty,
-      RecordFilterOperand.IsNotEmpty,
-      RecordFilterOperand.IsInPast,
-      RecordFilterOperand.IsInFuture,
-      RecordFilterOperand.IsToday,
+      RecordFilterOperand.IS_EMPTY,
+      RecordFilterOperand.IS_NOT_EMPTY,
+      RecordFilterOperand.IS_IN_PAST,
+      RecordFilterOperand.IS_IN_FUTURE,
+      RecordFilterOperand.IS_TODAY,
     ].includes(operand)
   ) {
     return true;

@@ -1,7 +1,7 @@
 'use client';
 
 import styled from '@emotion/styled';
-import { ReactNode } from 'react';
+import { type ReactNode } from 'react';
 
 import { Theme } from '@/app/_components/ui/theme/theme';
 import { wrapHeadingsWithAnchor } from '@/shared-utils/wrapHeadingsWithAnchor';
@@ -129,6 +129,68 @@ const StyledContent = styled.div`
   img {
     margin: 32px 0px 0px;
     max-width: 100%;
+  }
+
+  details {
+    margin: 24px 0px 0px;
+    border: 1px solid ${Theme.border.color.plain};
+    border-radius: ${Theme.border.radius.md};
+    background: ${Theme.background.secondary};
+  }
+
+  details summary {
+    padding: 16px 20px;
+    cursor: pointer;
+    font-family: var(--font-gabarito);
+    font-size: ${Theme.font.size.sm};
+    font-weight: ${Theme.font.weight.medium};
+    color: ${Theme.text.color.primary};
+    list-style: none;
+    border-radius: ${Theme.border.radius.md};
+    transition: background-color 0.2s ease;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    &::marker {
+      display: none;
+    }
+
+    &:hover {
+      background: ${Theme.background.transparent.light};
+    }
+
+    &::after {
+      content: '+';
+      float: right;
+      font-size: 20px;
+      font-weight: 300;
+      color: ${Theme.text.color.tertiary};
+    }
+  }
+
+  details[open] summary {
+    border-bottom: 1px solid ${Theme.border.color.plain};
+    border-radius: ${Theme.border.radius.md} ${Theme.border.radius.md} 0 0;
+
+    &::after {
+      content: '−';
+    }
+  }
+
+  details > *:not(summary) {
+    padding: 20px;
+    margin: 0;
+    font-family: ${Theme.font.family};
+    font-size: ${Theme.font.size.sm};
+    line-height: 28.8px;
+    color: ${Theme.text.color.secondary};
+  }
+
+  details strong {
+    font-weight: ${Theme.font.weight.medium};
+    color: ${Theme.text.color.primary};
   }
 `;
 

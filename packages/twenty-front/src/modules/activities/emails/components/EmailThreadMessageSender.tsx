@@ -1,8 +1,14 @@
 import styled from '@emotion/styled';
+import { useRecoilValue } from 'recoil';
 
 import { ParticipantChip } from '@/activities/components/ParticipantChip';
-import { EmailThreadMessageParticipant } from '@/activities/emails/types/EmailThreadMessageParticipant';
-import { beautifyPastDateRelativeToNow } from '~/utils/date-utils';
+import { type EmailThreadMessageParticipant } from '@/activities/emails/types/EmailThreadMessageParticipant';
+import { AppTooltip, TooltipPosition } from 'twenty-ui/display';
+import { dateLocaleState } from '~/localization/states/dateLocaleState';
+import {
+  beautifyPastDateRelativeToNow,
+  formatToHumanReadableDate,
+} from '~/utils/date-utils';
 
 const StyledEmailThreadMessageSender = styled.div`
   display: flex;
@@ -25,12 +31,20 @@ export const EmailThreadMessageSender = ({
   sender,
   sentAt,
 }: EmailThreadMessageSenderProps) => {
+  const { localeCatalog } = useRecoilValue(dateLocaleState);
+  const tooltipId = `date-tooltip-${sentAt.replace(/[^a-zA-Z0-9]/g, '-')}`;
+
   return (
     <StyledEmailThreadMessageSender>
       <ParticipantChip participant={sender} variant="bold" />
-      <StyledThreadMessageSentAt>
-        {beautifyPastDateRelativeToNow(sentAt)}
+      <StyledThreadMessageSentAt id={tooltipId}>
+        {beautifyPastDateRelativeToNow(sentAt, localeCatalog)}
       </StyledThreadMessageSentAt>
+      <AppTooltip
+        anchorSelect={`#${tooltipId}`}
+        content={formatToHumanReadableDate(sentAt)}
+        place={TooltipPosition.Top}
+      />
     </StyledEmailThreadMessageSender>
   );
 };

@@ -1,12 +1,10 @@
 import styled from '@emotion/styled';
-import { FocusEventHandler, useId } from 'react';
+import { type FocusEventHandler, useId } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
 
-import { InputHotkeyScope } from '@/ui/input/types/InputHotkeyScope';
 import { usePushFocusItemToFocusStack } from '@/ui/utilities/focus/hooks/usePushFocusItemToFocusStack';
 import { useRemoveFocusItemFromFocusStackById } from '@/ui/utilities/focus/hooks/useRemoveFocusItemFromFocusStackById';
 import { FocusComponentType } from '@/ui/utilities/focus/types/FocusComponentType';
-import { RGBA } from 'twenty-ui/theme';
 import { turnIntoEmptyStringIfWhitespacesOnly } from '~/utils/string/turnIntoEmptyStringIfWhitespacesOnly';
 
 const MAX_ROWS = 5;
@@ -22,6 +20,7 @@ export type TextAreaProps = {
   value?: string;
   className?: string;
   onBlur?: () => void;
+  readOnly?: boolean;
 };
 
 const StyledContainer = styled.div`
@@ -56,7 +55,7 @@ const StyledTextArea = styled(TextareaAutosize)`
   &:focus {
     outline: none;
     ${({ theme }) => {
-      return `box-shadow: 0px 0px 0px 3px ${RGBA(theme.color.blue, 0.1)};
+      return `box-shadow: 0px 0px 0px 3px ${theme.color.transparent.blue2};
       border-color: ${theme.color.blue};`;
     }};
   }
@@ -82,6 +81,7 @@ export const TextArea = ({
   className,
   onChange,
   onBlur,
+  readOnly = false,
 }: TextAreaProps) => {
   const computedMinRows = Math.min(minRows, maxRows);
 
@@ -101,7 +101,6 @@ export const TextArea = ({
       globalHotkeysConfig: {
         enableGlobalHotkeysConflictingWithKeyboard: false,
       },
-      hotkeyScope: { scope: InputHotkeyScope.TextInput },
     });
   };
 
@@ -127,6 +126,7 @@ export const TextArea = ({
         onBlur={handleBlur}
         disabled={disabled}
         className={className}
+        readOnly={readOnly}
       />
     </StyledContainer>
   );

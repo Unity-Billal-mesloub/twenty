@@ -1,25 +1,33 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 
+import { google } from 'googleapis';
 import { ConnectedAccountProvider } from 'twenty-shared/types';
 
-import { ConnectedAccountWorkspaceEntity } from 'src/modules/connected-account/standard-objects/connected-account.workspace-entity';
-import { GmailClientProvider } from 'src/modules/messaging/message-import-manager/drivers/gmail/providers/gmail-client.provider';
+import { OAuth2ClientManagerService } from 'src/modules/connected-account/oauth2-client-manager/services/oauth2-client-manager.service';
+import { type ConnectedAccountWorkspaceEntity } from 'src/modules/connected-account/standard-objects/connected-account.workspace-entity';
 import { GmailGetHistoryService } from 'src/modules/messaging/message-import-manager/drivers/gmail/services/gmail-get-history.service';
 import { GmailGetMessageListService } from 'src/modules/messaging/message-import-manager/drivers/gmail/services/gmail-get-message-list.service';
-import { GmailHandleErrorService } from 'src/modules/messaging/message-import-manager/drivers/gmail/services/gmail-handle-error.service';
+import { GmailMessageListFetchErrorHandler } from 'src/modules/messaging/message-import-manager/drivers/gmail/services/gmail-message-list-fetch-error-handler.service';
 
 describe('GmailGetMessageListService', () => {
   let service: GmailGetMessageListService;
-  let gmailClientProvider: GmailClientProvider;
+  let oAuth2ClientManagerService: OAuth2ClientManagerService;
 
   const mockConnectedAccount: Pick<
     ConnectedAccountWorkspaceEntity,
-    'provider' | 'refreshToken' | 'id' | 'handle'
+    | 'provider'
+    | 'accessToken'
+    | 'refreshToken'
+    | 'id'
+    | 'handle'
+    | 'connectionParameters'
   > = {
     id: 'connected-account-id',
     provider: ConnectedAccountProvider.GOOGLE,
-    refreshToken: 'refresh-token',
+    accessToken: 'access-token',
+    refreshToken: 'refresh-token', // dummy value for testing
     handle: 'test@gmail.com',
+    connectionParameters: {},
   };
 
   beforeEach(async () => {
@@ -27,9 +35,9 @@ describe('GmailGetMessageListService', () => {
       providers: [
         GmailGetMessageListService,
         {
-          provide: GmailClientProvider,
+          provide: OAuth2ClientManagerService,
           useValue: {
-            getGmailClient: jest.fn(),
+            getGoogleOAuth2Client: jest.fn(),
           },
         },
         {
@@ -40,10 +48,9 @@ describe('GmailGetMessageListService', () => {
           },
         },
         {
-          provide: GmailHandleErrorService,
+          provide: GmailMessageListFetchErrorHandler,
           useValue: {
-            handleGmailMessageListFetchError: jest.fn(),
-            handleGmailMessagesImportError: jest.fn(),
+            handleError: jest.fn(),
           },
         },
       ],
@@ -52,10 +59,16 @@ describe('GmailGetMessageListService', () => {
     service = module.get<GmailGetMessageListService>(
       GmailGetMessageListService,
     );
-    gmailClientProvider = module.get<GmailClientProvider>(GmailClientProvider);
+    oAuth2ClientManagerService = module.get<OAuth2ClientManagerService>(
+      OAuth2ClientManagerService,
+    );
   });
 
-  describe('getFullMessageList', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  describe('getMessageList', () => {
     it('should return 0 messageExternalIds when gmail returns 0 messages', async () => {
       const mockGmailClient = {
         users: {
@@ -70,13 +83,19 @@ describe('GmailGetMessageListService', () => {
         },
       };
 
-      (gmailClientProvider.getGmailClient as jest.Mock).mockResolvedValue(
-        mockGmailClient,
-      );
+      jest.spyOn(google, 'gmail').mockReturnValue(mockGmailClient as never);
 
-      const result = await service.getFullMessageList(mockConnectedAccount);
+      (
+        oAuth2ClientManagerService.getGoogleOAuth2Client as jest.Mock
+      ).mockResolvedValue({});
 
-      expect(result.messageExternalIds).toHaveLength(0);
+      const result = await service.getMessageLists({
+        messageChannel: { syncCursor: '', id: 'my-id' },
+        connectedAccount: mockConnectedAccount,
+        messageFolders: [],
+      });
+
+      expect(result[0].messageExternalIds).toHaveLength(0);
       expect(mockGmailClient.users.messages.list).toHaveBeenCalledTimes(1);
     });
 
@@ -117,13 +136,19 @@ describe('GmailGetMessageListService', () => {
         },
       };
 
-      (gmailClientProvider.getGmailClient as jest.Mock).mockResolvedValue(
-        mockGmailClient,
-      );
+      jest.spyOn(google, 'gmail').mockReturnValue(mockGmailClient as never);
 
-      const result = await service.getFullMessageList(mockConnectedAccount);
+      (
+        oAuth2ClientManagerService.getGoogleOAuth2Client as jest.Mock
+      ).mockResolvedValue({});
 
-      expect(result.messageExternalIds).toHaveLength(5);
+      const result = await service.getMessageLists({
+        messageChannel: { syncCursor: '', id: 'my-id' },
+        connectedAccount: mockConnectedAccount,
+        messageFolders: [],
+      });
+
+      expect(result[0].messageExternalIds).toHaveLength(5);
     });
 
     it('should return 3 messageExternalIds when gmail provides a nextpagetoken with 2 messages, then 1', async () => {
@@ -164,13 +189,19 @@ describe('GmailGetMessageListService', () => {
         },
       };
 
-      (gmailClientProvider.getGmailClient as jest.Mock).mockResolvedValue(
-        mockGmailClient,
-      );
+      jest.spyOn(google, 'gmail').mockReturnValue(mockGmailClient as never);
 
-      const result = await service.getFullMessageList(mockConnectedAccount);
+      (
+        oAuth2ClientManagerService.getGoogleOAuth2Client as jest.Mock
+      ).mockResolvedValue({});
 
-      expect(result.messageExternalIds).toHaveLength(3);
+      const result = await service.getMessageLists({
+        messageChannel: { syncCursor: '', id: 'my-id' },
+        connectedAccount: mockConnectedAccount,
+        messageFolders: [],
+      });
+
+      expect(result[0].messageExternalIds).toHaveLength(3);
       expect(mockGmailClient.users.messages.list).toHaveBeenCalledTimes(2);
     });
     it('should go through while loop once when gmail provides a nextpagetoken but 0 messages - should never happen IRL', async () => {
@@ -192,13 +223,19 @@ describe('GmailGetMessageListService', () => {
         },
       };
 
-      (gmailClientProvider.getGmailClient as jest.Mock).mockResolvedValue(
-        mockGmailClient,
-      );
+      jest.spyOn(google, 'gmail').mockReturnValue(mockGmailClient as never);
 
-      const result = await service.getFullMessageList(mockConnectedAccount);
+      (
+        oAuth2ClientManagerService.getGoogleOAuth2Client as jest.Mock
+      ).mockResolvedValue({});
 
-      expect(result.messageExternalIds).toHaveLength(0);
+      const result = await service.getMessageLists({
+        messageChannel: { syncCursor: '', id: 'my-id' },
+        connectedAccount: mockConnectedAccount,
+        messageFolders: [],
+      });
+
+      expect(result[0].messageExternalIds).toHaveLength(0);
       expect(mockGmailClient.users.messages.list).toHaveBeenCalledTimes(1);
     });
   });

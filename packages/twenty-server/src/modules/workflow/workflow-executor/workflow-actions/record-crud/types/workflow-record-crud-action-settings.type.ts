@@ -1,10 +1,11 @@
 import {
-  WorkflowCreateRecordActionInput,
-  WorkflowDeleteRecordActionInput,
-  WorkflowFindRecordsActionInput,
-  WorkflowUpdateRecordActionInput,
+  type WorkflowUpsertRecordActionInput,
+  type WorkflowCreateRecordActionInput,
+  type WorkflowDeleteRecordActionInput,
+  type WorkflowFindRecordsActionInput,
+  type WorkflowUpdateRecordActionInput,
 } from 'src/modules/workflow/workflow-executor/workflow-actions/record-crud/types/workflow-record-crud-action-input.type';
-import { BaseWorkflowActionSettings } from 'src/modules/workflow/workflow-executor/workflow-actions/types/workflow-action-settings.type';
+import { type BaseWorkflowActionSettings } from 'src/modules/workflow/workflow-executor/workflow-actions/types/workflow-action-settings.type';
 
 export type WorkflowCreateRecordActionSettings = BaseWorkflowActionSettings & {
   input: WorkflowCreateRecordActionInput;
@@ -20,4 +21,8 @@ export type WorkflowDeleteRecordActionSettings = BaseWorkflowActionSettings & {
 
 export type WorkflowFindRecordsActionSettings = BaseWorkflowActionSettings & {
   input: WorkflowFindRecordsActionInput;
+};
+
+export type WorkflowUpsertRecordActionSettings = BaseWorkflowActionSettings & {
+  input: WorkflowUpsertRecordActionInput;
 };

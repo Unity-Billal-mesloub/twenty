@@ -1,23 +1,23 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+
+import { FieldActorSource } from 'twenty-shared/types';
 
 import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
 import { MessageQueueService } from 'src/engine/core-modules/message-queue/services/message-queue.service';
 import { getQueueToken } from 'src/engine/core-modules/message-queue/utils/get-queue-token.util';
-import { FieldActorSource } from 'src/engine/metadata-modules/field-metadata/composite-types/actor.composite-type';
 import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
 import { TwentyORMManager } from 'src/engine/twenty-orm/twenty-orm.manager';
-import { WorkspaceEventEmitter } from 'src/engine/workspace-event-emitter/workspace-event-emitter';
-import { ConnectedAccountWorkspaceEntity } from 'src/modules/connected-account/standard-objects/connected-account.workspace-entity';
+import { type ConnectedAccountWorkspaceEntity } from 'src/modules/connected-account/standard-objects/connected-account.workspace-entity';
 import { CreateCompanyAndContactJob } from 'src/modules/contact-creation-manager/jobs/create-company-and-contact.job';
 import { MessageDirection } from 'src/modules/messaging/common/enums/message-direction.enum';
 import {
   MessageChannelContactAutoCreationPolicy,
-  MessageChannelWorkspaceEntity,
+  type MessageChannelWorkspaceEntity,
 } from 'src/modules/messaging/common/standard-objects/message-channel.workspace-entity';
 import { MessagingMessageService } from 'src/modules/messaging/message-import-manager/services/messaging-message.service';
 import { MessagingSaveMessagesAndEnqueueContactCreationService } from 'src/modules/messaging/message-import-manager/services/messaging-save-messages-and-enqueue-contact-creation.service';
-import { MessageWithParticipants } from 'src/modules/messaging/message-import-manager/types/message';
+import { type MessageWithParticipants } from 'src/modules/messaging/message-import-manager/types/message';
 import { MessagingMessageParticipantService } from 'src/modules/messaging/message-participant-manager/services/messaging-message-participant.service';
 
 describe('MessagingSaveMessagesAndEnqueueContactCreationService', () => {
@@ -105,13 +105,7 @@ describe('MessagingSaveMessagesAndEnqueueContactCreationService', () => {
           },
         },
         {
-          provide: WorkspaceEventEmitter,
-          useValue: {
-            emitDatabaseBatchEvent: jest.fn().mockResolvedValue(undefined),
-          },
-        },
-        {
-          provide: getRepositoryToken(ObjectMetadataEntity, 'core'),
+          provide: getRepositoryToken(ObjectMetadataEntity),
           useValue: {
             findOneOrFail: jest.fn(),
           },
@@ -172,6 +166,7 @@ describe('MessagingSaveMessagesAndEnqueueContactCreationService', () => {
       mockMessages,
       mockMessageChannel.id,
       expect.any(Object),
+      workspaceId,
     );
 
     expect(
@@ -229,36 +224,6 @@ describe('MessagingSaveMessagesAndEnqueueContactCreationService', () => {
             messageId: 'db-message-id-2',
           },
         ],
-      },
-    );
-  });
-
-  it('should not create group emails contacts', async () => {
-    await service.saveMessagesAndEnqueueContactCreation(
-      [
-        {
-          ...mockMessages[0],
-          participants: [
-            {
-              role: 'from',
-              handle: 'contact@group.com',
-              displayName: 'participant that is the Connected Account',
-            },
-          ],
-        },
-      ],
-      mockMessageChannel,
-      mockConnectedAccount,
-      workspaceId,
-    );
-
-    expect(messageQueueService.add).toHaveBeenCalledWith(
-      CreateCompanyAndContactJob.name,
-      {
-        workspaceId,
-        connectedAccount: mockConnectedAccount,
-        source: FieldActorSource.EMAIL,
-        contactsToCreate: [],
       },
     );
   });

@@ -6,6 +6,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Issuer } from 'openid-client';
 import { Repository } from 'typeorm';
 
+import {
+  WorkspaceSSOIdentityProviderEntity,
+  IdentityProviderType,
+  OIDCResponseType,
+} from 'src/engine/core-modules/sso/workspace-sso-identity-provider.entity';
 import { BillingEntitlementKey } from 'src/engine/core-modules/billing/enums/billing-entitlement-key.enum';
 import { BillingService } from 'src/engine/core-modules/billing/services/billing.service';
 import { ExceptionHandlerService } from 'src/engine/core-modules/exception-handler/exception-handler.service';
@@ -14,23 +19,18 @@ import {
   SSOExceptionCode,
 } from 'src/engine/core-modules/sso/sso.exception';
 import {
-  OIDCConfiguration,
-  SAMLConfiguration,
-  SSOConfiguration,
+  type OIDCConfiguration,
+  type SAMLConfiguration,
+  type SSOConfiguration,
 } from 'src/engine/core-modules/sso/types/SSOConfigurations.type';
-import {
-  IdentityProviderType,
-  OIDCResponseType,
-  WorkspaceSSOIdentityProvider,
-} from 'src/engine/core-modules/sso/workspace-sso-identity-provider.entity';
 import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
 
 @Injectable()
 export class SSOService {
   private readonly featureLookUpKey = BillingEntitlementKey.SSO;
   constructor(
-    @InjectRepository(WorkspaceSSOIdentityProvider, 'core')
-    private readonly workspaceSSOIdentityProviderRepository: Repository<WorkspaceSSOIdentityProvider>,
+    @InjectRepository(WorkspaceSSOIdentityProviderEntity)
+    private readonly workspaceSSOIdentityProviderRepository: Repository<WorkspaceSSOIdentityProviderEntity>,
     private readonly twentyConfigService: TwentyConfigService,
     private readonly billingService: BillingService,
     private readonly exceptionHandlerService: ExceptionHandlerService,
@@ -53,7 +53,7 @@ export class SSOService {
   private async getIssuerForOIDC(issuerUrl: string) {
     try {
       return await Issuer.discover(issuerUrl);
-    } catch (err) {
+    } catch {
       throw new SSOException(
         'Invalid issuer',
         SSOExceptionCode.INVALID_ISSUER_URL,
@@ -63,7 +63,7 @@ export class SSOService {
 
   async createOIDCIdentityProvider(
     data: Pick<
-      WorkspaceSSOIdentityProvider,
+      WorkspaceSSOIdentityProviderEntity,
       'issuer' | 'clientID' | 'clientSecret' | 'name'
     >,
     workspaceId: string,
@@ -106,7 +106,7 @@ export class SSOService {
 
   async createSAMLIdentityProvider(
     data: Pick<
-      WorkspaceSSOIdentityProvider,
+      WorkspaceSSOIdentityProviderEntity,
       'ssoURL' | 'certificate' | 'fingerprint' | 'id'
     >,
     workspaceId: string,
@@ -132,12 +132,12 @@ export class SSOService {
   async findSSOIdentityProviderById(identityProviderId: string) {
     return (await this.workspaceSSOIdentityProviderRepository.findOne({
       where: { id: identityProviderId },
-      relations: ['workspace'],
-    })) as (SSOConfiguration & WorkspaceSSOIdentityProvider) | null;
+      relations: { workspace: true },
+    })) as (SSOConfiguration & WorkspaceSSOIdentityProviderEntity) | null;
   }
 
   buildCallbackUrl(
-    identityProvider: Pick<WorkspaceSSOIdentityProvider, 'type' | 'id'>,
+    identityProvider: Pick<WorkspaceSSOIdentityProviderEntity, 'type' | 'id'>,
   ) {
     const callbackURL = new URL(this.twentyConfigService.get('SERVER_URL'));
 
@@ -151,7 +151,7 @@ export class SSOService {
   }
 
   buildIssuerURL(
-    identityProvider: Pick<WorkspaceSSOIdentityProvider, 'id' | 'type'>,
+    identityProvider: Pick<WorkspaceSSOIdentityProviderEntity, 'id' | 'type'>,
     searchParams?: Record<string, string | boolean>,
   ) {
     const authorizationUrl = new URL(
@@ -170,19 +170,21 @@ export class SSOService {
   }
 
   private isOIDCIdentityProvider(
-    identityProvider: WorkspaceSSOIdentityProvider,
-  ): identityProvider is OIDCConfiguration & WorkspaceSSOIdentityProvider {
+    identityProvider: WorkspaceSSOIdentityProviderEntity,
+  ): identityProvider is OIDCConfiguration &
+    WorkspaceSSOIdentityProviderEntity {
     return identityProvider.type === IdentityProviderType.OIDC;
   }
 
   isSAMLIdentityProvider(
-    identityProvider: WorkspaceSSOIdentityProvider,
-  ): identityProvider is SAMLConfiguration & WorkspaceSSOIdentityProvider {
+    identityProvider: WorkspaceSSOIdentityProviderEntity,
+  ): identityProvider is SAMLConfiguration &
+    WorkspaceSSOIdentityProviderEntity {
     return identityProvider.type === IdentityProviderType.SAML;
   }
 
   getOIDCClient(
-    identityProvider: WorkspaceSSOIdentityProvider,
+    identityProvider: WorkspaceSSOIdentityProviderEntity,
     issuer: Issuer,
   ) {
     if (!this.isOIDCIdentityProvider(identityProvider)) {
@@ -209,7 +211,7 @@ export class SSOService {
         where: {
           id: identityProviderId,
         },
-      })) as WorkspaceSSOIdentityProvider & SSOConfiguration;
+      })) as WorkspaceSSOIdentityProviderEntity & SSOConfiguration;
 
     if (!identityProvider) {
       throw new SSOException(
@@ -231,7 +233,7 @@ export class SSOService {
       select: ['id', 'name', 'type', 'issuer', 'status'],
     })) as Array<
       Pick<
-        WorkspaceSSOIdentityProvider,
+        WorkspaceSSOIdentityProviderEntity,
         'id' | 'name' | 'type' | 'issuer' | 'status'
       >
     >;
@@ -264,7 +266,7 @@ export class SSOService {
   }
 
   async editSSOIdentityProvider(
-    payload: Partial<WorkspaceSSOIdentityProvider>,
+    payload: Partial<WorkspaceSSOIdentityProviderEntity>,
     workspaceId: string,
   ) {
     const ssoIdp = await this.workspaceSSOIdentityProviderRepository.findOne({

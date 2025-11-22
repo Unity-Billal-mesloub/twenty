@@ -1,19 +1,47 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
-import { CoreMessage, StreamTextResult } from 'ai';
+import { LanguageModel, type ModelMessage, streamText } from 'ai';
 
-import { AiDriver } from 'src/engine/core-modules/ai/drivers/interfaces/ai-driver.interface';
-
-import { AI_DRIVER } from 'src/engine/core-modules/ai/ai.constants';
+import { AI_TELEMETRY_CONFIG } from 'src/engine/core-modules/ai/constants/ai-telemetry.const';
+import { AiModelRegistryService } from 'src/engine/core-modules/ai/services/ai-model-registry.service';
 
 @Injectable()
 export class AiService {
-  constructor(@Inject(AI_DRIVER) private driver: AiDriver) {}
+  constructor(private aiModelRegistryService: AiModelRegistryService) {}
 
-  streamText(
-    messages: CoreMessage[],
-    options?: { temperature?: number; maxTokens?: number },
-  ): StreamTextResult<Record<string, never>, undefined> {
-    return this.driver.streamText(messages, options);
+  getModel(modelId: string | undefined) {
+    const registeredModel = modelId
+      ? this.aiModelRegistryService.getModel(modelId)
+      : this.aiModelRegistryService.getDefaultPerformanceModel();
+
+    if (!registeredModel) {
+      throw new Error(
+        modelId
+          ? `Model "${modelId}" is not available. Please check your configuration.`
+          : 'No AI models are available. Please configure at least one provider.',
+      );
+    }
+
+    return registeredModel.model;
+  }
+
+  streamText({
+    messages,
+    options,
+  }: {
+    messages: ModelMessage[];
+    options: {
+      temperature?: number;
+      maxOutputTokens?: number;
+      model: LanguageModel;
+    };
+  }) {
+    return streamText({
+      model: options.model,
+      messages,
+      temperature: options?.temperature,
+      maxOutputTokens: options?.maxOutputTokens,
+      experimental_telemetry: AI_TELEMETRY_CONFIG,
+    });
   }
 }

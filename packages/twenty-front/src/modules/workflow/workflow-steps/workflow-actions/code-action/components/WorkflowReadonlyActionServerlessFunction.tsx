@@ -1,22 +1,17 @@
 import { useGetAvailablePackages } from '@/settings/serverless-functions/hooks/useGetAvailablePackages';
 import { useServerlessFunctionUpdateFormState } from '@/settings/serverless-functions/hooks/useServerlessFunctionUpdateFormState';
-import { WorkflowCodeAction } from '@/workflow/types/Workflow';
-import { WorkflowStepHeader } from '@/workflow/workflow-steps/components/WorkflowStepHeader';
+import { type WorkflowCodeAction } from '@/workflow/types/Workflow';
 
-import { INDEX_FILE_PATH } from '@/serverless-functions/constants/IndexFilePath';
+import { INDEX_FILE_NAME } from '@/serverless-functions/constants/IndexFileName';
 import { WorkflowStepBody } from '@/workflow/workflow-steps/components/WorkflowStepBody';
 import { WorkflowEditActionServerlessFunctionFields } from '@/workflow/workflow-steps/workflow-actions/code-action/components/WorkflowEditActionServerlessFunctionFields';
 import { getWrongExportedFunctionMarkers } from '@/workflow/workflow-steps/workflow-actions/code-action/utils/getWrongExportedFunctionMarkers';
-import { useActionHeaderTypeOrThrow } from '@/workflow/workflow-steps/workflow-actions/hooks/useActionHeaderTypeOrThrow';
-import { useActionIconColorOrThrow } from '@/workflow/workflow-steps/workflow-actions/hooks/useActionIconColorOrThrow';
-import { getActionIcon } from '@/workflow/workflow-steps/workflow-actions/utils/getActionIcon';
 import styled from '@emotion/styled';
-import { Monaco } from '@monaco-editor/react';
-import { editor } from 'monaco-editor';
+import { type Monaco } from '@monaco-editor/react';
+import { type editor } from 'monaco-editor';
 import { AutoTypings } from 'monaco-editor-auto-typings';
-import { isDefined } from 'twenty-shared/utils';
 import { CodeEditor } from 'twenty-ui/input';
-import { useIcons } from 'twenty-ui/display';
+import { SOURCE_FOLDER_NAME } from '@/serverless-functions/constants/SourceFolderName';
 
 const StyledCodeEditorContainer = styled.div`
   display: flex;
@@ -30,7 +25,6 @@ type WorkflowReadonlyActionServerlessFunctionProps = {
 export const WorkflowReadonlyActionServerlessFunction = ({
   action,
 }: WorkflowReadonlyActionServerlessFunctionProps) => {
-  const { getIcon } = useIcons();
   const serverlessFunctionId = action.settings.input.serverlessFunctionId;
   const serverlessFunctionVersion =
     action.settings.input.serverlessFunctionVersion;
@@ -57,26 +51,18 @@ export const WorkflowReadonlyActionServerlessFunction = ({
     });
   };
 
-  const headerTitle = isDefined(action.name)
-    ? action.name
-    : 'Code - Serverless Function';
-  const headerIcon = getActionIcon(action.type);
-  const headerIconColor = useActionIconColorOrThrow(action.type);
-  const headerType = useActionHeaderTypeOrThrow(action.type);
-
   if (loading) {
     return null;
   }
 
+  const indexFileContent =
+    typeof formValues.code?.[SOURCE_FOLDER_NAME] !== 'string' &&
+    typeof formValues.code[SOURCE_FOLDER_NAME][INDEX_FILE_NAME] === 'string'
+      ? formValues.code[SOURCE_FOLDER_NAME][INDEX_FILE_NAME]
+      : '';
+
   return (
     <>
-      <WorkflowStepHeader
-        Icon={getIcon(headerIcon)}
-        iconColor={headerIconColor}
-        initialTitle={headerTitle}
-        headerType={headerType}
-        disabled
-      />
       <WorkflowStepBody>
         <WorkflowEditActionServerlessFunctionFields
           functionInput={action.settings.input.serverlessFunctionInput}
@@ -85,8 +71,8 @@ export const WorkflowReadonlyActionServerlessFunction = ({
         <StyledCodeEditorContainer>
           <CodeEditor
             height={343}
-            value={formValues.code?.[INDEX_FILE_PATH]}
-            language={'typescript'}
+            value={indexFileContent}
+            language="typescript"
             onMount={handleEditorDidMount}
             setMarkers={getWrongExportedFunctionMarkers}
             options={{

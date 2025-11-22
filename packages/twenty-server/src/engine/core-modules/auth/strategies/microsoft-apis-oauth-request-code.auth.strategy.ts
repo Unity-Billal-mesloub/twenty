@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
+import { type VerifyCallback } from 'passport-google-oauth20';
+
 import { MicrosoftAPIsOauthCommonStrategy } from 'src/engine/core-modules/auth/strategies/microsoft-apis-oauth-common.auth.strategy';
 import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
 
@@ -9,7 +11,6 @@ export class MicrosoftAPIsOauthRequestCodeStrategy extends MicrosoftAPIsOauthCom
     super(twentyConfigService);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   authenticate(req: any, options: any) {
     options = {
@@ -26,5 +27,17 @@ export class MicrosoftAPIsOauthRequestCodeStrategy extends MicrosoftAPIsOauthCom
     };
 
     return super.authenticate(req, options);
+  }
+
+  async validate(
+    _request: Express.Request,
+    _accessToken: string,
+    _refreshToken: string,
+    _profile: unknown,
+    done: VerifyCallback,
+  ): Promise<void> {
+    // This strategy is only used for requesting authorization code
+    // No validation is performed here
+    done(null, {});
   }
 }

@@ -1,4 +1,3 @@
-import { i18n } from '@lingui/core';
 import { Trans } from '@lingui/react';
 import { Img } from '@react-email/components';
 import { emailTheme } from 'src/common-style';
@@ -11,8 +10,10 @@ import { Link } from 'src/components/Link';
 import { MainText } from 'src/components/MainText';
 import { Title } from 'src/components/Title';
 import { capitalize } from 'src/utils/capitalize';
-import { APP_LOCALES } from 'twenty-shared/translations';
+import { createI18nInstance } from 'src/utils/i18n.utils';
+import { type APP_LOCALES } from 'twenty-shared/translations';
 import { getImageAbsoluteURI } from 'twenty-shared/utils';
+import { DEFAULT_WORKSPACE_LOGO } from 'src/constants/DefaultWorkspaceLogo';
 
 type SendApprovedAccessDomainValidationProps = {
   link: string;
@@ -35,6 +36,7 @@ export const SendApprovedAccessDomainValidation = ({
   serverUrl,
   locale,
 }: SendApprovedAccessDomainValidationProps) => {
+  const i18n = createI18nInstance(locale);
   const workspaceLogo = workspace.logo
     ? getImageAbsoluteURI({ imageUrl: workspace.logo, baseUrl: serverUrl })
     : null;
@@ -63,16 +65,12 @@ export const SendApprovedAccessDomainValidation = ({
         <br />
       </MainText>
       <HighlightedContainer>
-        {workspaceLogo ? (
-          <Img
-            src={workspaceLogo}
-            width={40}
-            height={40}
-            alt="Workspace logo"
-          />
-        ) : (
-          <></>
-        )}
+        <Img
+          src={workspaceLogo ?? DEFAULT_WORKSPACE_LOGO}
+          width={40}
+          height={40}
+          alt={workspace.name ?? 'Workspace logo'}
+        />
         {workspace.name ? <HighlightedText value={workspace.name} /> : <></>}
         <CallToAction href={link} value={i18n._('Validate domain')} />
       </HighlightedContainer>
@@ -95,6 +93,6 @@ SendApprovedAccessDomainValidation.PreviewProps = {
   },
   serverUrl: 'https://app.twenty.com',
   locale: 'en',
-} as SendApprovedAccessDomainValidationProps;
+};
 
 export default SendApprovedAccessDomainValidation;

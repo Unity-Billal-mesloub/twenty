@@ -1,6 +1,6 @@
-import { SelectQueryBuilder } from 'typeorm';
+import { type SelectQueryBuilder } from 'typeorm';
 
-import { PersonWorkspaceEntity } from 'src/modules/person/standard-objects/person.workspace-entity';
+import { type PersonWorkspaceEntity } from 'src/modules/person/standard-objects/person.workspace-entity';
 
 export interface AddPersonEmailFiltersToQueryBuilderOptions {
   queryBuilder: SelectQueryBuilder<PersonWorkspaceEntity>;
@@ -30,10 +30,12 @@ export function addPersonEmailFiltersToQueryBuilder({
       'person.id',
       'person.emailsPrimaryEmail',
       'person.emailsAdditionalEmails',
+      'person.deletedAt',
     ])
     .where('LOWER(person.emailsPrimaryEmail) IN (:...emails)', {
       emails: normalizedEmails,
-    });
+    })
+    .withDeleted();
 
   if (excludePersonIds.length > 0) {
     queryBuilder = queryBuilder.andWhere(

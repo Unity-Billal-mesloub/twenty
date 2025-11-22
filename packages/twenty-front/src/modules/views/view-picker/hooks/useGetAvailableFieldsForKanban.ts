@@ -3,16 +3,16 @@ import { useLocation } from 'react-router-dom';
 import { useRecoilValue, useSetRecoilState } from 'recoil';
 
 import { objectMetadataItemsState } from '@/object-metadata/states/objectMetadataItemsState';
-import { SettingsPath } from '@/types/SettingsPath';
 import { navigationMemorizedUrlState } from '@/ui/navigation/states/navigationMemorizedUrlState';
-import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
 import { viewObjectMetadataIdComponentState } from '@/views/states/viewObjectMetadataIdComponentState';
+import { SettingsPath } from 'twenty-shared/types';
+import { isDefined } from 'twenty-shared/utils';
 import { FieldMetadataType } from '~/generated-metadata/graphql';
 import { useNavigateSettings } from '~/hooks/useNavigateSettings';
-import { isDefined } from 'twenty-shared/utils';
 
 export const useGetAvailableFieldsForKanban = () => {
-  const viewObjectMetadataId = useRecoilComponentValueV2(
+  const viewObjectMetadataId = useRecoilComponentValue(
     viewObjectMetadataIdComponentState,
   );
   const objectMetadataItems = useRecoilValue(objectMetadataItemsState);
@@ -26,7 +26,7 @@ export const useGetAvailableFieldsForKanban = () => {
   );
 
   const availableFieldsForKanban =
-    objectMetadataItem?.fields.filter(
+    objectMetadataItem?.readableFields.filter(
       (field) => field.type === FieldMetadataType.SELECT,
     ) ?? [];
 

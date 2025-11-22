@@ -1,14 +1,10 @@
-/* eslint-disable @nx/workspace-no-hardcoded-colors */
+import { ACCENT_DARK } from '@ui/theme/constants/AccentDark';
 import { ANIMATION } from './Animation';
-import { COLOR } from './Colors';
-import { GRAY_SCALE } from './GrayScale';
 import { ICON } from './Icon';
 import { MODAL } from './Modal';
 import { TEXT } from './Text';
 
 export const THEME_COMMON = {
-  color: COLOR,
-  grayScale: GRAY_SCALE,
   icon: ICON,
   modal: MODAL,
   text: TEXT,
@@ -25,4 +21,7 @@ export const THEME_COMMON = {
   rightDrawerWidth: '500px',
   clickableElementBackgroundTransition: 'background 0.1s ease',
   lastLayerZIndex: 2147483647,
+  buttons: {
+    secondaryTextColor: ACCENT_DARK.accent11,
+  },
 };

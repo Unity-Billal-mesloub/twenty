@@ -3,7 +3,7 @@ import { isUndefined } from '@sniptt/guards';
 
 import { CalendarEventNotSharedContent } from '@/activities/calendar/components/CalendarEventNotSharedContent';
 import { CalendarEventParticipantsAvatarGroup } from '@/activities/calendar/components/CalendarEventParticipantsAvatarGroup';
-import { CalendarEvent } from '@/activities/calendar/types/CalendarEvent';
+import { type CalendarEvent } from '@/activities/calendar/types/CalendarEvent';
 import { useOpenCalendarEventInCommandMenu } from '@/command-menu/hooks/useOpenCalendarEventInCommandMenu';
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
 import { useFindOneRecord } from '@/object-record/hooks/useFindOneRecord';
@@ -94,7 +94,7 @@ export const EventCardCalendarEvent = ({
 }: {
   calendarEventId: string;
 }) => {
-  const { upsertRecords } = useUpsertRecordsInStore();
+  const { upsertRecordsInStore } = useUpsertRecordsInStore();
   const { openCalendarEventInCommandMenu } =
     useOpenCalendarEventInCommandMenu();
 
@@ -118,7 +118,7 @@ export const EventCardCalendarEvent = ({
       },
     },
     onCompleted: (data) => {
-      upsertRecords([data]);
+      upsertRecordsInStore([data]);
     },
   });
 

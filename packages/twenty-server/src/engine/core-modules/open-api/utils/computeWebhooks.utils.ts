@@ -1,8 +1,8 @@
-import { OpenAPIV3_1 } from 'openapi-types';
+import { type OpenAPIV3_1 } from 'openapi-types';
 import { capitalize } from 'twenty-shared/utils';
 
 import { DatabaseEventAction } from 'src/engine/api/graphql/graphql-query-runner/enums/database-event-action';
-import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
+import { type ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
 
 export const computeWebhooks = (
   type: DatabaseEventAction,
@@ -91,6 +91,14 @@ export const computeWebhooks = (
                 workspaceId: {
                   type: 'string',
                   example: '872cfcf1-c79f-42bc-877d-5829f06eb3f9',
+                },
+                userId: {
+                  type: 'string',
+                  example: '170ba418-85a2-4f91-8565-9cd714c6703a',
+                },
+                workspaceMemberId: {
+                  type: 'string',
+                  example: '9062a1e3-e066-49ba-8c4a-d869b6a0ca12',
                 },
                 webhookId: {
                   type: 'string',

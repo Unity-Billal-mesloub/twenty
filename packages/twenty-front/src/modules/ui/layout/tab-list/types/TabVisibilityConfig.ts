@@ -1,5 +1,5 @@
-import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
-import { FeatureFlagKey } from '~/generated/graphql';
+import { type CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
+import { type FeatureFlagKey } from '~/generated/graphql';
 
 export type TabVisibilityConfig = {
   ifMobile: boolean;
@@ -9,4 +9,5 @@ export type TabVisibilityConfig = {
   ifRequiredObjectsInactive: CoreObjectNameSingular[];
   ifRelationsMissing: string[];
   ifNoReadPermission?: boolean;
+  ifNoReadPermissionObject?: CoreObjectNameSingular;
 };

@@ -1,14 +1,15 @@
-import { RecordFilterGroup } from '@/object-record/record-filter-group/types/RecordFilterGroup';
-import { RecordFilterGroupLogicalOperator } from '@/object-record/record-filter-group/types/RecordFilterGroupLogicalOperator';
+import { type RecordFilterGroup } from '@/object-record/record-filter-group/types/RecordFilterGroup';
 import { AggregateOperations } from '@/object-record/record-table/constants/AggregateOperations';
-import { View } from '@/views/types/View';
-import { ViewFilterGroup } from '@/views/types/ViewFilterGroup';
+import { type View } from '@/views/types/View';
+import { type ViewFilterGroup } from '@/views/types/ViewFilterGroup';
 import { ViewFilterGroupLogicalOperator } from '@/views/types/ViewFilterGroupLogicalOperator';
 import { ViewOpenRecordInType } from '@/views/types/ViewOpenRecordInType';
 import { ViewType } from '@/views/types/ViewType';
 import { mapRecordFilterGroupToViewFilterGroup } from '@/views/utils/mapRecordFilterGroupToViewFilterGroup';
+import { RecordFilterGroupLogicalOperator } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
-import { generatedMockObjectMetadataItems } from '~/testing/mock-data/generatedMockObjectMetadataItems';
+import { ViewVisibility } from '~/generated-metadata/graphql';
+import { generatedMockObjectMetadataItems } from '~/testing/utils/generatedMockObjectMetadataItems';
 
 const mockObjectMetadataItemNameSingular = 'company';
 
@@ -41,6 +42,7 @@ describe('mapRecordFilterGroupToViewFilterGroup', () => {
     icon: '',
     kanbanAggregateOperationFieldMetadataId: '',
     position: 0,
+    visibility: ViewVisibility.WORKSPACE,
     __typename: 'View',
   };
 

@@ -5,20 +5,20 @@ import { PassportStrategy } from '@nestjs/passport';
 
 import {
   MultiSamlStrategy,
-  MultiStrategyConfig,
-  PassportSamlConfig,
-  SamlConfig,
-  VerifyWithRequest,
+  type MultiStrategyConfig,
+  type PassportSamlConfig,
+  type SamlConfig,
+  type VerifyWithRequest,
 } from '@node-saml/passport-saml';
-import { AuthenticateOptions } from '@node-saml/passport-saml/lib/types';
+import { type AuthenticateOptions } from '@node-saml/passport-saml/lib/types';
 import { isEmail } from 'class-validator';
-import { Request } from 'express';
+import { type Request } from 'express';
 
-import { SSOService } from 'src/engine/core-modules/sso/services/sso.service';
 import {
   AuthException,
   AuthExceptionCode,
 } from 'src/engine/core-modules/auth/auth.exception';
+import { SSOService } from 'src/engine/core-modules/sso/services/sso.service';
 
 export type SAMLRequest = Omit<
   Request,
@@ -37,40 +37,46 @@ export class SamlAuthStrategy extends PassportStrategy(
   'saml',
 ) {
   constructor(private readonly sSOService: SSOService) {
-    super({
-      getSamlOptions: (req, callback) => {
-        this.sSOService
-          .findSSOIdentityProviderById(req.params.identityProviderId)
-          .then((identityProvider) => {
-            if (
-              identityProvider &&
-              this.sSOService.isSAMLIdentityProvider(identityProvider)
-            ) {
-              const config: SamlConfig = {
-                entryPoint: identityProvider.ssoURL,
-                issuer: this.sSOService.buildIssuerURL(identityProvider),
-                callbackUrl: this.sSOService.buildCallbackUrl(identityProvider),
-                idpCert: identityProvider.certificate,
-                // TODO: Improve the feature by sign the response
-                wantAssertionsSigned: false,
-                wantAuthnResponseSigned: false,
-                disableRequestedAuthnContext: true,
-                signatureAlgorithm: 'sha256',
-              };
+    super(
+      {
+        getSamlOptions: (req, callback) => {
+          this.sSOService
+            .findSSOIdentityProviderById(req.params.identityProviderId)
+            .then((identityProvider) => {
+              if (
+                identityProvider &&
+                this.sSOService.isSAMLIdentityProvider(identityProvider)
+              ) {
+                const config: SamlConfig = {
+                  entryPoint: identityProvider.ssoURL,
+                  issuer: this.sSOService.buildIssuerURL(identityProvider),
+                  callbackUrl:
+                    this.sSOService.buildCallbackUrl(identityProvider),
+                  idpCert: identityProvider.certificate,
+                  // TODO: Improve the feature by sign the response
+                  wantAssertionsSigned: false,
+                  wantAuthnResponseSigned: false,
+                  disableRequestedAuthnContext: true,
+                  signatureAlgorithm: 'sha256',
+                };
 
-              return callback(null, config);
-            }
+                return callback(null, config);
+              }
 
-            // TODO: improve error management
-            return callback(new Error('Invalid SAML identity provider'));
-          })
-          .catch((err) => {
-            // TODO: improve error management
-            return callback(err);
-          });
+              // TODO: improve error management
+              return callback(new Error('Invalid SAML identity provider'));
+            })
+            .catch((err) => {
+              // TODO: improve error management
+              return callback(err);
+            });
+        },
+        passReqToCallback: true,
+      } as PassportSamlConfig & MultiStrategyConfig,
+      async (request: Request, profile, done) => {
+        await this.validate(request, profile, done);
       },
-      passReqToCallback: true,
-    } as PassportSamlConfig & MultiStrategyConfig);
+    );
   }
 
   authenticate(req: Request, options: AuthenticateOptions) {
@@ -102,7 +108,7 @@ export class SamlAuthStrategy extends PassportStrategy(
       }
 
       throw new Error();
-    } catch (err) {
+    } catch {
       throw new AuthException('Invalid state', AuthExceptionCode.INVALID_INPUT);
     }
   }

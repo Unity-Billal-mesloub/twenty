@@ -1,5 +1,5 @@
-import { WorkflowDeleteRecordAction } from '@/workflow/types/Workflow';
-import { Meta, StoryObj } from '@storybook/react';
+import { type WorkflowDeleteRecordAction } from '@/workflow/types/Workflow';
+import { type Meta, type StoryObj } from '@storybook/react';
 import { expect, fn, userEvent, within } from '@storybook/test';
 import { ComponentDecorator, RouterDecorator } from 'twenty-ui/testing';
 import { I18nFrontDecorator } from '~/testing/decorators/I18nFrontDecorator';
@@ -36,7 +36,7 @@ const DEFAULT_ACTION = {
 } satisfies WorkflowDeleteRecordAction;
 
 const meta: Meta<typeof WorkflowEditActionDeleteRecord> = {
-  title: 'Modules/Workflow/WorkflowEditActionDeleteRecord',
+  title: 'Modules/Workflow/Actions/DeleteRecord/EditAction',
   component: WorkflowEditActionDeleteRecord,
   parameters: {
     msw: graphqlMocks,
@@ -76,15 +76,6 @@ export const DisabledWithEmptyValues: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-
-    const titleText = await canvas.findByText('Delete Record');
-
-    expect(window.getComputedStyle(titleText).cursor).toBe('default');
-
-    await userEvent.click(titleText);
-
-    const titleInput = canvas.queryByDisplayValue('Delete Record');
-    expect(titleInput).not.toBeInTheDocument();
 
     const objectSelectCurrentValue = await canvas.findByText('People');
 
@@ -127,15 +118,6 @@ export const DisabledWithDefaultStaticValues: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-
-    const titleText = await canvas.findByText('Delete Record');
-
-    expect(window.getComputedStyle(titleText).cursor).toBe('default');
-
-    await userEvent.click(titleText);
-
-    const titleInput = canvas.queryByDisplayValue('Delete Record');
-    expect(titleInput).not.toBeInTheDocument();
 
     const objectSelectCurrentValue = await canvas.findByText('People');
 
@@ -186,15 +168,6 @@ export const DisabledWithDefaultVariableValues: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-
-    const titleText = await canvas.findByText('Delete Record');
-
-    expect(window.getComputedStyle(titleText).cursor).toBe('default');
-
-    await userEvent.click(titleText);
-
-    const titleInput = canvas.queryByDisplayValue('Delete Record');
-    expect(titleInput).not.toBeInTheDocument();
 
     const objectSelectCurrentValue = await canvas.findByText('People');
 

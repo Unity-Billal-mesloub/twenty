@@ -1,11 +1,4 @@
-export function orderObjectProperties<T extends object>(data: T[]): T[];
-
-export function orderObjectProperties<T extends object>(data: T): T;
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function orderObjectProperties<T extends Array<any> | object>(
-  data: T,
-): T {
+export function orderObjectProperties<T>(data: T): T {
   if (Array.isArray(data)) {
     return data.map(orderObjectProperties) as T;
   }

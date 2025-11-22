@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 
 import { FieldMetadataType } from 'twenty-shared/types';
-import { EntitySchemaRelationOptions } from 'typeorm';
+import { type EntitySchemaRelationOptions } from 'typeorm';
 
-import { ObjectMetadataItemWithFieldMaps } from 'src/engine/metadata-modules/types/object-metadata-item-with-field-maps';
-import { ObjectMetadataMaps } from 'src/engine/metadata-modules/types/object-metadata-maps';
+import { type ObjectMetadataItemWithFieldMaps } from 'src/engine/metadata-modules/types/object-metadata-item-with-field-maps';
+import { type ObjectMetadataMaps } from 'src/engine/metadata-modules/types/object-metadata-maps';
 import { determineSchemaRelationDetails } from 'src/engine/twenty-orm/utils/determine-schema-relation-details.util';
-import { isFieldMetadataInterfaceOfType } from 'src/engine/utils/is-field-metadata-of-type.util';
+import { isFieldMetadataEntityOfType } from 'src/engine/utils/is-field-metadata-of-type.util';
 
 type EntitySchemaRelationMap = {
   [key: string]: EntitySchemaRelationOptions;
@@ -28,11 +28,11 @@ export class EntitySchemaRelationFactory {
 
     for (const fieldMetadata of fieldMetadataCollection) {
       const isRelation =
-        isFieldMetadataInterfaceOfType(
+        isFieldMetadataEntityOfType(
           fieldMetadata,
           FieldMetadataType.RELATION,
         ) ||
-        isFieldMetadataInterfaceOfType(
+        isFieldMetadataEntityOfType(
           fieldMetadata,
           FieldMetadataType.MORPH_RELATION,
         );
@@ -51,6 +51,15 @@ export class EntitySchemaRelationFactory {
         fieldMetadata,
         objectMetadataMaps,
       );
+
+      const targetObjectMetadata =
+        objectMetadataMaps.byId[fieldMetadata.relationTargetObjectMetadataId];
+
+      if (!targetObjectMetadata) {
+        throw new Error(
+          `Target object metadata not found for field ${fieldMetadata.name}`,
+        );
+      }
 
       entitySchemaRelationMap[fieldMetadata.name] = {
         type: schemaRelationDetails.relationType,

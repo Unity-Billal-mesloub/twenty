@@ -1,15 +1,35 @@
 import { Module } from '@nestjs/common';
+import { DiscoveryModule } from '@nestjs/core';
 
+import { TypeORMModule } from 'src/database/typeorm/typeorm.module';
 import { FeatureFlagModule } from 'src/engine/core-modules/feature-flag/feature-flag.module';
-import { WorkspaceMetadataMigrationRunnerService } from 'src/engine/workspace-manager/workspace-migration-v2/workspace-migration-runner-v2/workspace-metadata-migration-runner/workspace-metadata-migration-runner.service';
-import { WorkspaceSchemaMigrationRunnerService } from 'src/engine/workspace-manager/workspace-migration-v2/workspace-migration-runner-v2/workspace-schema-migration-runner/workspace-schema-migration-runner.service';
+import { DataSourceModule } from 'src/engine/metadata-modules/data-source/data-source.module';
+import { WorkspaceManyOrAllFlatEntityMapsCacheModule } from 'src/engine/metadata-modules/flat-entity/services/workspace-many-or-all-flat-entity-maps-cache.module';
+import { WorkspaceMetadataCacheModule } from 'src/engine/metadata-modules/workspace-metadata-cache/workspace-metadata-cache.module';
+import { WorkspaceMetadataVersionModule } from 'src/engine/metadata-modules/workspace-metadata-version/workspace-metadata-version.module';
+import { WorkspacePermissionsCacheModule } from 'src/engine/metadata-modules/workspace-permissions-cache/workspace-permissions-cache.module';
+import { WorkspaceCacheStorageModule } from 'src/engine/workspace-cache-storage/workspace-cache-storage.module';
+import { WorkspaceSchemaMigrationRunnerActionHandlersModule } from 'src/engine/workspace-manager/workspace-migration-v2/workspace-migration-runner-v2/action-handlers/workspace-schema-migration-runner-action-handlers.module';
+import { WorkspaceMigrationRunnerActionHandlerRegistryService } from 'src/engine/workspace-manager/workspace-migration-v2/workspace-migration-runner-v2/registry/workspace-migration-runner-action-handler-registry.service';
+import { WorkspaceMigrationRunnerV2Service } from 'src/engine/workspace-manager/workspace-migration-v2/workspace-migration-runner-v2/services/workspace-migration-runner-v2.service';
 
 @Module({
-  imports: [FeatureFlagModule],
-  providers: [
-    WorkspaceMetadataMigrationRunnerService,
-    WorkspaceSchemaMigrationRunnerService,
+  imports: [
+    FeatureFlagModule,
+    TypeORMModule,
+    DataSourceModule,
+    WorkspaceMetadataVersionModule,
+    WorkspacePermissionsCacheModule,
+    WorkspaceMetadataCacheModule,
+    WorkspaceSchemaMigrationRunnerActionHandlersModule,
+    WorkspaceManyOrAllFlatEntityMapsCacheModule,
+    DiscoveryModule,
+    WorkspaceCacheStorageModule,
   ],
-  exports: [],
+  providers: [
+    WorkspaceMigrationRunnerV2Service,
+    WorkspaceMigrationRunnerActionHandlerRegistryService,
+  ],
+  exports: [WorkspaceMigrationRunnerV2Service],
 })
 export class WorkspaceMigrationRunnerV2Module {}

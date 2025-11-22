@@ -1,4 +1,4 @@
-import { isNonEmptyString, isUndefined } from '@sniptt/guards';
+import { isUndefined } from '@sniptt/guards';
 import { Key } from 'ts-key-enum';
 
 import { SelectableList } from '@/ui/layout/selectable-list/components/SelectableList';
@@ -10,48 +10,37 @@ import { RecordPickerNoRecordFoundMenuItem } from '@/object-record/record-picker
 import { SingleRecordPickerMenuItem } from '@/object-record/record-picker/single-record-picker/components/SingleRecordPickerMenuItem';
 import { SingleRecordPickerComponentInstanceContext } from '@/object-record/record-picker/single-record-picker/states/contexts/SingleRecordPickerComponentInstanceContext';
 import { singleRecordPickerSelectedIdComponentState } from '@/object-record/record-picker/single-record-picker/states/singleRecordPickerSelectedIdComponentState';
-import { SingleRecordPickerRecord } from '@/object-record/record-picker/single-record-picker/types/SingleRecordPickerRecord';
+import { singleRecordPickerShouldShowInitialLoadingComponentState } from '@/object-record/record-picker/single-record-picker/states/singleRecordPickerShouldShowInitialLoadingComponentState';
+import { singleRecordPickerShouldShowSkeletonComponentState } from '@/object-record/record-picker/single-record-picker/states/singleRecordPickerShouldShowSkeletonComponentState';
 import { getSingleRecordPickerSelectableListId } from '@/object-record/record-picker/single-record-picker/utils/getSingleRecordPickerSelectableListId';
-import { DropdownHotkeyScope } from '@/ui/layout/dropdown/constants/DropdownHotkeyScope';
+import { type RecordPickerPickableMorphItem } from '@/object-record/record-picker/types/RecordPickerPickableMorphItem';
 import { SelectableListItem } from '@/ui/layout/selectable-list/components/SelectableListItem';
 import { isSelectedItemIdComponentFamilySelector } from '@/ui/layout/selectable-list/states/selectors/isSelectedItemIdComponentFamilySelector';
 import { useHotkeysOnFocusedElement } from '@/ui/utilities/hotkey/hooks/useHotkeysOnFocusedElement';
 import { useAvailableComponentInstanceIdOrThrow } from '@/ui/utilities/state/component-state/hooks/useAvailableComponentInstanceIdOrThrow';
-import { useRecoilComponentFamilyValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentFamilyValueV2';
-import { useRecoilComponentStateV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentStateV2';
-import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
-import { isDefined } from 'twenty-shared/utils';
-import { IconComponent } from 'twenty-ui/display';
+import { useRecoilComponentFamilyValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentFamilyValue';
+import { useRecoilComponentState } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentState';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
+import { type IconComponent } from 'twenty-ui/display';
 import { MenuItemSelect } from 'twenty-ui/navigation';
-import { singleRecordPickerShouldShowInitialLoadingComponentState } from '@/object-record/record-picker/single-record-picker/states/singleRecordPickerShouldShowInitialLoadingComponentState';
-import { singleRecordPickerShouldShowSkeletonComponentState } from '@/object-record/record-picker/single-record-picker/states/singleRecordPickerShouldShowSkeletonComponentState';
 
 export type SingleRecordPickerMenuItemsProps = {
   EmptyIcon?: IconComponent;
   emptyLabel?: string;
-  recordsToSelect: SingleRecordPickerRecord[];
+  pickableMorphItems: RecordPickerPickableMorphItem[];
   onCancel?: () => void;
-  onRecordSelected: (entity?: SingleRecordPickerRecord) => void;
-  selectedRecord?: SingleRecordPickerRecord;
+  onMorphItemSelected: (morphItem?: RecordPickerPickableMorphItem) => void;
   focusId: string;
-  filteredSelectedRecords: SingleRecordPickerRecord[];
 };
 
 export const SingleRecordPickerMenuItems = ({
   EmptyIcon,
   emptyLabel,
-  recordsToSelect,
+  pickableMorphItems,
   onCancel,
-  onRecordSelected,
-  filteredSelectedRecords,
-  selectedRecord,
+  onMorphItemSelected,
   focusId,
 }: SingleRecordPickerMenuItemsProps) => {
-  const recordsInDropdown = [selectedRecord, ...recordsToSelect].filter(
-    (entity): entity is SingleRecordPickerRecord =>
-      isDefined(entity) && isNonEmptyString(entity.name),
-  );
-
   const recordPickerComponentInstanceId =
     useAvailableComponentInstanceIdOrThrow(
       SingleRecordPickerComponentInstanceContext,
@@ -64,7 +53,7 @@ export const SingleRecordPickerMenuItems = ({
     selectableListComponentInstanceId,
   );
 
-  const isSelectedSelectNoneButton = useRecoilComponentFamilyValueV2(
+  const isSelectedSelectNoneButton = useRecoilComponentFamilyValue(
     isSelectedItemIdComponentFamilySelector,
     selectableListComponentInstanceId,
     'select-none',
@@ -77,46 +66,49 @@ export const SingleRecordPickerMenuItems = ({
       onCancel?.();
     },
     focusId,
-    scope: DropdownHotkeyScope.Dropdown,
     dependencies: [onCancel, resetSelectedItem],
   });
 
-  const selectableItemIds = recordsInDropdown.map((entity) => entity.id);
-  const [selectedRecordId, setSelectedRecordId] = useRecoilComponentStateV2(
+  const selectableItemIds = pickableMorphItems.map(
+    (morphItem) => morphItem.recordId,
+  );
+  const [selectedRecordId, setSelectedRecordId] = useRecoilComponentState(
     singleRecordPickerSelectedIdComponentState,
   );
 
-  const singleRecordPickerShouldShowSkeleton = useRecoilComponentValueV2(
+  const singleRecordPickerShouldShowSkeleton = useRecoilComponentValue(
     singleRecordPickerShouldShowSkeletonComponentState,
   );
 
-  const singleRecordPickerShouldShowInitialLoading = useRecoilComponentValueV2(
+  const singleRecordPickerShouldShowInitialLoading = useRecoilComponentValue(
     singleRecordPickerShouldShowInitialLoadingComponentState,
   );
 
-  const searchHasNoResults =
-    recordsToSelect.length === 0 && filteredSelectedRecords?.length === 0;
+  const itemsMatchingSearchFilter = pickableMorphItems.filter(
+    (morphItem) => morphItem.isMatchingSearchFilter,
+  );
+
+  const searchHasNoResults = itemsMatchingSearchFilter.length === 0;
 
   return (
     <SelectableList
       selectableListInstanceId={selectableListComponentInstanceId}
       selectableItemIdArray={selectableItemIds}
-      hotkeyScope={DropdownHotkeyScope.Dropdown}
       focusId={focusId}
     >
       {emptyLabel && (
         <SelectableListItem
-          key={'select-none'}
-          itemId={'select-none'}
+          key="select-none"
+          itemId="select-none"
           onEnter={() => {
             setSelectedRecordId(undefined);
-            onRecordSelected();
+            onMorphItemSelected();
           }}
         >
           <MenuItemSelect
             onClick={() => {
               setSelectedRecordId(undefined);
-              onRecordSelected();
+              onMorphItemSelected();
             }}
             LeftIcon={EmptyIcon}
             text={emptyLabel}
@@ -130,12 +122,12 @@ export const SingleRecordPickerMenuItems = ({
       ) : singleRecordPickerShouldShowSkeleton ? (
         <RecordPickerLoadingSkeletonList />
       ) : (
-        recordsInDropdown?.map((record) => (
+        itemsMatchingSearchFilter.map((morphItem) => (
           <SingleRecordPickerMenuItem
-            key={record.id}
-            record={record}
-            onRecordSelected={onRecordSelected}
-            selectedRecord={selectedRecord}
+            key={morphItem.recordId}
+            morphItem={morphItem}
+            onMorphItemSelected={onMorphItemSelected}
+            isRecordSelected={selectedRecordId === morphItem.recordId}
           />
         ))
       )}

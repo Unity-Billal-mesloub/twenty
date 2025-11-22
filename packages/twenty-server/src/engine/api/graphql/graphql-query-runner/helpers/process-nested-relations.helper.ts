@@ -1,15 +1,15 @@
 import { Injectable } from '@nestjs/common';
 
-import { FindOptionsRelations, ObjectLiteral } from 'typeorm';
-
-import { ObjectRecord } from 'src/engine/api/graphql/workspace-query-builder/interfaces/object-record.interface';
+import { type ObjectRecord } from 'twenty-shared/types';
+import { type FindOptionsRelations, type ObjectLiteral } from 'typeorm';
 
 import { ProcessNestedRelationsV2Helper } from 'src/engine/api/graphql/graphql-query-runner/helpers/process-nested-relations-v2.helper';
-import { AggregationField } from 'src/engine/api/graphql/workspace-schema-builder/utils/get-available-aggregations-from-object-fields.util';
-import { AuthContext } from 'src/engine/core-modules/auth/types/auth-context.type';
-import { ObjectMetadataItemWithFieldMaps } from 'src/engine/metadata-modules/types/object-metadata-item-with-field-maps';
-import { ObjectMetadataMaps } from 'src/engine/metadata-modules/types/object-metadata-maps';
-import { WorkspaceDataSource } from 'src/engine/twenty-orm/datasource/workspace.datasource';
+import { type AggregationField } from 'src/engine/api/graphql/workspace-schema-builder/utils/get-available-aggregations-from-object-fields.util';
+import { type AuthContext } from 'src/engine/core-modules/auth/types/auth-context.type';
+import { type ObjectMetadataItemWithFieldMaps } from 'src/engine/metadata-modules/types/object-metadata-item-with-field-maps';
+import { type ObjectMetadataMaps } from 'src/engine/metadata-modules/types/object-metadata-maps';
+import { type WorkspaceDataSource } from 'src/engine/twenty-orm/datasource/workspace.datasource';
+import { RolePermissionConfig } from 'src/engine/twenty-orm/types/role-permission-config';
 
 @Injectable()
 export class ProcessNestedRelationsHelper {
@@ -27,8 +27,8 @@ export class ProcessNestedRelationsHelper {
     limit,
     authContext,
     workspaceDataSource,
-    shouldBypassPermissionChecks,
-    roleId,
+    rolePermissionConfig,
+    selectedFields,
   }: {
     objectMetadataMaps: ObjectMetadataMaps;
     parentObjectMetadataItem: ObjectMetadataItemWithFieldMaps;
@@ -40,8 +40,9 @@ export class ProcessNestedRelationsHelper {
     limit: number;
     authContext: AuthContext;
     workspaceDataSource: WorkspaceDataSource;
-    shouldBypassPermissionChecks: boolean;
-    roleId?: string;
+    rolePermissionConfig?: RolePermissionConfig;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    selectedFields: Record<string, any>;
   }): Promise<void> {
     return this.processNestedRelationsV2Helper.processNestedRelations({
       objectMetadataMaps,
@@ -53,8 +54,8 @@ export class ProcessNestedRelationsHelper {
       limit,
       authContext,
       workspaceDataSource,
-      shouldBypassPermissionChecks,
-      roleId,
+      rolePermissionConfig,
+      selectedFields,
     });
   }
 }

@@ -1,10 +1,10 @@
 import {
-  AutoResolverOpts,
+  type AutoResolverOpts,
   PagingStrategies,
-  ReadResolverOpts,
+  type ReadResolverOpts,
 } from '@ptc-org/nestjs-query-graphql';
 
-import { AppToken } from 'src/engine/core-modules/app-token/app-token.entity';
+import { AppTokenEntity } from 'src/engine/core-modules/app-token/app-token.entity';
 import { CreateAppTokenInput } from 'src/engine/core-modules/app-token/dtos/create-app-token.input';
 import { WorkspaceAuthGuard } from 'src/engine/guards/workspace-auth.guard';
 
@@ -20,8 +20,8 @@ export const appTokenAutoResolverOpts: AutoResolverOpts<
   PagingStrategies
 >[] = [
   {
-    EntityClass: AppToken,
-    DTOClass: AppToken,
+    EntityClass: AppTokenEntity,
+    DTOClass: AppTokenEntity,
     CreateDTOClass: CreateAppTokenInput,
     enableTotalCount: true,
     pagingStrategy: PagingStrategies.CURSOR,

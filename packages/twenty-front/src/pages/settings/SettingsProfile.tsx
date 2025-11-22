@@ -1,19 +1,31 @@
-import { Trans, useLingui } from '@lingui/react/macro';
-
+import { SettingsCard } from '@/settings/components/SettingsCard';
 import { SettingsPageContainer } from '@/settings/components/SettingsPageContainer';
-import { ChangePassword } from '@/settings/profile/components/ChangePassword';
+import { SetOrChangePassword } from '@/settings/profile/components/SetOrChangePassword';
 import { DeleteAccount } from '@/settings/profile/components/DeleteAccount';
 import { EmailField } from '@/settings/profile/components/EmailField';
 import { NameFields } from '@/settings/profile/components/NameFields';
 import { ProfilePictureUploader } from '@/settings/profile/components/ProfilePictureUploader';
-import { SettingsPath } from '@/types/SettingsPath';
+import { useCanChangePassword } from '@/settings/profile/hooks/useCanChangePassword';
+import { useCurrentUserWorkspaceTwoFactorAuthentication } from '@/settings/two-factor-authentication/hooks/useCurrentUserWorkspaceTwoFactorAuthentication';
 import { SubMenuTopBarContainer } from '@/ui/layout/page/components/SubMenuTopBarContainer';
-import { getSettingsPath } from '~/utils/navigation/getSettingsPath';
-import { H2Title } from 'twenty-ui/display';
+import { Trans, useLingui } from '@lingui/react/macro';
+import { SettingsPath } from 'twenty-shared/types';
+import { getSettingsPath } from 'twenty-shared/utils';
+import { H2Title, IconShield, Status } from 'twenty-ui/display';
 import { Section } from 'twenty-ui/layout';
+import { UndecoratedLink } from 'twenty-ui/navigation';
 
 export const SettingsProfile = () => {
   const { t } = useLingui();
+
+  const { currentUserWorkspaceTwoFactorAuthenticationMethods } =
+    useCurrentUserWorkspaceTwoFactorAuthentication();
+
+  const has2FAMethod =
+    currentUserWorkspaceTwoFactorAuthenticationMethods['TOTP']?.status ===
+    'VERIFIED';
+
+  const { canChangePassword } = useCanChangePassword();
 
   return (
     <SubMenuTopBarContainer
@@ -46,8 +58,34 @@ export const SettingsProfile = () => {
           <EmailField />
         </Section>
         <Section>
-          <ChangePassword />
+          <H2Title
+            title={t`Two Factor Authentication`}
+            description={t`Enhances security by requiring a code along with your password`}
+          />
+          <UndecoratedLink
+            to={getSettingsPath(
+              SettingsPath.TwoFactorAuthenticationStrategyConfig,
+              { twoFactorAuthenticationStrategy: 'TOTP' },
+            )}
+          >
+            <SettingsCard
+              title={t`Authenticator App`}
+              Icon={<IconShield />}
+              Status={
+                has2FAMethod ? (
+                  <Status text={t`Active`} color="turquoise" />
+                ) : (
+                  <Status text={t`Deactivated`} color="gray" />
+                )
+              }
+            />
+          </UndecoratedLink>
         </Section>
+        {canChangePassword && (
+          <Section>
+            <SetOrChangePassword />
+          </Section>
+        )}
         <Section>
           <DeleteAccount />
         </Section>

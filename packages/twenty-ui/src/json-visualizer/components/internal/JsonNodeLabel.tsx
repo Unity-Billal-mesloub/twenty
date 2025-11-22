@@ -1,7 +1,7 @@
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
-import { IconComponent } from '@ui/display';
-import { JsonNodeHighlighting } from '@ui/json-visualizer/types/JsonNodeHighlighting';
+import { type IconComponent } from '@ui/display';
+import { type JsonNodeHighlighting } from '@ui/json-visualizer/types/JsonNodeHighlighting';
 
 const StyledLabelContainer = styled.span<{
   highlighting?: JsonNodeHighlighting;
@@ -9,13 +9,13 @@ const StyledLabelContainer = styled.span<{
   align-items: center;
   background-color: ${({ theme, highlighting }) =>
     highlighting === 'blue'
-      ? theme.adaptiveColors.blue1
+      ? theme.color.blue3
       : highlighting === 'red'
         ? theme.background.danger
         : theme.background.transparent.lighter};
   border-color: ${({ theme, highlighting }) =>
     highlighting === 'blue'
-      ? theme.adaptiveColors.blue2
+      ? theme.color.blue5
       : highlighting === 'red'
         ? theme.border.color.danger
         : theme.border.color.medium};

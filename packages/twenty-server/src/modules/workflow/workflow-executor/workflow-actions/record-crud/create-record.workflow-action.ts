@@ -1,74 +1,48 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 
-import { isDefined } from 'class-validator';
-import { Repository } from 'typeorm';
+import { resolveInput } from 'twenty-shared/utils';
+import { type ActorMetadata, FieldActorSource } from 'twenty-shared/types';
 
-import { WorkflowAction } from 'src/modules/workflow/workflow-executor/interfaces/workflow-action.interface';
+import { type WorkflowAction } from 'src/modules/workflow/workflow-executor/interfaces/workflow-action.interface';
 
-import { DatabaseEventAction } from 'src/engine/api/graphql/graphql-query-runner/enums/database-event-action';
-import { RecordPositionService } from 'src/engine/core-modules/record-position/services/record-position.service';
-import { RecordInputTransformerService } from 'src/engine/core-modules/record-transformer/services/record-input-transformer.service';
-import { FieldActorSource } from 'src/engine/metadata-modules/field-metadata/composite-types/actor.composite-type';
-import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
+import {
+  RecordCrudException,
+  RecordCrudExceptionCode,
+} from 'src/engine/core-modules/record-crud/exceptions/record-crud.exception';
+import { CreateRecordService } from 'src/engine/core-modules/record-crud/services/create-record.service';
 import { ScopedWorkspaceContextFactory } from 'src/engine/twenty-orm/factories/scoped-workspace-context.factory';
-import { TwentyORMGlobalManager } from 'src/engine/twenty-orm/twenty-orm-global.manager';
-import { WorkspaceEventEmitter } from 'src/engine/workspace-event-emitter/workspace-event-emitter';
-import { WorkflowCommonWorkspaceService } from 'src/modules/workflow/common/workspace-services/workflow-common.workspace-service';
-import {
-  WorkflowStepExecutorException,
-  WorkflowStepExecutorExceptionCode,
-} from 'src/modules/workflow/workflow-executor/exceptions/workflow-step-executor.exception';
-import { WorkflowActionInput } from 'src/modules/workflow/workflow-executor/types/workflow-action-input';
-import { WorkflowActionOutput } from 'src/modules/workflow/workflow-executor/types/workflow-action-output.type';
-import { resolveInput } from 'src/modules/workflow/workflow-executor/utils/variable-resolver.util';
-import {
-  RecordCRUDActionException,
-  RecordCRUDActionExceptionCode,
-} from 'src/modules/workflow/workflow-executor/workflow-actions/record-crud/exceptions/record-crud-action.exception';
-import { isWorkflowCreateRecordAction } from 'src/modules/workflow/workflow-executor/workflow-actions/record-crud/guards/is-workflow-create-record-action.guard';
-import { WorkflowCreateRecordActionInput } from 'src/modules/workflow/workflow-executor/workflow-actions/record-crud/types/workflow-record-crud-action-input.type';
+import { WorkflowExecutionContextService } from 'src/modules/workflow/workflow-executor/services/workflow-execution-context.service';
+import { type WorkflowActionInput } from 'src/modules/workflow/workflow-executor/types/workflow-action-input';
+import { type WorkflowActionOutput } from 'src/modules/workflow/workflow-executor/types/workflow-action-output.type';
+import { type WorkflowExecutionContext } from 'src/modules/workflow/workflow-executor/types/workflow-execution-context.type';
+import { findStepOrThrow } from 'src/modules/workflow/workflow-executor/utils/find-step-or-throw.util';
+import { type WorkflowCreateRecordActionInput } from 'src/modules/workflow/workflow-executor/workflow-actions/record-crud/types/workflow-record-crud-action-input.type';
 
 @Injectable()
 export class CreateRecordWorkflowAction implements WorkflowAction {
   constructor(
-    private readonly twentyORMGlobalManager: TwentyORMGlobalManager,
-    @InjectRepository(ObjectMetadataEntity, 'core')
-    private readonly objectMetadataRepository: Repository<ObjectMetadataEntity>,
-    private readonly workspaceEventEmitter: WorkspaceEventEmitter,
+    private readonly createRecordService: CreateRecordService,
     private readonly scopedWorkspaceContextFactory: ScopedWorkspaceContextFactory,
-    private readonly recordPositionService: RecordPositionService,
-    private readonly recordInputTransformerService: RecordInputTransformerService,
-    private readonly workflowCommonWorkspaceService: WorkflowCommonWorkspaceService,
+    private readonly workflowExecutionContextService: WorkflowExecutionContextService,
   ) {}
 
   async execute({
     currentStepId,
     steps,
     context,
+    runInfo,
   }: WorkflowActionInput): Promise<WorkflowActionOutput> {
-    const step = steps.find((step) => step.id === currentStepId);
+    const step = findStepOrThrow({
+      steps,
+      stepId: currentStepId,
+    });
 
-    if (!step) {
-      throw new WorkflowStepExecutorException(
-        'Step not found',
-        WorkflowStepExecutorExceptionCode.STEP_NOT_FOUND,
-      );
-    }
-
-    if (!isWorkflowCreateRecordAction(step)) {
-      throw new WorkflowStepExecutorException(
-        'Step is not a create record action',
-        WorkflowStepExecutorExceptionCode.INVALID_STEP_TYPE,
-      );
-    }
-
-    const workspaceId = this.scopedWorkspaceContextFactory.create().workspaceId;
+    const { workspaceId } = this.scopedWorkspaceContextFactory.create();
 
     if (!workspaceId) {
-      throw new RecordCRUDActionException(
+      throw new RecordCrudException(
         'Failed to create: Workspace ID is required',
-        RecordCRUDActionExceptionCode.INVALID_REQUEST,
+        RecordCrudExceptionCode.INVALID_REQUEST,
       );
     }
 
@@ -77,76 +51,43 @@ export class CreateRecordWorkflowAction implements WorkflowAction {
       context,
     ) as WorkflowCreateRecordActionInput;
 
-    const repository =
-      await this.twentyORMGlobalManager.getRepositoryForWorkspace(
-        workspaceId,
-        workflowActionInput.objectName,
-        { shouldBypassPermissionChecks: true },
-      );
+    const executionContext =
+      await this.workflowExecutionContextService.getExecutionContext(runInfo);
 
-    const objectMetadata = await this.objectMetadataRepository.findOne({
-      where: {
-        nameSingular: workflowActionInput.objectName,
-      },
+    const createdBy = this.buildCreatedByActor(executionContext);
+
+    const toolOutput = await this.createRecordService.execute({
+      objectName: workflowActionInput.objectName,
+      objectRecord: workflowActionInput.objectRecord,
+      workspaceId,
+      createdBy,
+      rolePermissionConfig: executionContext.rolePermissionConfig,
     });
 
-    if (!objectMetadata) {
-      throw new RecordCRUDActionException(
-        'Failed to create: Object metadata not found',
-        RecordCRUDActionExceptionCode.INVALID_REQUEST,
+    if (!toolOutput.success) {
+      throw new RecordCrudException(
+        toolOutput.error || toolOutput.message,
+        RecordCrudExceptionCode.RECORD_CREATION_FAILED,
       );
     }
 
-    const position = await this.recordPositionService.buildRecordPosition({
-      value: 'first',
-      objectMetadata,
-      workspaceId,
-    });
+    return {
+      result: toolOutput.result,
+    };
+  }
 
-    const { objectMetadataItemWithFieldsMaps } =
-      await this.workflowCommonWorkspaceService.getObjectMetadataItemWithFieldsMaps(
-        workflowActionInput.objectName,
-        workspaceId,
-      );
-
-    const validObjectRecord = Object.fromEntries(
-      Object.entries(workflowActionInput.objectRecord).filter(([key]) =>
-        isDefined(objectMetadataItemWithFieldsMaps.fieldIdByName[key]),
-      ),
-    );
-
-    const transformedObjectRecord =
-      await this.recordInputTransformerService.process({
-        recordInput: validObjectRecord,
-        objectMetadataMapItem: objectMetadataItemWithFieldsMaps,
-      });
-
-    const objectRecord = await repository.save({
-      ...transformedObjectRecord,
-      position,
-      createdBy: {
-        source: FieldActorSource.WORKFLOW,
-        name: 'Workflow',
-      },
-    });
-
-    this.workspaceEventEmitter.emitDatabaseBatchEvent({
-      objectMetadataNameSingular: workflowActionInput.objectName,
-      action: DatabaseEventAction.CREATED,
-      events: [
-        {
-          recordId: objectRecord.id,
-          objectMetadata,
-          properties: {
-            after: objectRecord,
-          },
-        },
-      ],
-      workspaceId,
-    });
+  private buildCreatedByActor(
+    executionContext: WorkflowExecutionContext,
+  ): ActorMetadata {
+    if (executionContext.isActingOnBehalfOfUser) {
+      return executionContext.initiator;
+    }
 
     return {
-      result: objectRecord,
+      source: FieldActorSource.WORKFLOW,
+      name: 'Workflow',
+      workspaceMemberId: null,
+      context: {},
     };
   }
 }

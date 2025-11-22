@@ -1,5 +1,11 @@
 import styled from '@emotion/styled';
-import { ReactElement, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  type ReactElement,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 
 import { ExpandedListDropdown } from '@/ui/layout/expandable-list/components/ExpandedListDropdown';
 import { isFirstOverflowingChildElement } from '@/ui/layout/expandable-list/utils/isFirstOverflowingChildElement';
@@ -39,6 +45,8 @@ const StyledChildContainer = styled.div`
 const StyledUnShrinkableContainer = styled.div`
   color: ${({ theme }) => theme.font.color.primary};
   flex-shrink: 0;
+
+  width: 24px;
 `;
 
 export type ExpandableListProps = {

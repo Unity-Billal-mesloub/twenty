@@ -2,13 +2,13 @@ import { styled } from '@linaria/react';
 import {
   Chip,
   ChipAccent,
-  ChipProps,
+  type ChipProps,
   ChipSize,
   ChipVariant,
 } from '@ui/components/chip/Chip';
 import { LINK_CHIP_CLICK_OUTSIDE_ID } from '@ui/components/chip/constants/LinkChipClickOutsideId';
-import { TriggerEventType, useMouseDownNavigation } from '@ui/utilities';
-import { MouseEvent } from 'react';
+import { type TriggerEventType, useMouseDownNavigation } from '@ui/utilities';
+import { type MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 
 export type LinkChipProps = Omit<
@@ -24,6 +24,7 @@ export type LinkChipProps = Omit<
 const StyledLink = styled(Link)`
   display: inline-flex;
   text-decoration: none;
+  min-width: 0;
 `;
 
 export const LinkChip = ({

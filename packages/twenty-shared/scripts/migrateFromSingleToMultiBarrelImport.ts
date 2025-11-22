@@ -1,6 +1,6 @@
 import prettier from '@prettier/sync';
 import * as fs from 'fs';
-import glob from 'glob';
+import { globSync } from 'glob';
 import * as path from 'path';
 import ts from 'typescript';
 const prettierConfigFile = prettier.resolveConfigFile();
@@ -9,10 +9,10 @@ if (prettierConfigFile == null) {
 }
 const prettierConfiguration = prettier.resolveConfig(prettierConfigFile);
 
-type DeclarationOccurence = { kind: string; name: string };
+type DeclarationOccurrence = { kind: string; name: string };
 type ExtractedExports = Array<{
   file: string;
-  exports: DeclarationOccurence[];
+  exports: DeclarationOccurrence[];
 }>;
 type ExtractedImports = Array<{ file: string; imports: string[] }>;
 
@@ -82,7 +82,7 @@ function getTypeScriptFiles(
   includeIndex: boolean = false,
 ): string[] {
   const pattern = path.join(directoryPath, '**/*.{ts,tsx}');
-  const files = glob.sync(pattern);
+  const files = globSync(pattern);
 
   return files.filter(
     (file) =>
@@ -106,7 +106,7 @@ const getKind = (node: ts.VariableStatement) => {
 };
 
 function extractExports(sourceFile: ts.SourceFile) {
-  const exports: DeclarationOccurence[] = [];
+  const exports: DeclarationOccurrence[] = [];
 
   function visit(node: ts.Node) {
     if (!ts.canHaveModifiers(node)) {
@@ -475,7 +475,6 @@ const main = () => {
     'twenty-server',
     'twenty-emails',
     'twenty-zapier',
-    'twenty-chrome-extension',
   ];
   for (const currPackage of packagesToMigrate) {
     console.log(`About to run over ${currPackage}`);

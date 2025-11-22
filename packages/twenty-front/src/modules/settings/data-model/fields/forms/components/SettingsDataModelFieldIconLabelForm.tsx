@@ -1,8 +1,8 @@
 import styled from '@emotion/styled';
 import { Controller, useFormContext } from 'react-hook-form';
-import { z } from 'zod';
+import { type z } from 'zod';
 
-import { FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
+import { type FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
 import { fieldMetadataItemSchema } from '@/object-metadata/validation-schemas/fieldMetadataItemSchema';
 import { AdvancedSettingsContentWrapperWithDot } from '@/settings/components/AdvancedSettingsContentWrapperWithDot';
 import { AdvancedSettingsWrapper } from '@/settings/components/AdvancedSettingsWrapper';
@@ -10,7 +10,7 @@ import { SettingsOptionCardContentToggle } from '@/settings/components/SettingsO
 import { DATABASE_IDENTIFIER_MAXIMUM_LENGTH } from '@/settings/data-model/constants/DatabaseIdentifierMaximumLength';
 import { getErrorMessageFromError } from '@/settings/data-model/fields/forms/utils/errorMessages';
 import { IconPicker } from '@/ui/input/components/IconPicker';
-import { TextInput } from '@/ui/input/components/TextInput';
+import { SettingsTextInput } from '@/ui/input/components/SettingsTextInput';
 import { useTheme } from '@emotion/react';
 import { useLingui } from '@lingui/react/macro';
 import { FieldMetadataType } from 'twenty-shared/types';
@@ -22,7 +22,7 @@ import {
   TooltipDelay,
 } from 'twenty-ui/display';
 import { Card } from 'twenty-ui/layout';
-import { computeMetadataNameFromLabel } from '~/pages/settings/data-model/utils/compute-metadata-name-from-label.utils';
+import { computeMetadataNameFromLabel } from '~/pages/settings/data-model/utils/computeMetadataNameFromLabel';
 
 export const settingsDataModelFieldIconLabelFormSchema = (
   existingOtherLabels: string[] = [],
@@ -76,12 +76,14 @@ type SettingsDataModelFieldIconLabelFormProps = {
   fieldMetadataItem?: FieldMetadataItem;
   maxLength?: number;
   isCreationMode?: boolean;
+  readonly?: boolean;
 };
 
 export const SettingsDataModelFieldIconLabelForm = ({
   isCreationMode = false,
   fieldMetadataItem,
   maxLength,
+  readonly = false,
 }: SettingsDataModelFieldIconLabelFormProps) => {
   const {
     control,
@@ -150,6 +152,7 @@ export const SettingsDataModelFieldIconLabelForm = ({
               selectedIconKey={value ?? 'IconUsers'}
               onChange={({ iconKey }) => onChange(iconKey)}
               variant="primary"
+              disabled={readonly}
             />
           )}
         />
@@ -158,11 +161,11 @@ export const SettingsDataModelFieldIconLabelForm = ({
           control={control}
           defaultValue={fieldMetadataItem?.label}
           render={({ field: { onChange, value } }) => (
-            <TextInput
+            <SettingsTextInput
               instanceId={labelTextInputId}
               placeholder={t`Employees`}
               value={value}
-              disabled={!isLabelEditEnabled}
+              disabled={!isLabelEditEnabled || readonly}
               onChange={(value) => {
                 onChange(value);
                 trigger('label');
@@ -193,12 +196,13 @@ export const SettingsDataModelFieldIconLabelForm = ({
                     defaultValue={fieldMetadataItem?.name}
                     render={({ field: { onChange, value } }) => (
                       <>
-                        <TextInput
+                        <SettingsTextInput
                           instanceId={nameTextInputId}
                           label={t`API Name`}
                           placeholder={t`employees`}
                           value={value}
                           onChange={onChange}
+                          readOnly={readonly}
                           disabled={!isNameEditEnabled}
                           fullWidth
                           maxLength={DATABASE_IDENTIFIER_MAXIMUM_LENGTH}
@@ -245,6 +249,7 @@ export const SettingsDataModelFieldIconLabelForm = ({
                           title={t`Synchronize Field Label and API Name`}
                           description={t`Should changing a field's label also change the API name?`}
                           checked={value ?? true}
+                          disabled={readonly}
                           advancedMode
                           onChange={(value) => {
                             onChange(value);

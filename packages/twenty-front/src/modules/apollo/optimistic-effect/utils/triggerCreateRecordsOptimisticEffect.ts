@@ -1,20 +1,22 @@
-import { ApolloCache, StoreObject } from '@apollo/client';
+import { type ApolloCache, type StoreObject } from '@apollo/client';
 import { isNonEmptyString } from '@sniptt/guards';
 
 import { triggerUpdateRelationsOptimisticEffect } from '@/apollo/optimistic-effect/utils/triggerUpdateRelationsOptimisticEffect';
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
-import { RecordGqlRefEdge } from '@/object-record/cache/types/RecordGqlRefEdge';
+import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
+import { type RecordGqlRefEdge } from '@/object-record/cache/types/RecordGqlRefEdge';
 import { getEdgeTypename } from '@/object-record/cache/utils/getEdgeTypename';
 import { isObjectRecordConnectionWithRefs } from '@/object-record/cache/utils/isObjectRecordConnectionWithRefs';
-import { RecordGqlNode } from '@/object-record/graphql/types/RecordGqlNode';
+import { type RecordGqlNode } from '@/object-record/graphql/types/RecordGqlNode';
 import { isRecordMatchingFilter } from '@/object-record/record-filter/utils/isRecordMatchingFilter';
 
-import { CachedObjectRecordQueryVariables } from '@/apollo/types/CachedObjectRecordQueryVariables';
+import { triggerUpdateGroupByQueriesOptimisticEffect } from '@/apollo/optimistic-effect/group-by/utils/triggerUpdateGroupByQueriesOptimisticEffect';
+import { type CachedObjectRecordQueryVariables } from '@/apollo/types/CachedObjectRecordQueryVariables';
 import { encodeCursor } from '@/apollo/utils/encodeCursor';
 import { getRecordFromCache } from '@/object-record/cache/utils/getRecordFromCache';
 import { getRecordNodeFromRecord } from '@/object-record/cache/utils/getRecordNodeFromRecord';
+import { type ObjectRecord } from '@/object-record/types/ObjectRecord';
+import { type ObjectPermissions } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
-import { ObjectPermission } from '~/generated-metadata/graphql';
 import { parseApolloStoreFieldName } from '~/utils/parseApolloStoreFieldName';
 
 /*
@@ -29,8 +31,13 @@ type TriggerCreateRecordsOptimisticEffectArgs = {
   objectMetadataItems: ObjectMetadataItem[];
   shouldMatchRootQueryFilter?: boolean;
   checkForRecordInCache?: boolean;
-  objectPermissionsByObjectMetadataId: Record<string, ObjectPermission>;
+  objectPermissionsByObjectMetadataId: Record<
+    string,
+    ObjectPermissions & { objectMetadataId: string }
+  >;
+  upsertRecordsInStore: (records: ObjectRecord[]) => void;
 };
+
 export const triggerCreateRecordsOptimisticEffect = ({
   cache,
   objectMetadataItem,
@@ -39,6 +46,7 @@ export const triggerCreateRecordsOptimisticEffect = ({
   shouldMatchRootQueryFilter,
   checkForRecordInCache = false,
   objectPermissionsByObjectMetadataId,
+  upsertRecordsInStore,
 }: TriggerCreateRecordsOptimisticEffectArgs) => {
   const getRecordNodeFromCache = (recordId: string): RecordGqlNode | null => {
     const cachedRecord = getRecordFromCache({
@@ -66,6 +74,8 @@ export const triggerCreateRecordsOptimisticEffect = ({
       currentSourceRecord,
       updatedSourceRecord: record,
       objectMetadataItems,
+      upsertRecordsInStore,
+      objectPermissionsByObjectMetadataId,
     });
   });
 
@@ -228,5 +238,13 @@ export const triggerCreateRecordsOptimisticEffect = ({
         };
       },
     },
+  });
+
+  triggerUpdateGroupByQueriesOptimisticEffect({
+    cache,
+    objectMetadataItem,
+    operation: 'create',
+    records: recordsToCreate,
+    shouldMatchRootQueryFilter,
   });
 };

@@ -1,13 +1,13 @@
-import { Meta, StoryObj } from '@storybook/react';
+import { type Meta, type StoryObj } from '@storybook/react';
 import {
   CatalogDecorator,
-  CatalogStory,
+  type CatalogStory,
   ComponentDecorator,
 } from '@ui/testing';
-import { MAIN_COLORS } from '@ui/theme';
+import { MAIN_COLORS_LIGHT } from '@ui/theme';
 import { useState } from 'react';
 
-import { Toggle, ToggleSize } from '../Toggle';
+import { Toggle, type ToggleSize } from '../Toggle';
 
 type InteractiveToggleProps = {
   initialValue?: boolean;
@@ -88,7 +88,7 @@ export const Catalog: CatalogStory<Story, typeof InteractiveToggle> = {
             if (color === 'default') {
               return {};
             }
-            return { color: MAIN_COLORS.yellow };
+            return { color: MAIN_COLORS_LIGHT.yellow };
           },
         },
       ],

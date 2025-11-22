@@ -1,7 +1,7 @@
 import isPropValid from '@emotion/is-prop-valid';
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
-import { IconComponent } from '@ui/display';
+import { type IconComponent } from '@ui/display';
 import { Link } from 'react-router-dom';
 
 export type FloatingButtonSize = 'small' | 'medium';
@@ -59,10 +59,10 @@ const StyledButton = styled('button', {
       ? `0px 2px 4px 0px ${
           theme.background.transparent.light
         }, 0px 0px 4px 0px ${theme.background.transparent.medium}${
-          focus ? `,0 0 0 3px ${theme.color.blue10}` : ''
+          focus ? `,0 0 0 3px ${theme.color.blue3}` : ''
         }`
       : focus
-        ? `0 0 0 3px ${theme.color.blue10}`
+        ? `0 0 0 3px ${theme.color.blue3}`
         : 'none'};
   color: ${({ theme, disabled, focus }) => {
     return !disabled

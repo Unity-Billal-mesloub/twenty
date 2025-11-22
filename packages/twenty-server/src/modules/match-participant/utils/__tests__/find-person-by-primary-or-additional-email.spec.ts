@@ -1,5 +1,5 @@
 import { findPersonByPrimaryOrAdditionalEmail } from 'src/modules/match-participant/utils/find-person-by-primary-or-additional-email';
-import { PersonWorkspaceEntity } from 'src/modules/person/standard-objects/person.workspace-entity';
+import { type PersonWorkspaceEntity } from 'src/modules/person/standard-objects/person.workspace-entity';
 
 describe('findPersonByPrimaryOrAdditionalEmail', () => {
   const mockPeople = [
@@ -127,14 +127,14 @@ describe('findPersonByPrimaryOrAdditionalEmail', () => {
         id: 'person-1',
         emails: {
           primaryEmail: 'other@example.com',
-          additionalEmails: [],
+          additionalEmails: null,
         },
       },
       {
         id: 'person-2',
         emails: {
           primaryEmail: 'test@example.com',
-          additionalEmails: [],
+          additionalEmails: null,
         },
       },
     ] as PersonWorkspaceEntity[];

@@ -1,6 +1,6 @@
-import { RecordGqlOperationFilter } from '@/object-record/graphql/types/RecordGqlOperationFilter';
-import { RecordGqlOperationOrderBy } from '@/object-record/graphql/types/RecordGqlOperationOrderBy';
-import { QueryCursorDirection } from '@/object-record/utils/generateFindManyRecordsQuery';
+import { type RecordGqlOperationOrderBy } from '@/object-record/graphql/types/RecordGqlOperationOrderBy';
+import { type QueryCursorDirection } from '@/object-record/utils/generateFindManyRecordsQuery';
+import { type RecordGqlOperationFilter } from 'twenty-shared/types';
 
 export type RecordGqlOperationVariables = {
   filter?: RecordGqlOperationFilter;

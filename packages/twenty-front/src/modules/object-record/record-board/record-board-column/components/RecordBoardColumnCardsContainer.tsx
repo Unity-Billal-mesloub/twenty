@@ -1,18 +1,18 @@
 import styled from '@emotion/styled';
-import { Draggable, DroppableProvided } from '@hello-pangea/dnd';
+import { Draggable, type DroppableProvided } from '@hello-pangea/dnd';
 import { useContext } from 'react';
 import { useRecoilValue } from 'recoil';
 
+import { RecordBoardCardDraggableContainer } from '@/object-record/record-board/record-board-card/components/RecordBoardCardDraggableContainer';
 import { RecordBoardColumnCardContainerSkeletonLoader } from '@/object-record/record-board/record-board-column/components/RecordBoardColumnCardContainerSkeletonLoader';
-import { RecordBoardColumnCardsMemo } from '@/object-record/record-board/record-board-column/components/RecordBoardColumnCardsMemo';
 import { RecordBoardColumnFetchMoreLoader } from '@/object-record/record-board/record-board-column/components/RecordBoardColumnFetchMoreLoader';
 import { RecordBoardColumnNewRecordButton } from '@/object-record/record-board/record-board-column/components/RecordBoardColumnNewRecordButton';
 import { RecordBoardColumnContext } from '@/object-record/record-board/record-board-column/contexts/RecordBoardColumnContext';
 import { getNumberOfCardsPerColumnForSkeletonLoading } from '@/object-record/record-board/record-board-column/utils/getNumberOfCardsPerColumnForSkeletonLoading';
-import { isRecordBoardCompactModeActiveComponentState } from '@/object-record/record-board/states/isRecordBoardCompactModeActiveComponentState';
-import { recordBoardVisibleFieldDefinitionsComponentSelector } from '@/object-record/record-board/states/selectors/recordBoardVisibleFieldDefinitionsComponentSelector';
+import { recordIndexRecordIdsByGroupComponentFamilyState } from '@/object-record/record-index/states/recordIndexRecordIdsByGroupComponentFamilyState';
 import { isRecordIndexBoardColumnLoadingFamilyState } from '@/object-record/states/isRecordBoardColumnLoadingFamilyState';
-import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
+import { useRecoilComponentFamilyValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentFamilyValue';
+
 const StyledColumnCardsContainer = styled.div`
   display: flex;
   flex: 1;
@@ -35,30 +35,25 @@ const StyledSkeletonCardContainer = styled.div`
 `;
 
 type RecordBoardColumnCardsContainerProps = {
-  recordIds: string[];
+  recordBoardColumnId: string;
   droppableProvided: DroppableProvided;
 };
 
 export const RecordBoardColumnCardsContainer = ({
-  recordIds,
+  recordBoardColumnId,
   droppableProvided,
 }: RecordBoardColumnCardsContainerProps) => {
   const { columnDefinition } = useContext(RecordBoardColumnContext);
 
   const columnId = columnDefinition.id;
 
+  const recordIds = useRecoilComponentFamilyValue(
+    recordIndexRecordIdsByGroupComponentFamilyState,
+    recordBoardColumnId,
+  );
+
   const isRecordIndexBoardColumnLoading = useRecoilValue(
     isRecordIndexBoardColumnLoadingFamilyState(columnId),
-  );
-
-  const visibleFieldDefinitions = useRecoilComponentValueV2(
-    recordBoardVisibleFieldDefinitionsComponentSelector,
-  );
-
-  const numberOfFields = visibleFieldDefinitions.length;
-
-  const isCompactModeActive = useRecoilComponentValueV2(
-    isRecordBoardCompactModeActiveComponentState,
   );
 
   return (
@@ -67,28 +62,28 @@ export const RecordBoardColumnCardsContainer = ({
       // eslint-disable-next-line react/jsx-props-no-spreading
       {...droppableProvided?.droppableProps}
     >
-      {isRecordIndexBoardColumnLoading ? (
-        Array.from(
-          {
-            length: getNumberOfCardsPerColumnForSkeletonLoading(
-              columnDefinition.position,
+      {isRecordIndexBoardColumnLoading
+        ? Array.from(
+            {
+              length: getNumberOfCardsPerColumnForSkeletonLoading(
+                columnDefinition.position,
+              ),
+            },
+            (_, index) => (
+              <StyledSkeletonCardContainer
+                key={`${columnDefinition.id}-${index}`}
+              >
+                <RecordBoardColumnCardContainerSkeletonLoader />
+              </StyledSkeletonCardContainer>
             ),
-          },
-          (_, index) => (
-            <StyledSkeletonCardContainer
-              key={`${columnDefinition.id}-${index}`}
-            >
-              <RecordBoardColumnCardContainerSkeletonLoader
-                numberOfFields={numberOfFields}
-                titleSkeletonWidth={isCompactModeActive ? 72 : 54}
-                isCompactModeActive={isCompactModeActive}
-              />
-            </StyledSkeletonCardContainer>
-          ),
-        )
-      ) : (
-        <RecordBoardColumnCardsMemo recordIds={recordIds} />
-      )}
+          )
+        : recordIds.map((recordId, index) => (
+            <RecordBoardCardDraggableContainer
+              key={recordId}
+              recordId={recordId}
+              rowIndex={index}
+            />
+          ))}
       <RecordBoardColumnFetchMoreLoader />
       <Draggable
         draggableId={`new-${columnDefinition.id}-bottom`}
@@ -97,13 +92,12 @@ export const RecordBoardColumnCardsContainer = ({
       >
         {(draggableProvided) => (
           <div
-            ref={draggableProvided?.innerRef}
+            ref={draggableProvided.innerRef}
             // eslint-disable-next-line react/jsx-props-no-spreading
-            {...draggableProvided?.draggableProps}
+            {...draggableProvided.draggableProps}
           ></div>
         )}
       </Draggable>
-      {droppableProvided?.placeholder}
       <StyledNewButtonContainer>
         <RecordBoardColumnNewRecordButton />
       </StyledNewButtonContainer>

@@ -6,13 +6,12 @@ import { useRecoilValue } from 'recoil';
 import { RecordBoardColumnContext } from '@/object-record/record-board/record-board-column/contexts/RecordBoardColumnContext';
 import { isRecordBoardFetchingRecordsByColumnFamilyState } from '@/object-record/record-board/states/isRecordBoardFetchingRecordsByColumnFamilyState';
 import { recordBoardShouldFetchMoreInColumnComponentFamilyState } from '@/object-record/record-board/states/recordBoardShouldFetchMoreInColumnComponentFamilyState';
-import { useSetRecoilComponentFamilyStateV2 } from '@/ui/utilities/state/component-state/hooks/useSetRecoilComponentFamilyStateV2';
-import { GRAY_SCALE } from 'twenty-ui/theme';
+import { useSetRecoilComponentFamilyState } from '@/ui/utilities/state/component-state/hooks/useSetRecoilComponentFamilyState';
 
 const StyledText = styled.div`
   align-items: center;
   box-shadow: none;
-  color: ${GRAY_SCALE.gray40};
+  color: ${({ theme }) => theme.grayScale.gray9};
   display: flex;
   height: 32px;
   margin-left: ${({ theme }) => theme.spacing(8)};
@@ -26,7 +25,7 @@ export const RecordBoardColumnFetchMoreLoader = () => {
     isRecordBoardFetchingRecordsByColumnFamilyState(columnDefinition.id),
   );
 
-  const setShouldFetchMore = useSetRecoilComponentFamilyStateV2(
+  const setShouldFetchMore = useSetRecoilComponentFamilyState(
     recordBoardShouldFetchMoreInColumnComponentFamilyState,
     columnDefinition.id,
   );

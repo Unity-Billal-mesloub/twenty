@@ -6,7 +6,6 @@ import { useObjectFilterDropdownFilterValue } from '@/object-record/object-filte
 import { BooleanDisplay } from '@/ui/field/display/components/BooleanDisplay';
 import { DropdownContent } from '@/ui/layout/dropdown/components/DropdownContent';
 import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
-import { DropdownHotkeyScope } from '@/ui/layout/dropdown/constants/DropdownHotkeyScope';
 import { GenericDropdownContentWidth } from '@/ui/layout/dropdown/constants/GenericDropdownContentWidth';
 import { useCloseDropdown } from '@/ui/layout/dropdown/hooks/useCloseDropdown';
 import { SelectableList } from '@/ui/layout/selectable-list/components/SelectableList';
@@ -58,7 +57,6 @@ export const ObjectFilterDropdownBooleanSelect = () => {
         selectableListInstanceId="boolean-select"
         selectableItemIdArray={options.map((option) => option.toString())}
         focusId="boolean-select"
-        hotkeyScope={DropdownHotkeyScope.Dropdown}
       >
         <DropdownMenuItemsContainer hasMaxHeight>
           {options.map((option) => (
@@ -70,7 +68,7 @@ export const ObjectFilterDropdownBooleanSelect = () => {
               <BooleanDisplay value={option} />
               {objectFilterDropdownFilterValue === option.toString() && (
                 <StyledIconCheckContainer>
-                  <IconCheck color={theme.grayScale.gray50} size={16} />
+                  <IconCheck color={theme.grayScale.gray11} size={16} />
                 </StyledIconCheckContainer>
               )}
             </StyledBooleanSelectContainer>

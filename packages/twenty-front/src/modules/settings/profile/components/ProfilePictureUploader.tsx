@@ -4,6 +4,7 @@ import { useRecoilState } from 'recoil';
 import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
 import { useUpdateOneRecord } from '@/object-record/hooks/useUpdateOneRecord';
+import { useCanEditProfileField } from '@/settings/profile/hooks/useCanEditProfileField';
 import { ImageInput } from '@/ui/input/components/ImageInput';
 import { buildSignedPath, isDefined } from 'twenty-shared/utils';
 import { useUploadProfilePictureMutation } from '~/generated-metadata/graphql';
@@ -25,8 +26,11 @@ export const ProfilePictureUploader = () => {
     objectNameSingular: CoreObjectNameSingular.WorkspaceMember,
   });
 
+  const { canEdit: canEditProfilePicture } =
+    useCanEditProfileField('profilePicture');
+
   const handleUpload = async (file: File) => {
-    if (isUndefinedOrNull(file)) {
+    if (isUndefinedOrNull(file) || !canEditProfilePicture) {
       return;
     }
 
@@ -70,12 +74,16 @@ export const ProfilePictureUploader = () => {
       });
 
       return result;
-    } catch (error) {
+    } catch {
       setErrorMessage('An error occurred while uploading the picture.');
     }
   };
 
   const handleAbort = async () => {
+    if (!canEditProfilePicture) {
+      return;
+    }
+
     if (isDefined(uploadController)) {
       uploadController.abort();
       setUploadController(null);
@@ -83,6 +91,10 @@ export const ProfilePictureUploader = () => {
   };
 
   const handleRemove = async () => {
+    if (!canEditProfilePicture) {
+      return;
+    }
+
     try {
       if (!currentWorkspaceMember?.id) {
         throw new Error('User is not logged in');
@@ -96,7 +108,7 @@ export const ProfilePictureUploader = () => {
       });
 
       setCurrentWorkspaceMember({ ...currentWorkspaceMember, avatarUrl: null });
-    } catch (error) {
+    } catch {
       setErrorMessage('An error occurred while removing the picture.');
     }
   };
@@ -109,6 +121,7 @@ export const ProfilePictureUploader = () => {
       onAbort={handleAbort}
       isUploading={isUploading}
       errorMessage={errorMessage}
+      disabled={!canEditProfilePicture}
     />
   );
 };

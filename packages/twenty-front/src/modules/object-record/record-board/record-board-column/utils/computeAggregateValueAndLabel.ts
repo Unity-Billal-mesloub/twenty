@@ -1,20 +1,23 @@
-import { DateFormat } from '@/localization/constants/DateFormat';
-import { TimeFormat } from '@/localization/constants/TimeFormat';
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
-import { AggregateRecordsData } from '@/object-record/hooks/useAggregateRecords';
+import { type DateFormat } from '@/localization/constants/DateFormat';
+import { type TimeFormat } from '@/localization/constants/TimeFormat';
+import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
+import { type AggregateRecordsData } from '@/object-record/hooks/useAggregateRecords';
 import { getAggregateOperationLabel } from '@/object-record/record-board/record-board-column/utils/getAggregateOperationLabel';
 import { getAggregateOperationShortLabel } from '@/object-record/record-board/record-board-column/utils/getAggregateOperationShortLabel';
 import { AggregateOperations } from '@/object-record/record-table/constants/AggregateOperations';
 import { COUNT_AGGREGATE_OPERATION_OPTIONS } from '@/object-record/record-table/record-table-footer/constants/countAggregateOperationOptions';
 import { PERCENT_AGGREGATE_OPERATION_OPTIONS } from '@/object-record/record-table/record-table-footer/constants/percentAggregateOperationOptions';
-import { ExtendedAggregateOperations } from '@/object-record/record-table/types/ExtendedAggregateOperations';
+import { type ExtendedAggregateOperations } from '@/object-record/record-table/types/ExtendedAggregateOperations';
 import { t } from '@lingui/core/macro';
 import isEmpty from 'lodash.isempty';
 import { FIELD_FOR_TOTAL_COUNT_AGGREGATE_OPERATION } from 'twenty-shared/constants';
 import { isDefined } from 'twenty-shared/utils';
 import { FieldMetadataType } from '~/generated-metadata/graphql';
-import { formatAmount } from '~/utils/format/formatAmount';
-import { formatNumber } from '~/utils/format/number';
+import {
+  formatNumber as utilFormatNumber,
+  type FormatNumberOptions,
+} from '~/utils/format/formatNumber';
+import { formatToShortNumber } from '~/utils/format/formatToShortNumber';
 import { formatDateString } from '~/utils/string/formatDateString';
 import { formatDateTimeString } from '~/utils/string/formatDateTimeString';
 
@@ -27,6 +30,8 @@ export const computeAggregateValueAndLabel = ({
   timeFormat,
   timeZone,
   localeCatalog,
+  formatNumberFn,
+  formatShortNumberFn,
 }: {
   data: AggregateRecordsData;
   objectMetadataItem: ObjectMetadataItem;
@@ -36,7 +41,16 @@ export const computeAggregateValueAndLabel = ({
   timeFormat: TimeFormat;
   timeZone: string;
   localeCatalog: Locale;
+  formatNumberFn?: (
+    value: number,
+    options?: Omit<FormatNumberOptions, 'format'>,
+  ) => string;
+  formatShortNumberFn?: (value: number) => string | number;
 }) => {
+  const formatNumber =
+    formatNumberFn ??
+    ((v: number, opts?: Omit<FormatNumberOptions, 'format'>) =>
+      utilFormatNumber(v, opts));
   if (isEmpty(data)) {
     return {};
   }
@@ -83,7 +97,9 @@ export const computeAggregateValueAndLabel = ({
     switch (field.type) {
       case FieldMetadataType.CURRENCY: {
         value = Number(aggregateValue);
-        value = formatAmount(value / 1_000_000);
+        value = isDefined(formatShortNumberFn)
+          ? formatShortNumberFn(value / 1_000_000)
+          : formatToShortNumber(value / 1_000_000);
         break;
       }
 
@@ -92,8 +108,8 @@ export const computeAggregateValueAndLabel = ({
         const { decimals, type } = field.settings ?? {};
         value =
           type === 'percentage'
-            ? `${formatNumber(value * 100, decimals)}%`
-            : formatNumber(value, decimals);
+            ? `${formatNumber(value * 100, { decimals })}%`
+            : formatNumber(value, { decimals });
         break;
       }
 

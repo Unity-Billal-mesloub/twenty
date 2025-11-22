@@ -1,8 +1,35 @@
-import { CustomException } from 'src/utils/custom-exception';
+import { type MessageNetworkExceptionCode } from 'src/modules/messaging/message-import-manager/drivers/exceptions/message-network.exception';
 
-export class MessageImportDriverException extends CustomException {
-  constructor(message: string, code: MessageImportDriverExceptionCode) {
-    super(message, code);
+export class MessageImportDriverException extends Error {
+  code: MessageImportDriverExceptionCode | MessageNetworkExceptionCode;
+  cause?: Error;
+  context?: {
+    messageChannelId?: string;
+    workspaceId?: string;
+    syncStep?: string;
+  };
+
+  constructor(
+    message: string,
+    code: MessageImportDriverExceptionCode | MessageNetworkExceptionCode,
+    options?: {
+      cause?: Error;
+      context?: {
+        messageChannelId?: string;
+        workspaceId?: string;
+        syncStep?: string;
+      };
+    },
+  ) {
+    super(message);
+    this.name = 'MessageImportDriverException';
+    this.code = code;
+    this.cause = options?.cause;
+    this.context = options?.context;
+
+    if (options?.cause?.stack) {
+      this.stack = `${this.stack}\nCaused by: ${options.cause.stack}`;
+    }
   }
 }
 

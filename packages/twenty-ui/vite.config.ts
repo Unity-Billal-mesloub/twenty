@@ -1,14 +1,13 @@
-/// <reference types='vitest' />
 import react from '@vitejs/plugin-react-swc';
 import wyw from '@wyw-in-js/vite';
 import * as path from 'path';
 import { defineConfig } from 'vite';
 import checker from 'vite-plugin-checker';
-import dts, { PluginOptions } from 'vite-plugin-dts';
+import dts, { type PluginOptions } from 'vite-plugin-dts';
 import svgr from 'vite-plugin-svgr';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
-import { UserPluginConfig } from 'vite-plugin-checker/dist/esm/types';
+type Checkers = Parameters<typeof checker>[0];
 
 import packageJson from './package.json';
 
@@ -44,7 +43,7 @@ export default defineConfig(({ command }) => {
     ? path.resolve(__dirname, './tsconfig.lib.json')
     : path.resolve(__dirname, './tsconfig.dev.json');
 
-  const checkersConfig: UserPluginConfig = {
+  const checkersConfig: Checkers = {
     typescript: {
       tsconfigPath: tsConfigPath,
     },
@@ -73,6 +72,7 @@ export default defineConfig(({ command }) => {
         plugins: [['@swc/plugin-emotion', {}]],
       }),
       tsconfigPaths({
+        root: __dirname,
         projects: ['tsconfig.json'],
       }),
       svgr(),
@@ -95,7 +95,6 @@ export default defineConfig(({ command }) => {
         },
       }),
     ],
-
     // Configuration for building your library.
     // See: https://vitejs.dev/guide/build.html#library-mode
     build: {
@@ -142,5 +141,6 @@ export default defineConfig(({ command }) => {
         ],
       },
     },
+    logLevel: 'error',
   };
 });

@@ -12,19 +12,22 @@ import { objectMetadataItemFamilySelector } from '@/object-metadata/states/objec
 import { objectMetadataItemsState } from '@/object-metadata/states/objectMetadataItemsState';
 import { getObjectRecordIdentifier } from '@/object-metadata/utils/getObjectRecordIdentifier';
 import { useObjectPermissions } from '@/object-record/hooks/useObjectPermissions';
-import { ObjectRecord } from '@/object-record/types/ObjectRecord';
+import { type ObjectRecord } from '@/object-record/types/ObjectRecord';
 import { generateFindManyRecordsQuery } from '@/object-record/utils/generateFindManyRecordsQuery';
-import { ViewFilter } from '@/views/types/ViewFilter';
-import { ViewFilterOperand } from '@/views/types/ViewFilterOperand';
-import { relationFilterValueSchemaObject } from '@/views/view-filter-value/validation-schemas/jsonRelationFilterValueSchema';
-import { isDefined } from 'twenty-shared/utils';
+import { type ViewFilter } from '@/views/types/ViewFilter';
+import { ViewFilterOperand } from 'twenty-shared/types';
+import {
+  isDefined,
+  relationFilterValueSchemaObject,
+} from 'twenty-shared/utils';
 
 const filterQueryParamsSchema = z.object({
   viewId: z.string().optional(),
   filter: z
     .record(
-      z.record(
-        z.nativeEnum(ViewFilterOperand),
+      z.string(),
+      z.partialRecord(
+        z.enum(ViewFilterOperand),
         z.string().or(z.array(z.string())).or(relationFilterValueSchemaObject),
       ),
     )

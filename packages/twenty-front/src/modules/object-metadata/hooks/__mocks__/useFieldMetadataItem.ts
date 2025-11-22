@@ -1,5 +1,5 @@
 import { gql } from '@apollo/client';
-import { FieldMetadataType, PermissionsOnAllObjectRecords } from '~/generated/graphql';
+import { FieldMetadataType } from '~/generated/graphql';
 
 export const FIELD_METADATA_ID = '2c43466a-fe9e-4005-8d08-c5836067aa6c';
 export const FIELD_RELATION_METADATA_ID =
@@ -17,52 +17,14 @@ export const queries = {
         icon
         isCustom
         isActive
+        isUnique
         isNullable
         createdAt
         updatedAt
         settings
-      }
-    }
-  `,
-  findManyViewsQuery: gql`
-    query FindManyViews(
-      $filter: ViewFilterInput
-      $orderBy: [ViewOrderByInput]
-      $lastCursor: String
-      $limit: Int
-    ) {
-      views(
-        filter: $filter
-        orderBy: $orderBy
-        first: $limit
-        after: $lastCursor
-      ) {
-        edges {
-          node {
-            __typename
-            id
-            viewGroups {
-              edges {
-                node {
-                  __typename
-                  fieldMetadataId
-                  fieldValue
-                  id
-                  isVisible
-                  position
-                }
-              }
-            }
-          }
-          cursor
+        object {
+          id
         }
-        pageInfo {
-          hasNextPage
-          hasPreviousPage
-          startCursor
-          endCursor
-        }
-        totalCount
       }
     }
   `,
@@ -85,6 +47,9 @@ export const queries = {
         updatedAt
         settings
         isLabelSyncedWithName
+        object {
+          id
+        }
       }
     }
   `,
@@ -99,6 +64,7 @@ export const queries = {
         icon
         isCustom
         isActive
+        isUnique
         isNullable
         createdAt
         updatedAt
@@ -106,98 +72,10 @@ export const queries = {
         defaultValue
         options
         isLabelSyncedWithName
-      }
-    }
-  `,
-  getCurrentUser: gql`
-    query GetCurrentUser {
-      currentUser {
-        ...UserQueryFragment
-      }
-    }
-
-    fragment UserQueryFragment on User {
-      id
-      firstName
-      lastName
-      email
-      canAccessFullAdminPanel
-      canImpersonate
-      supportUserHash
-      onboardingStatus
-      workspaceMember {
-        ...WorkspaceMemberQueryFragment
-      }
-      workspaceMembers {
-        ...WorkspaceMemberQueryFragment
-      }
-      currentUserWorkspace {
-        settingsPermissions
-        objectRecordsPermissions
-      }
-      currentWorkspace {
-        id
-        displayName
-        logo
-        inviteHash
-        allowImpersonation
-        activationStatus
-        isPublicInviteLinkEnabled
-        isGoogleAuthEnabled
-        isMicrosoftAuthEnabled
-        isPasswordAuthEnabled
-        subdomain
-        hasValidEnterpriseKey
-        customDomain
-        workspaceUrls {
-          ...WorkspaceUrlsFragment
-        }
-        featureFlags {
+        object {
           id
-          key
-          value
-          workspaceId
-        }
-        metadataVersion
-        currentBillingSubscription {
-          id
-          status
-          interval
-        }
-        billingSubscriptions {
-          id
-          status
-        }
-        workspaceMembersCount
-      }
-      workspaces {
-        workspace {
-          id
-          logo
-          displayName
-          subdomain
-          customDomain
-          workspaceUrls {
-            ...WorkspaceUrlsFragment
-          }
         }
       }
-      userVars
-    }
-
-    fragment WorkspaceMemberQueryFragment on WorkspaceMember {
-      id
-      name {
-        firstName
-        lastName
-      }
-      colorScheme
-      avatarUrl
-      locale
-      userEmail
-      timeZone
-      dateFormat
-      timeFormat
     }
   `,
 };
@@ -222,6 +100,7 @@ export const variables = {
         options: undefined,
         settings: undefined,
         isLabelSyncedWithName: true,
+        isUnique: undefined,
         objectMetadataId,
         type: 'TEXT',
       },
@@ -287,13 +166,7 @@ export const responseData = {
       },
       workspaceMembers: [],
       currentUserWorkspace: {
-        settingsPermissions: ['DATA_MODEL'],
-        objectRecordsPermissions: [
-          PermissionsOnAllObjectRecords.READ_ALL_OBJECT_RECORDS,
-          PermissionsOnAllObjectRecords.UPDATE_ALL_OBJECT_RECORDS,
-          PermissionsOnAllObjectRecords.SOFT_DELETE_ALL_OBJECT_RECORDS,
-          PermissionsOnAllObjectRecords.DESTROY_ALL_OBJECT_RECORDS,
-        ],
+        permissionFlags: ['DATA_MODEL'],
       },
       currentWorkspace: {
         id: 'test-workspace-id',

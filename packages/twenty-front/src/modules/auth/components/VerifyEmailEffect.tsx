@@ -1,38 +1,47 @@
 import { useAuth } from '@/auth/hooks/useAuth';
-import { AppPath } from '@/types/AppPath';
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
 import { ApolloError } from '@apollo/client';
+import { AppPath } from 'twenty-shared/types';
 
-import { verifyEmailNextPathState } from '@/app/states/verifyEmailNextPathState';
+import { verifyEmailRedirectPathState } from '@/app/states/verifyEmailRedirectPathState';
 import { useVerifyLogin } from '@/auth/hooks/useVerifyLogin';
+import { clientConfigApiStatusState } from '@/client-config/states/clientConfigApiStatusState';
+import { useIsCurrentLocationOnAWorkspace } from '@/domain-manager/hooks/useIsCurrentLocationOnAWorkspace';
 import { useRedirectToWorkspaceDomain } from '@/domain-manager/hooks/useRedirectToWorkspaceDomain';
 import { Modal } from '@/ui/layout/modal/components/Modal';
 import { useLingui } from '@lingui/react/macro';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useSetRecoilState } from 'recoil';
+import { useRecoilValue, useSetRecoilState } from 'recoil';
 import { isDefined } from 'twenty-shared/utils';
 import { useNavigateApp } from '~/hooks/useNavigateApp';
 import { getWorkspaceUrl } from '~/utils/getWorkspaceUrl';
 import { EmailVerificationSent } from '../sign-in-up/components/EmailVerificationSent';
 
 export const VerifyEmailEffect = () => {
-  const { getLoginTokenFromEmailVerificationToken } = useAuth();
+  const {
+    verifyEmailAndGetLoginToken,
+    verifyEmailAndGetWorkspaceAgnosticToken,
+  } = useAuth();
 
   const { enqueueErrorSnackBar, enqueueSuccessSnackBar } = useSnackBar();
 
   const [searchParams] = useSearchParams();
   const [isError, setIsError] = useState(false);
 
-  const setVerifyEmailNextPath = useSetRecoilState(verifyEmailNextPathState);
+  const setVerifyEmailRedirectPath = useSetRecoilState(
+    verifyEmailRedirectPathState,
+  );
 
   const email = searchParams.get('email');
   const emailVerificationToken = searchParams.get('emailVerificationToken');
-  const verifyEmailNextPath = searchParams.get('nextPath');
+  const verifyEmailRedirectPath = searchParams.get('nextPath');
 
   const navigate = useNavigateApp();
   const { redirectToWorkspaceDomain } = useRedirectToWorkspaceDomain();
   const { verifyLoginToken } = useVerifyLogin();
+  const { isOnAWorkspace } = useIsCurrentLocationOnAWorkspace();
+  const clientConfigApiStatus = useRecoilValue(clientConfigApiStatusState);
 
   const { t } = useLingui();
   useEffect(() => {
@@ -47,19 +56,29 @@ export const VerifyEmailEffect = () => {
         return navigate(AppPath.SignInUp);
       }
 
+      const successSnackbarParams = {
+        message: t`Email verified.`,
+        options: {
+          dedupeKey: 'email-verification-dedupe-key',
+        },
+      };
+
       try {
-        const { loginToken, workspaceUrls } =
-          await getLoginTokenFromEmailVerificationToken(
+        if (!isOnAWorkspace) {
+          await verifyEmailAndGetWorkspaceAgnosticToken(
             emailVerificationToken,
             email,
           );
 
-        enqueueSuccessSnackBar({
-          message: t`Email verified.`,
-          options: {
-            dedupeKey: 'email-verification-dedupe-key',
-          },
-        });
+          return enqueueSuccessSnackBar(successSnackbarParams);
+        }
+
+        const { loginToken, workspaceUrls } = await verifyEmailAndGetLoginToken(
+          emailVerificationToken,
+          email,
+        );
+
+        enqueueSuccessSnackBar(successSnackbarParams);
 
         const workspaceUrl = getWorkspaceUrl(workspaceUrls);
         if (workspaceUrl.slice(0, -1) !== window.location.origin) {
@@ -68,11 +87,11 @@ export const VerifyEmailEffect = () => {
           });
         }
 
-        if (isDefined(verifyEmailNextPath)) {
-          setVerifyEmailNextPath(verifyEmailNextPath);
+        if (isDefined(verifyEmailRedirectPath)) {
+          setVerifyEmailRedirectPath(verifyEmailRedirectPath);
         }
 
-        verifyLoginToken(loginToken.token);
+        await verifyLoginToken(loginToken.token);
       } catch (error) {
         enqueueErrorSnackBar({
           ...(error instanceof ApolloError
@@ -94,11 +113,15 @@ export const VerifyEmailEffect = () => {
       }
     };
 
+    if (!clientConfigApiStatus.isLoadedOnce) {
+      return;
+    }
+
     verifyEmailToken();
 
     // Verify email only needs to run once at mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [clientConfigApiStatus.isLoadedOnce]);
 
   if (isError) {
     return (

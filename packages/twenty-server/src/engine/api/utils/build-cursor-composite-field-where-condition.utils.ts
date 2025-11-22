@@ -1,11 +1,14 @@
-import { FieldMetadataType } from 'twenty-shared/types';
+import {
+  FieldMetadataType,
+  type ObjectRecord,
+  compositeTypeDefinitions,
+} from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
 
 import {
-  ObjectRecord,
-  ObjectRecordCursorLeafCompositeValue,
-  ObjectRecordFilter,
-  ObjectRecordOrderBy,
+  type ObjectRecordCursorLeafCompositeValue,
+  type ObjectRecordFilter,
+  type ObjectRecordOrderBy,
 } from 'src/engine/api/graphql/workspace-query-builder/interfaces/object-record.interface';
 
 import {
@@ -16,7 +19,6 @@ import { buildCursorCumulativeWhereCondition } from 'src/engine/api/utils/build-
 import { computeOperator } from 'src/engine/api/utils/compute-operator.utils';
 import { isAscendingOrder } from 'src/engine/api/utils/is-ascending-order.utils';
 import { validateAndGetOrderByForCompositeField } from 'src/engine/api/utils/validate-and-get-order-by.utils';
-import { compositeTypeDefinitions } from 'src/engine/metadata-modules/field-metadata/composite-types';
 
 type BuildCursorCompositeFieldWhereConditionParams = {
   fieldType: FieldMetadataType;

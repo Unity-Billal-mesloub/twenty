@@ -1,13 +1,10 @@
 import styled from '@emotion/styled';
-import { useState } from 'react';
 
-import { SettingsAccountsCalendarDateFormatSelect } from '@/settings/accounts/components/SettingsAccountsCalendarDateFormatSelect';
-import { SettingsAccountsCalendarTimeFormatSelect } from '@/settings/accounts/components/SettingsAccountsCalendarTimeFormatSelect';
-import { SettingsAccountsCalendarTimeZoneSelect } from '@/settings/accounts/components/SettingsAccountsCalendarTimeZoneSelect';
-
-import { DateFormat } from '@/localization/constants/DateFormat';
-import { TimeFormat } from '@/localization/constants/TimeFormat';
-import { detectTimeZone } from '@/localization/utils/detectTimeZone';
+import { useDateTimeFormat } from '@/localization/hooks/useDateTimeFormat';
+import { useFormatPreferences } from '@/localization/hooks/useFormatPreferences';
+import { DateTimeSettingsDateFormatSelect } from '@/settings/experience/components/DateTimeSettingsDateFormatSelect';
+import { DateTimeSettingsTimeFormatSelect } from '@/settings/experience/components/DateTimeSettingsTimeFormatSelect';
+import { DateTimeSettingsTimeZoneSelect } from '@/settings/experience/components/DateTimeSettingsTimeZoneSelect';
 
 const StyledContainer = styled.div`
   display: flex;
@@ -16,29 +13,23 @@ const StyledContainer = styled.div`
 `;
 
 export const SettingsAccountsCalendarDisplaySettings = () => {
-  // TODO: use the user's saved time zone. If undefined, default it with the user's detected time zone.
-  const [timeZone, setTimeZone] = useState(detectTimeZone());
-
-  // TODO: use the user's saved date format.
-  const [dateFormat, setDateFormat] = useState(DateFormat.MONTH_FIRST);
-
-  // TODO: use the user's saved time format.
-  const [timeFormat, setTimeFormat] = useState(TimeFormat['HOUR_24']);
+  const { timeZone, dateFormat, timeFormat } = useDateTimeFormat();
+  const { updateFormatPreference } = useFormatPreferences();
 
   return (
     <StyledContainer>
-      <SettingsAccountsCalendarTimeZoneSelect
+      <DateTimeSettingsTimeZoneSelect
         value={timeZone}
-        onChange={setTimeZone}
+        onChange={(value) => updateFormatPreference('timeZone', value)}
       />
-      <SettingsAccountsCalendarDateFormatSelect
+      <DateTimeSettingsDateFormatSelect
         value={dateFormat}
-        onChange={setDateFormat}
+        onChange={(value) => updateFormatPreference('dateFormat', value)}
         timeZone={timeZone}
       />
-      <SettingsAccountsCalendarTimeFormatSelect
+      <DateTimeSettingsTimeFormatSelect
         value={timeFormat}
-        onChange={setTimeFormat}
+        onChange={(value) => updateFormatPreference('timeFormat', value)}
         timeZone={timeZone}
       />
     </StyledContainer>

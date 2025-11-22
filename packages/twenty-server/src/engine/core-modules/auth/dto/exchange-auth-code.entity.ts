@@ -1,11 +1,11 @@
 import { Field, ObjectType } from '@nestjs/graphql';
 
-import { AuthToken } from 'src/engine/core-modules/auth/dto/token.entity';
+import { AuthToken } from 'src/engine/core-modules/auth/dto/auth-token.dto';
 
 @ObjectType()
 export class ExchangeAuthCode {
   @Field(() => AuthToken)
-  accessToken: AuthToken;
+  accessOrWorkspaceAgnosticToken: AuthToken;
 
   @Field(() => AuthToken)
   refreshToken: AuthToken;

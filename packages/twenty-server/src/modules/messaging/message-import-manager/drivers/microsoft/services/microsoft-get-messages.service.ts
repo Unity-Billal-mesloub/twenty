@@ -1,23 +1,28 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-import { EmailAddress } from 'addressparser';
+import { type EmailAddress } from 'addressparser';
 import { isDefined } from 'twenty-shared/utils';
 
-import { ConnectedAccountWorkspaceEntity } from 'src/modules/connected-account/standard-objects/connected-account.workspace-entity';
+import { type ConnectedAccountWorkspaceEntity } from 'src/modules/connected-account/standard-objects/connected-account.workspace-entity';
 import { MessageDirection } from 'src/modules/messaging/common/enums/message-direction.enum';
 import { computeMessageDirection } from 'src/modules/messaging/message-import-manager/drivers/gmail/utils/compute-message-direction.util';
 import { MicrosoftImportDriverException } from 'src/modules/messaging/message-import-manager/drivers/microsoft/exceptions/microsoft-import-driver.exception';
-import { MicrosoftGraphBatchResponse } from 'src/modules/messaging/message-import-manager/drivers/microsoft/services/microsoft-get-messages.interface';
-import { MessageWithParticipants } from 'src/modules/messaging/message-import-manager/types/message';
+import { type MicrosoftGraphBatchResponse } from 'src/modules/messaging/message-import-manager/drivers/microsoft/services/microsoft-get-messages.interface';
+import { type MessageWithParticipants } from 'src/modules/messaging/message-import-manager/types/message';
 import { formatAddressObjectAsParticipants } from 'src/modules/messaging/message-import-manager/utils/format-address-object-as-participants.util';
 import { safeParseEmailAddress } from 'src/modules/messaging/message-import-manager/utils/safe-parse.util';
 
 import { MicrosoftFetchByBatchService } from './microsoft-fetch-by-batch.service';
-import { MicrosoftHandleErrorService } from './microsoft-handle-error.service';
+import { MicrosoftMessagesImportErrorHandler } from './microsoft-messages-import-error-handler.service';
 
 type ConnectedAccountType = Pick<
   ConnectedAccountWorkspaceEntity,
-  'refreshToken' | 'id' | 'provider' | 'handle' | 'handleAliases'
+  | 'accessToken'
+  | 'refreshToken'
+  | 'id'
+  | 'provider'
+  | 'handle'
+  | 'handleAliases'
 >;
 
 @Injectable()
@@ -26,7 +31,7 @@ export class MicrosoftGetMessagesService {
 
   constructor(
     private readonly microsoftFetchByBatchService: MicrosoftFetchByBatchService,
-    private readonly microsoftHandleErrorService: MicrosoftHandleErrorService,
+    private readonly microsoftMessagesImportErrorHandler: MicrosoftMessagesImportErrorHandler,
   ) {}
 
   async getMessages(
@@ -47,7 +52,7 @@ export class MicrosoftGetMessagesService {
 
       return messages;
     } catch (error) {
-      this.microsoftHandleErrorService.handleMicrosoftGetMessagesError(error);
+      this.microsoftMessagesImportErrorHandler.handleError(error);
 
       return [];
     }

@@ -7,14 +7,13 @@ import { SIDE_PANEL_FOCUS_ID } from '@/command-menu/constants/SidePanelFocusId';
 import { Dropdown } from '@/ui/layout/dropdown/components/Dropdown';
 import { DropdownContent } from '@/ui/layout/dropdown/components/DropdownContent';
 import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
-import { DropdownHotkeyScope } from '@/ui/layout/dropdown/constants/DropdownHotkeyScope';
 import { useToggleDropdown } from '@/ui/layout/dropdown/hooks/useToggleDropdown';
 import { SelectableList } from '@/ui/layout/selectable-list/components/SelectableList';
 import { useSelectableList } from '@/ui/layout/selectable-list/hooks/useSelectableList';
 import { useHotkeysOnFocusedElement } from '@/ui/utilities/hotkey/hooks/useHotkeysOnFocusedElement';
-import { AppHotkeyScope } from '@/ui/utilities/hotkey/types/AppHotkeyScope';
 import { useAvailableComponentInstanceIdOrThrow } from '@/ui/utilities/state/component-state/hooks/useAvailableComponentInstanceIdOrThrow';
 import { useTheme } from '@emotion/react';
+import { t } from '@lingui/core/macro';
 import { useContext } from 'react';
 import { Button } from 'twenty-ui/input';
 import { getOsControlSymbol } from 'twenty-ui/utilities';
@@ -39,7 +38,6 @@ export const CommandMenuActionMenuDropdown = () => {
         dropdownComponentInstanceIdFromProps: dropdownId,
       });
     },
-    scope: AppHotkeyScope.CommandMenuOpen,
     dependencies: [toggleDropdown],
   };
 
@@ -68,7 +66,11 @@ export const CommandMenuActionMenuDropdown = () => {
       dropdownId={dropdownId}
       data-select-disable
       clickableComponent={
-        <Button title="Options" hotkeys={[getOsControlSymbol(), 'O']} />
+        <Button
+          size="small"
+          title={t`Options`}
+          hotkeys={[getOsControlSymbol(), 'O']}
+        />
       }
       dropdownPlacement="top-end"
       dropdownOffset={{ y: parseInt(theme.spacing(2), 10) }}
@@ -86,7 +88,6 @@ export const CommandMenuActionMenuDropdown = () => {
               selectableListInstanceId={actionMenuId}
               focusId={dropdownId}
               selectableItemIdArray={selectableItemIdArray}
-              hotkeyScope={DropdownHotkeyScope.Dropdown}
             >
               {recordSelectionActions.map((action) => (
                 <ActionComponent action={action} key={action.key} />

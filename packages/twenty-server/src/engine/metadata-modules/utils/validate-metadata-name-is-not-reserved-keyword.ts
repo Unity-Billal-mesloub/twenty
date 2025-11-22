@@ -1,4 +1,4 @@
-import { t } from '@lingui/core/macro';
+import { msg } from '@lingui/core/macro';
 
 import {
   InvalidMetadataException,
@@ -24,8 +24,16 @@ const coreObjectNames = [
   'billingSubscriptionItems',
   'featureFlag',
   'featureFlags',
+  'job',
+  'jobs',
   'keyValuePair',
   'keyValuePairs',
+  'pageLayout',
+  'pageLayouts',
+  'pageLayoutTab',
+  'pageLayoutTabs',
+  'pageLayoutWidget',
+  'pageLayoutWidgets',
   'postgresCredential',
   'postgresCredentials',
   'twoFactorMethod',
@@ -42,8 +50,10 @@ const coreObjectNames = [
   'userWorkspaceRoles',
 ];
 
-const reservedKeywords = [
+export const RESERVED_METADATA_NAME_KEYWORDS = [
   ...coreObjectNames,
+  'plan',
+  'plans',
   'event',
   'events',
   'field',
@@ -62,19 +72,18 @@ const reservedKeywords = [
   'index',
   'relation',
   'relations',
-  'position',
-  'positions',
+  'aggregate',
 ];
 
 export const validateMetadataNameIsNotReservedKeywordOrThrow = (
   name: string,
 ) => {
-  if (reservedKeywords.includes(name)) {
+  if (RESERVED_METADATA_NAME_KEYWORDS.includes(name)) {
     throw new InvalidMetadataException(
       `The name "${name}" is not available`,
       InvalidMetadataExceptionCode.RESERVED_KEYWORD,
       {
-        userFriendlyMessage: t`This name is not available.`,
+        userFriendlyMessage: msg`This name is not available.`,
       },
     );
   }

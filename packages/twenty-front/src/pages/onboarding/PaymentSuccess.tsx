@@ -2,12 +2,13 @@ import { SubTitle } from '@/auth/components/SubTitle';
 import { Title } from '@/auth/components/Title';
 import { currentUserState } from '@/auth/states/currentUserState';
 import { OnboardingModalCircularIcon } from '@/onboarding/components/OnboardingModalCircularIcon';
-import { AppPath } from '@/types/AppPath';
 import { Modal } from '@/ui/layout/modal/components/Modal';
 import { useSubscriptionStatus } from '@/workspace/hooks/useSubscriptionStatus';
 import styled from '@emotion/styled';
+import { t } from '@lingui/core/macro';
 import { useState } from 'react';
 import { useSetRecoilState } from 'recoil';
+import { AppPath } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
 import { IconCheck } from 'twenty-ui/display';
 import { Loader } from 'twenty-ui/feedback';
@@ -75,7 +76,7 @@ export const PaymentSuccess = () => {
         <SubTitle>Your account has been activated.</SubTitle>
       </StyledTitleContainer>
       <MainButton
-        title="Start"
+        title={t`Start`}
         width={200}
         onClick={navigateWithSubscriptionCheck}
         Icon={() => (isLoading ? <Loader /> : null)}

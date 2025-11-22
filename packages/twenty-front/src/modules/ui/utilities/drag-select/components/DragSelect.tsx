@@ -1,12 +1,12 @@
 import styled from '@emotion/styled';
-import { RefObject, useCallback, useState } from 'react';
+import { type RefObject, useCallback, useState } from 'react';
 
+import { useDragSelect } from '@/ui/utilities/drag-select/hooks/useDragSelect';
 import { useDragSelectWithAutoScroll } from '@/ui/utilities/drag-select/hooks/useDragSelectWithAutoScroll';
 import { useTrackPointer } from '@/ui/utilities/pointer-event/hooks/useTrackPointer';
 import { isDefined } from 'twenty-shared/utils';
 import { isDeeplyEqual } from '~/utils/isDeeplyEqual';
-import { useDragSelect } from '../hooks/useDragSelect';
-import { SelectionBox } from '../types/SelectionBox';
+import { type SelectionBox } from '../types/SelectionBox';
 import { isValidSelectionStart } from '../utils/selectionBoxValidation';
 
 type DragSelectProps = {
@@ -27,8 +27,8 @@ const StyledDragSelection = styled.div<SelectionBox>`
   position: absolute;
   z-index: 99;
   opacity: 0.2;
-  border: 1px solid ${({ theme }) => theme.color.blue10};
-  background: ${({ theme }) => theme.color.blue30};
+  border: 1px solid ${({ theme }) => theme.color.blue3};
+  background: ${({ theme }) => theme.color.blue7};
   top: ${({ top }) => top}px;
   left: ${({ left }) => left}px;
   width: ${({ width }) => width}px;

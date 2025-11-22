@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-import { OAuth2Client } from 'google-auth-library';
-import { google } from 'googleapis';
+import { google, type Auth } from 'googleapis';
 
 import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
 
@@ -12,7 +11,9 @@ export class GoogleOAuth2ClientManagerService {
     private readonly logger: Logger,
   ) {}
 
-  public async getOAuth2Client(refreshToken: string): Promise<OAuth2Client> {
+  public async getOAuth2Client(
+    refreshToken: string,
+  ): Promise<Auth.OAuth2Client> {
     const gmailClientId = this.twentyConfigService.get('AUTH_GOOGLE_CLIENT_ID');
     const gmailClientSecret = this.twentyConfigService.get(
       'AUTH_GOOGLE_CLIENT_SECRET',

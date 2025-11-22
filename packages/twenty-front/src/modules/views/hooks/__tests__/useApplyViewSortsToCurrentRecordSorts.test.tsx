@@ -1,15 +1,15 @@
 import { act, renderHook } from '@testing-library/react';
 
 import { currentRecordSortsComponentState } from '@/object-record/record-sort/states/currentRecordSortsComponentState';
-import { RecordSort } from '@/object-record/record-sort/types/RecordSort';
-import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
-import { ViewSort } from '@/views/types/ViewSort';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
 
-import { generatedMockObjectMetadataItems } from '~/testing/mock-data/generatedMockObjectMetadataItems';
+import { generatedMockObjectMetadataItems } from '~/testing/utils/generatedMockObjectMetadataItems';
 
+import { type CoreViewSortEssential } from '@/views/types/CoreViewSortEssential';
+import { isDefined } from 'twenty-shared/utils';
+import { ViewSortDirection } from '~/generated/graphql';
 import { getJestMetadataAndApolloMocksAndActionMenuWrapper } from '~/testing/jest/getJestMetadataAndApolloMocksAndActionMenuWrapper';
 import { useApplyViewSortsToCurrentRecordSorts } from '../useApplyViewSortsToCurrentRecordSorts';
-import { isDefined } from 'twenty-shared/utils';
 
 const mockObjectMetadataItemNameSingular = 'company';
 
@@ -32,11 +32,11 @@ describe('useApplyViewSortsToCurrentRecordSorts', () => {
     throw new Error(`Missing mock field metadata Name`);
   }
 
-  const mockViewSort: ViewSort = {
-    __typename: 'ViewSort',
+  const mockViewSort: CoreViewSortEssential = {
     id: 'sort-1',
     fieldMetadataId: mockFieldMetadataItem.id,
-    direction: 'asc',
+    direction: ViewSortDirection.ASC,
+    viewId: 'view-1',
   };
 
   it('should apply view sorts to current record sorts', () => {
@@ -45,7 +45,7 @@ describe('useApplyViewSortsToCurrentRecordSorts', () => {
         const { applyViewSortsToCurrentRecordSorts } =
           useApplyViewSortsToCurrentRecordSorts();
 
-        const currentSorts = useRecoilComponentValueV2(
+        const currentSorts = useRecoilComponentValue(
           currentRecordSortsComponentState,
         );
 
@@ -70,7 +70,7 @@ describe('useApplyViewSortsToCurrentRecordSorts', () => {
         id: mockViewSort.id,
         fieldMetadataId: mockViewSort.fieldMetadataId,
         direction: mockViewSort.direction,
-      } satisfies RecordSort,
+      },
     ]);
   });
 
@@ -80,7 +80,7 @@ describe('useApplyViewSortsToCurrentRecordSorts', () => {
         const { applyViewSortsToCurrentRecordSorts } =
           useApplyViewSortsToCurrentRecordSorts();
 
-        const currentSorts = useRecoilComponentValueV2(
+        const currentSorts = useRecoilComponentValue(
           currentRecordSortsComponentState,
         );
 

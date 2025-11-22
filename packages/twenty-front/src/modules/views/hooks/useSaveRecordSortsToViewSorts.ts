@@ -1,7 +1,8 @@
 import { currentRecordSortsComponentState } from '@/object-record/record-sort/states/currentRecordSortsComponentState';
-import { useRecoilComponentCallbackStateV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentCallbackStateV2';
+import { useRecoilComponentCallbackState } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentCallbackState';
 import { getSnapshotValue } from '@/ui/utilities/state/utils/getSnapshotValue';
-import { usePersistViewSortRecords } from '@/views/hooks/internal/usePersistViewSortRecords';
+import { usePersistViewSortRecords } from '@/views/hooks/internal/usePersistViewSort';
+import { useCanPersistViewChanges } from '@/views/hooks/useCanPersistViewChanges';
 import { useGetCurrentViewOnly } from '@/views/hooks/useGetCurrentViewOnly';
 import { getViewSortsToCreate } from '@/views/utils/getViewSortsToCreate';
 import { getViewSortsToDelete } from '@/views/utils/getViewSortsToDelete';
@@ -11,22 +12,20 @@ import { useRecoilCallback } from 'recoil';
 import { isDefined } from 'twenty-shared/utils';
 
 export const useSaveRecordSortsToViewSorts = () => {
-  const {
-    createViewSortRecords,
-    updateViewSortRecords,
-    deleteViewSortRecords,
-  } = usePersistViewSortRecords();
+  const { canPersistChanges } = useCanPersistViewChanges();
+  const { createViewSorts, updateViewSorts, deleteViewSorts } =
+    usePersistViewSortRecords();
 
   const { currentView } = useGetCurrentViewOnly();
 
-  const currentRecordSortsCallbackState = useRecoilComponentCallbackStateV2(
+  const currentRecordSortsCallbackState = useRecoilComponentCallbackState(
     currentRecordSortsComponentState,
   );
 
   const saveRecordSortsToViewSorts = useRecoilCallback(
     ({ snapshot }) =>
       async () => {
-        if (!isDefined(currentView)) {
+        if (!canPersistChanges || !isDefined(currentView)) {
           return;
         }
 
@@ -37,7 +36,9 @@ export const useSaveRecordSortsToViewSorts = () => {
           currentRecordSortsCallbackState,
         );
 
-        const newViewSorts = currentRecordSorts.map(mapRecordSortToViewSort);
+        const newViewSorts = currentRecordSorts.map((recordSort) =>
+          mapRecordSortToViewSort(recordSort, currentView.id),
+        );
 
         const viewSortsToCreate = getViewSortsToCreate(
           currentViewSorts,
@@ -54,20 +55,17 @@ export const useSaveRecordSortsToViewSorts = () => {
           newViewSorts,
         );
 
-        const viewSortIdsToDelete = viewSortsToDelete.map(
-          (viewSort) => viewSort.id,
-        );
-
-        await createViewSortRecords(viewSortsToCreate, currentView);
-        await updateViewSortRecords(viewSortsToUpdate);
-        await deleteViewSortRecords(viewSortIdsToDelete);
+        await createViewSorts(viewSortsToCreate, currentView);
+        await updateViewSorts(viewSortsToUpdate);
+        await deleteViewSorts(viewSortsToDelete);
       },
     [
-      createViewSortRecords,
-      deleteViewSortRecords,
-      updateViewSortRecords,
-      currentRecordSortsCallbackState,
+      canPersistChanges,
       currentView,
+      currentRecordSortsCallbackState,
+      createViewSorts,
+      updateViewSorts,
+      deleteViewSorts,
     ],
   );
 

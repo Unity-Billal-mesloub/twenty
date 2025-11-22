@@ -5,7 +5,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { Key } from 'ts-key-enum';
 import { z } from 'zod';
 
-import { TextInput } from '@/ui/input/components/TextInput';
+import { SettingsTextInput } from '@/ui/input/components/SettingsTextInput';
 import { useLingui } from '@lingui/react/macro';
 import { isValidHostname } from 'twenty-shared/utils';
 import { Button } from 'twenty-ui/input';
@@ -41,7 +41,7 @@ export const SettingsAccountsBlocklistInput = ({
         emailOrDomain: z
           .string()
           .trim()
-          .email(t`Invalid email or domain`)
+          .pipe(z.email({ error: t`Invalid email or domain` }))
           .or(
             z.string().refine(
               (value) =>
@@ -94,7 +94,7 @@ export const SettingsAccountsBlocklistInput = ({
             name="emailOrDomain"
             control={control}
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <TextInput
+              <SettingsTextInput
                 instanceId="settings-accounts-blocklist-input"
                 placeholder="eddy@gmail.com, @apple.com"
                 value={value}

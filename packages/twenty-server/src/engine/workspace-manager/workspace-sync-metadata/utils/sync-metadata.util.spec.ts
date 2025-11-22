@@ -1,6 +1,7 @@
 import { FieldMetadataType } from 'twenty-shared/types';
+import { type DeepPartial } from 'typeorm/common/DeepPartial';
 
-import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
+import { type ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
 
 import { mapObjectMetadataByUniqueIdentifier } from './sync-metadata.util';
 

@@ -1,13 +1,13 @@
-import { TextInputV2 } from '@/ui/input/components/TextInputV2';
+import { TextInput } from '@/ui/input/components/TextInput';
 import { usePushFocusItemToFocusStack } from '@/ui/utilities/focus/hooks/usePushFocusItemToFocusStack';
 import { useRemoveFocusItemFromFocusStackById } from '@/ui/utilities/focus/hooks/useRemoveFocusItemFromFocusStackById';
 import { FocusComponentType } from '@/ui/utilities/focus/types/FocusComponentType';
 import { useHotkeysOnFocusedElement } from '@/ui/utilities/hotkey/hooks/useHotkeysOnFocusedElement';
 import { useListenClickOutside } from '@/ui/utilities/pointer-event/hooks/useListenClickOutside';
-import { FocusEvent, useRef } from 'react';
+import { type FocusEvent, useRef } from 'react';
 import { Key } from 'ts-key-enum';
 import { isDefined } from 'twenty-shared/utils';
-import { IconComponent, TablerIconsProps } from 'twenty-ui/display';
+import { type IconComponent, type TablerIconsProps } from 'twenty-ui/display';
 
 type NavigationDrawerInputProps = {
   className?: string;
@@ -18,7 +18,6 @@ type NavigationDrawerInputProps = {
   onSubmit: (value: string) => void;
   onCancel: (value: string) => void;
   onClickOutside: (event: MouseEvent | TouchEvent, value: string) => void;
-  hotkeyScope: string;
 };
 
 const NAVIGATION_DRAWER_INPUT_FOCUS_ID = 'navigation-drawer-input';
@@ -32,7 +31,6 @@ export const NavigationDrawerInput = ({
   onSubmit,
   onCancel,
   onClickOutside,
-  hotkeyScope,
 }: NavigationDrawerInputProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -45,7 +43,6 @@ export const NavigationDrawerInput = ({
       });
     },
     focusId: NAVIGATION_DRAWER_INPUT_FOCUS_ID,
-    scope: hotkeyScope,
   });
 
   useHotkeysOnFocusedElement({
@@ -57,7 +54,6 @@ export const NavigationDrawerInput = ({
       });
     },
     focusId: NAVIGATION_DRAWER_INPUT_FOCUS_ID,
-    scope: hotkeyScope,
   });
 
   useListenClickOutside({
@@ -86,7 +82,9 @@ export const NavigationDrawerInput = ({
         type: FocusComponentType.TEXT_INPUT,
         instanceId: NAVIGATION_DRAWER_INPUT_FOCUS_ID,
       },
-      hotkeyScope: { scope: hotkeyScope },
+      globalHotkeysConfig: {
+        enableGlobalHotkeysConflictingWithKeyboard: false,
+      },
     });
   };
 
@@ -97,7 +95,7 @@ export const NavigationDrawerInput = ({
   };
 
   return (
-    <TextInputV2
+    <TextInput
       className={className}
       LeftIcon={Icon}
       ref={inputRef}

@@ -1,12 +1,22 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-import { ImapFlow } from 'imapflow';
+import { type ImapFlow } from 'imapflow';
 
-import { ConnectedAccountWorkspaceEntity } from 'src/modules/connected-account/standard-objects/connected-account.workspace-entity';
+import { type MessageFolderWorkspaceEntity } from 'src/modules/messaging/common/standard-objects/message-folder.workspace-entity';
 import { ImapClientProvider } from 'src/modules/messaging/message-import-manager/drivers/imap/providers/imap-client.provider';
-import { ImapHandleErrorService } from 'src/modules/messaging/message-import-manager/drivers/imap/services/imap-handle-error.service';
-import { findSentMailbox } from 'src/modules/messaging/message-import-manager/drivers/imap/utils/find-sent-mailbox.util';
-import { GetFullMessageListResponse } from 'src/modules/messaging/message-import-manager/services/messaging-get-message-list.service';
+import { ImapMessageListFetchErrorHandler } from 'src/modules/messaging/message-import-manager/drivers/imap/services/imap-message-list-fetch-error-handler.service';
+import { ImapIncrementalSyncService } from 'src/modules/messaging/message-import-manager/drivers/imap/services/imap-incremental-sync.service';
+import { createSyncCursor } from 'src/modules/messaging/message-import-manager/drivers/imap/utils/create-sync-cursor.util';
+import { extractMailboxState } from 'src/modules/messaging/message-import-manager/drivers/imap/utils/extract-mailbox-state.util';
+import {
+  ImapSyncCursor,
+  parseSyncCursor,
+} from 'src/modules/messaging/message-import-manager/drivers/imap/utils/parse-sync-cursor.util';
+import { type GetMessageListsArgs } from 'src/modules/messaging/message-import-manager/types/get-message-lists-args.type';
+import {
+  type GetMessageListsResponse,
+  type GetOneMessageListResponse,
+} from 'src/modules/messaging/message-import-manager/types/get-message-lists-response.type';
 
 @Injectable()
 export class ImapGetMessageListService {
@@ -14,188 +24,158 @@ export class ImapGetMessageListService {
 
   constructor(
     private readonly imapClientProvider: ImapClientProvider,
-    private readonly imapHandleErrorService: ImapHandleErrorService,
+    private readonly imapIncrementalSyncService: ImapIncrementalSyncService,
+    private readonly imapMessageListFetchErrorHandler: ImapMessageListFetchErrorHandler,
   ) {}
 
-  async getFullMessageList(
-    connectedAccount: Pick<
-      ConnectedAccountWorkspaceEntity,
-      'id' | 'provider' | 'connectionParameters' | 'handle'
-    >,
-  ): Promise<GetFullMessageListResponse> {
+  public async getMessageLists({
+    connectedAccount,
+    messageFolders,
+  }: GetMessageListsArgs): Promise<GetMessageListsResponse> {
+    let client: ImapFlow | null = null;
+
     try {
-      const client = await this.imapClientProvider.getClient(connectedAccount);
+      client = await this.imapClientProvider.getClient(connectedAccount);
+      const result: GetMessageListsResponse = [];
 
-      const mailboxes = ['INBOX'];
+      for (const folder of messageFolders) {
+        this.logger.log(`Processing folder: ${folder.name}`);
 
-      const sentFolder = await findSentMailbox(client, this.logger);
+        const folderPath = folder.externalId?.split(':')[0];
 
-      if (sentFolder) {
-        mailboxes.push(sentFolder);
-      }
-
-      let allMessages: { id: string; date: string }[] = [];
-
-      for (const mailbox of mailboxes) {
-        try {
-          const messages = await this.getMessagesFromMailbox(client, mailbox);
-
-          allMessages = [...allMessages, ...messages];
-          this.logger.log(
-            `Fetched ${messages.length} messages from ${mailbox}`,
-          );
-        } catch (error) {
-          this.logger.warn(
-            `Error fetching from mailbox ${mailbox}: ${error.message}. Continuing with other mailboxes.`,
-          );
+        if (!folderPath) {
+          this.logger.warn(`Folder ${folder.name} has no path. Skipping.`);
+          continue;
         }
-      }
 
-      allMessages.sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-      );
-
-      const messageExternalIds = allMessages.map((message) => message.id);
-
-      const nextSyncCursor =
-        allMessages.length > 0 ? allMessages[allMessages.length - 1].date : '';
-
-      return {
-        messageExternalIds,
-        nextSyncCursor,
-      };
-    } catch (error) {
-      this.logger.error(
-        `Error getting message list: ${error.message}`,
-        error.stack,
-      );
-
-      this.imapHandleErrorService.handleImapMessageListFetchError(error);
-
-      return { messageExternalIds: [], nextSyncCursor: '' };
-    } finally {
-      await this.imapClientProvider.closeClient(connectedAccount.id);
-    }
-  }
-
-  async getPartialMessageList(
-    connectedAccount: Pick<
-      ConnectedAccountWorkspaceEntity,
-      'id' | 'provider' | 'connectionParameters' | 'handle'
-    >,
-    syncCursor?: string,
-  ): Promise<{ messageExternalIds: string[]; nextSyncCursor: string }> {
-    try {
-      const client = await this.imapClientProvider.getClient(connectedAccount);
-
-      const mailboxes = ['INBOX'];
-
-      const sentFolder = await findSentMailbox(client, this.logger);
-
-      if (sentFolder) {
-        mailboxes.push(sentFolder);
-      }
-
-      let allMessages: { id: string; date: string }[] = [];
-
-      for (const mailbox of mailboxes) {
         try {
-          const messages = await this.getMessagesFromMailbox(
+          const response = await this.getMessageList(
             client,
-            mailbox,
-            syncCursor,
+            folderPath,
+            folder,
           );
 
-          allMessages = [...allMessages, ...messages];
-          this.logger.log(
-            `Fetched ${messages.length} messages from ${mailbox}`,
-          );
+          result.push({
+            ...response,
+            folderId: folder.id,
+          });
         } catch (error) {
           this.logger.warn(
-            `Error fetching from mailbox ${mailbox}: ${error.message}. Continuing with other mailboxes.`,
+            `Error fetching from folder ${folder.name}: ${error.message}. Continuing with other folders.`,
           );
-        }
-      }
 
-      allMessages.sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-      );
-
-      const messageExternalIds = allMessages.map((message) => message.id);
-
-      const nextSyncCursor =
-        allMessages.length > 0
-          ? allMessages[allMessages.length - 1].date
-          : syncCursor || '';
-
-      return {
-        messageExternalIds,
-        nextSyncCursor,
-      };
-    } catch (error) {
-      this.logger.error(
-        `Error getting message list: ${error.message}`,
-        error.stack,
-      );
-
-      this.imapHandleErrorService.handleImapMessageListFetchError(error);
-
-      return { messageExternalIds: [], nextSyncCursor: syncCursor || '' };
-    } finally {
-      await this.imapClientProvider.closeClient(connectedAccount.id);
-    }
-  }
-
-  private async getMessagesFromMailbox(
-    client: ImapFlow,
-    mailbox: string,
-    cursor?: string,
-  ): Promise<{ id: string; date: string }[]> {
-    let lock;
-
-    try {
-      lock = await client.getMailboxLock(mailbox);
-
-      let searchOptions = {};
-
-      if (cursor) {
-        searchOptions = {
-          since: new Date(cursor),
-        };
-      }
-
-      const messages: { id: string; date: string }[] = [];
-
-      for await (const message of client.fetch(searchOptions, {
-        envelope: true,
-      })) {
-        if (message.envelope?.messageId) {
-          const messageDate = message.envelope.date
-            ? new Date(message.envelope.date)
-            : new Date();
-          const validDate = isNaN(messageDate.getTime())
-            ? new Date()
-            : messageDate;
-
-          messages.push({
-            id: message.envelope.messageId,
-            date: validDate.toISOString(),
+          result.push({
+            messageExternalIds: [],
+            nextSyncCursor: folder.syncCursor || '',
+            previousSyncCursor: folder.syncCursor,
+            messageExternalIdsToDelete: [],
+            folderId: folder.id,
           });
         }
       }
 
-      return messages;
+      return result;
     } catch (error) {
       this.logger.error(
-        `Error fetching from mailbox ${mailbox}: ${error.message}`,
+        `Error getting message list: ${error.message}`,
         error.stack,
       );
 
-      return [];
+      this.imapMessageListFetchErrorHandler.handleError(error);
+
+      return messageFolders.map((folder) => ({
+        messageExternalIds: [],
+        nextSyncCursor: folder.syncCursor || '',
+        previousSyncCursor: folder.syncCursor,
+        messageExternalIdsToDelete: [],
+        folderId: folder.id,
+      }));
     } finally {
-      if (lock) {
-        lock.release();
+      if (client) {
+        await this.imapClientProvider.closeClient(client);
       }
+    }
+  }
+
+  public async getMessageList(
+    client: ImapFlow,
+    folder: string,
+    messageFolder: Pick<MessageFolderWorkspaceEntity, 'syncCursor'>,
+  ): Promise<GetOneMessageListResponse> {
+    const { messages, messageExternalUidsToDelete, syncCursor } =
+      await this.getMessagesFromFolder(
+        client,
+        folder,
+        messageFolder.syncCursor,
+      );
+
+    messages.sort((a, b) => b.uid - a.uid);
+
+    const messageExternalIds = messages.map(
+      (message) => `${folder}:${message.uid.toString()}`,
+    );
+
+    return {
+      messageExternalIds,
+      nextSyncCursor: JSON.stringify(syncCursor),
+      previousSyncCursor: messageFolder.syncCursor || '',
+      messageExternalIdsToDelete: messageExternalUidsToDelete.map((uid) =>
+        uid.toString(),
+      ),
+      folderId: undefined,
+    };
+  }
+
+  private async getMessagesFromFolder(
+    client: ImapFlow,
+    folder: string,
+    cursor?: string,
+  ): Promise<{
+    messages: { uid: number }[];
+    messageExternalUidsToDelete: number[];
+    syncCursor: ImapSyncCursor;
+  }> {
+    let lock;
+
+    try {
+      lock = await client.getMailboxLock(folder);
+      const mailbox = client.mailbox!;
+
+      if (typeof mailbox === 'boolean') {
+        throw new Error(`Invalid mailbox state for folder ${folder}`);
+      }
+
+      const mailboxState = extractMailboxState(mailbox);
+      const previousCursor = parseSyncCursor(cursor);
+
+      const { messages, messageExternalUidsToDelete } =
+        await this.imapIncrementalSyncService.syncMessages(
+          client,
+          previousCursor,
+          mailboxState,
+          folder,
+        );
+
+      const newSyncCursor = createSyncCursor(
+        messages,
+        previousCursor,
+        mailboxState,
+      );
+
+      return {
+        messages,
+        messageExternalUidsToDelete,
+        syncCursor: newSyncCursor,
+      };
+    } catch (err) {
+      this.logger.error(
+        `Error fetching from folder ${folder}: ${err.message}`,
+        err.stack,
+      );
+
+      throw err;
+    } finally {
+      if (lock) lock.release();
     }
   }
 }

@@ -10,6 +10,9 @@ import {
   variables,
 } from '../__mocks__/useCreateOneObjectMetadataItem';
 
+import { jestExpectSuccessfulMetadataRequestResult } from '@/object-metadata/hooks/__tests__/utils/jest-expect-metadata-request-status.util';
+import { GET_CURRENT_USER } from '@/users/graphql/queries/getCurrentUser';
+import { mockedUserData } from '~/testing/mock-data/users';
 import {
   query as findManyObjectMetadataItemsQuery,
   responseData as findManyObjectMetadataItemsResponseData,
@@ -24,6 +27,17 @@ const mocks = [
     result: jest.fn(() => ({
       data: {
         createOneObject: responseData,
+      },
+    })),
+  },
+  {
+    request: {
+      query: GET_CURRENT_USER,
+      variables: {},
+    },
+    result: jest.fn(() => ({
+      data: {
+        currentUser: mockedUserData,
       },
     })),
   },
@@ -77,8 +91,8 @@ describe('useCreateOneObjectMetadataItem', () => {
         namePlural: 'viewFilters',
         nameSingular: 'viewFilter',
       });
-
-      expect(res.data).toEqual({ createOneObject: responseData });
+      jestExpectSuccessfulMetadataRequestResult(res);
+      expect(res.response).toEqual({ data: { createOneObject: responseData } });
     });
   });
 });

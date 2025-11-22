@@ -1,8 +1,8 @@
-import { useGetStandardObjectIcon } from '@/object-metadata/hooks/useGetStandardObjectIcon';
+import { useLabelIdentifierFieldMetadataItem } from '@/object-metadata/hooks/useLabelIdentifierFieldMetadataItem';
 import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
-import { FieldContext } from '@/object-record/record-field/contexts/FieldContext';
-import { useIsRecordReadOnly } from '@/object-record/record-field/hooks/useIsRecordReadOnly';
+import { useIsRecordFieldReadOnly } from '@/object-record/read-only/hooks/useIsRecordFieldReadOnly';
+import { FieldContext } from '@/object-record/record-field/ui/contexts/FieldContext';
 import { useRecordShowContainerActions } from '@/object-record/record-show/hooks/useRecordShowContainerActions';
 import { useRecordShowContainerData } from '@/object-record/record-show/hooks/useRecordShowContainerData';
 import { recordStoreFamilySelector } from '@/object-record/record-store/states/selectors/recordStoreFamilySelector';
@@ -27,11 +27,9 @@ export const SummaryCard = ({
   objectRecordId,
   isInRightDrawer,
 }: SummaryCardProps) => {
-  const { recordLoading, labelIdentifierFieldMetadataItem, isPrefetchLoading } =
-    useRecordShowContainerData({
-      objectNameSingular,
-      objectRecordId,
-    });
+  const { recordLoading, isPrefetchLoading } = useRecordShowContainerData({
+    objectRecordId,
+  });
 
   const recordCreatedAt = useRecoilValue<string | null>(
     recordStoreFamilySelector({
@@ -46,12 +44,10 @@ export const SummaryCard = ({
       objectRecordId,
     });
 
-  const { Icon, IconColor } = useGetStandardObjectIcon(objectNameSingular);
   const isMobile = useIsMobile() || isInRightDrawer;
 
   const recordIdentifier = useRecoilValue(
     recordStoreIdentifierFamilySelector({
-      objectNameSingular,
       recordId: objectRecordId,
     }),
   );
@@ -60,8 +56,14 @@ export const SummaryCard = ({
     objectNameSingular,
   });
 
-  const isRecordReadOnly = useIsRecordReadOnly({
+  const { labelIdentifierFieldMetadataItem } =
+    useLabelIdentifierFieldMetadataItem({
+      objectNameSingular,
+    });
+
+  const isTitleReadOnly = useIsRecordFieldReadOnly({
     recordId: objectRecordId,
+    fieldMetadataId: labelIdentifierFieldMetadataItem?.id ?? '',
     objectMetadataId: objectMetadataItem.id,
   });
 
@@ -70,8 +72,6 @@ export const SummaryCard = ({
       isMobile={isMobile}
       id={objectRecordId}
       logoOrAvatar={recordIdentifier?.avatarUrl ?? ''}
-      icon={Icon}
-      iconColor={IconColor}
       avatarPlaceholder={recordIdentifier?.name ?? ''}
       date={recordCreatedAt ?? ''}
       loading={
@@ -98,7 +98,7 @@ export const SummaryCard = ({
             useUpdateRecord: useUpdateOneObjectRecordMutation,
             isCentered: !isMobile,
             isDisplayModeFixHeight: true,
-            isReadOnly: isRecordReadOnly,
+            isRecordFieldReadOnly: isTitleReadOnly,
           }}
         >
           <RecordTitleCell

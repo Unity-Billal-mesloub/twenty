@@ -9,7 +9,7 @@ import {
 import { BillingTrialPeriodDTO } from 'src/engine/core-modules/billing/dtos/billing-trial-period.dto';
 import { CaptchaDriverType } from 'src/engine/core-modules/captcha/interfaces';
 import { FeatureFlagKey } from 'src/engine/core-modules/feature-flag/enums/feature-flag-key.enum';
-import { AuthProviders } from 'src/engine/core-modules/workspace/dtos/public-workspace-data-output';
+import { AuthProvidersDTO } from 'src/engine/core-modules/workspace/dtos/public-workspace-data-output';
 
 registerEnumType(FeatureFlagKey, {
   name: 'FeatureFlagKey',
@@ -18,6 +18,15 @@ registerEnumType(FeatureFlagKey, {
 registerEnumType(ModelProvider, {
   name: 'ModelProvider',
 });
+
+@ObjectType()
+export class NativeModelCapabilities {
+  @Field(() => Boolean, { nullable: true })
+  webSearch?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
+  twitterSearch?: boolean;
+}
 
 @ObjectType()
 export class ClientAIModelConfig {
@@ -35,10 +44,13 @@ export class ClientAIModelConfig {
 
   @Field(() => Number)
   outputCostPer1kTokensInCredits: number;
+
+  @Field(() => NativeModelCapabilities, { nullable: true })
+  nativeCapabilities?: NativeModelCapabilities;
 }
 
 @ObjectType()
-class Billing {
+export class Billing {
   @Field(() => Boolean)
   isBillingEnabled: boolean;
 
@@ -50,7 +62,7 @@ class Billing {
 }
 
 @ObjectType()
-class Support {
+export class Support {
   @Field(() => SupportDriver)
   supportDriver: SupportDriver;
 
@@ -59,7 +71,7 @@ class Support {
 }
 
 @ObjectType()
-class Sentry {
+export class Sentry {
   @Field(() => String, { nullable: true })
   environment?: string;
 
@@ -71,7 +83,7 @@ class Sentry {
 }
 
 @ObjectType()
-class Captcha {
+export class Captcha {
   @Field(() => CaptchaDriverType, { nullable: true })
   provider: CaptchaDriverType | undefined;
 
@@ -80,13 +92,13 @@ class Captcha {
 }
 
 @ObjectType()
-class ApiConfig {
+export class ApiConfig {
   @Field(() => Number, { nullable: false })
   mutationMaximumAffectedRecords: number;
 }
 
 @ObjectType()
-class PublicFeatureFlagMetadata {
+export class PublicFeatureFlagMetadata {
   @Field(() => String)
   label: string;
 
@@ -98,7 +110,7 @@ class PublicFeatureFlagMetadata {
 }
 
 @ObjectType()
-class PublicFeatureFlag {
+export class PublicFeatureFlag {
   @Field(() => FeatureFlagKey)
   key: FeatureFlagKey;
 
@@ -108,8 +120,11 @@ class PublicFeatureFlag {
 
 @ObjectType()
 export class ClientConfig {
-  @Field(() => AuthProviders, { nullable: false })
-  authProviders: AuthProviders;
+  @Field(() => String, { nullable: true })
+  appVersion?: string;
+
+  @Field(() => AuthProvidersDTO, { nullable: false })
+  authProviders: AuthProvidersDTO;
 
   @Field(() => Billing, { nullable: false })
   billing: Billing;
@@ -131,9 +146,6 @@ export class ClientConfig {
 
   @Field(() => String)
   frontDomain: string;
-
-  @Field(() => Boolean)
-  debugMode: boolean;
 
   @Field(() => Boolean)
   analyticsEnabled: boolean;
@@ -178,7 +190,7 @@ export class ClientConfig {
   isConfigVariablesInDbEnabled: boolean;
 
   @Field(() => Boolean)
-  isIMAPMessagingEnabled: boolean;
+  isImapSmtpCaldavEnabled: boolean;
 
   @Field(() => String, { nullable: true })
   calendarBookingPageId?: string;

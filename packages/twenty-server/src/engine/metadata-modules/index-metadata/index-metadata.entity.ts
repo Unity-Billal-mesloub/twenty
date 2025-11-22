@@ -12,13 +12,11 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-import { IndexFieldMetadataEntity } from 'src/engine/metadata-modules/index-metadata/index-field-metadata.entity';
-import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
+import { SyncableEntity } from 'src/engine/workspace-manager/workspace-sync/interfaces/syncable-entity.interface';
 
-export enum IndexType {
-  BTREE = 'BTREE',
-  GIN = 'GIN',
-}
+import { IndexFieldMetadataEntity } from 'src/engine/metadata-modules/index-metadata/index-field-metadata.entity';
+import { IndexType } from 'src/engine/metadata-modules/index-metadata/types/indexType.types';
+import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
 
 @Unique('IDX_INDEX_METADATA_NAME_WORKSPACE_ID_OBJECT_METADATA_ID_UNIQUE', [
   'name',
@@ -30,7 +28,10 @@ export enum IndexType {
   'objectMetadataId',
 ])
 @Entity('indexMetadata')
-export class IndexMetadataEntity {
+export class IndexMetadataEntity
+  extends SyncableEntity
+  implements Required<IndexMetadataEntity>
+{
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -43,7 +44,7 @@ export class IndexMetadataEntity {
   @Column({ nullable: false })
   name: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: false, type: 'uuid' })
   workspaceId: string;
 
   @Column({ nullable: false, type: 'uuid' })

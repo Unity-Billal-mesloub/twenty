@@ -1,7 +1,7 @@
-import { FieldMetadataItemOption } from '@/object-metadata/types/FieldMetadataItem';
+import { type FieldMetadataItemOption } from '@/object-metadata/types/FieldMetadataItem';
 import { AdvancedSettingsWrapper } from '@/settings/components/AdvancedSettingsWrapper';
 import { OPTION_VALUE_MAXIMUM_LENGTH } from '@/settings/data-model/constants/OptionValueMaximumLength';
-import { TextInput } from '@/ui/input/components/TextInput';
+import { SettingsTextInput } from '@/ui/input/components/SettingsTextInput';
 import { Dropdown } from '@/ui/layout/dropdown/components/Dropdown';
 import { DropdownContent } from '@/ui/layout/dropdown/components/DropdownContent';
 import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
@@ -20,7 +20,7 @@ import {
 import { LightIconButton } from 'twenty-ui/input';
 import { MenuItem, MenuItemSelectColor } from 'twenty-ui/navigation';
 import { MAIN_COLOR_NAMES } from 'twenty-ui/theme';
-import { computeOptionValueFromLabel } from '~/pages/settings/data-model/utils/compute-option-value-from-label.utils';
+import { computeOptionValueFromLabel } from '~/pages/settings/data-model/utils/computeOptionValueFromLabel';
 
 type SettingsDataModelFieldSelectFormOptionRowProps = {
   className?: string;
@@ -50,7 +50,7 @@ const StyledColorSample = styled(ColorSample)`
   margin-left: ${({ theme }) => theme.spacing(3.5)};
 `;
 
-const StyledOptionInput = styled(TextInput)`
+const StyledOptionInput = styled(SettingsTextInput)`
   flex-grow: 1;
   width: 100%;
   & input {
@@ -78,7 +78,6 @@ export const SettingsDataModelFieldSelectFormOptionRow = ({
   isNewRow,
 }: SettingsDataModelFieldSelectFormOptionRowProps) => {
   const theme = useTheme();
-
   const SELECT_COLOR_DROPDOWN_ID = `select-color-dropdown-${option.id}`;
   const SELECT_ACTIONS_DROPDOWN_ID = `select-actions-dropdown-${option.id}`;
 

@@ -1,5 +1,8 @@
-import { AppPath } from '@/types/AppPath';
-import { ModalSize, ModalVariants } from '@/ui/layout/modal/components/Modal';
+import {
+  type ModalSize,
+  type ModalVariants,
+} from '@/ui/layout/modal/components/Modal';
+import { AppPath } from 'twenty-shared/types';
 
 type AuthModalConfigType = {
   size: ModalSize;

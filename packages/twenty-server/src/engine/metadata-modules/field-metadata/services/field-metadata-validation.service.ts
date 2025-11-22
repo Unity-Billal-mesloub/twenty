@@ -1,40 +1,45 @@
 import { Injectable } from '@nestjs/common';
 
-import { t } from '@lingui/core/macro';
-import { ClassConstructor, plainToInstance } from 'class-transformer';
+import { msg } from '@lingui/core/macro';
+import { type ClassConstructor, plainToInstance } from 'class-transformer';
 import {
+  IsArray,
   IsEnum,
   IsInt,
   IsOptional,
   Max,
   Min,
-  ValidationError,
+  type ValidationError,
   validateOrReject,
 } from 'class-validator';
-import { FieldMetadataType } from 'twenty-shared/types';
+import { MULTI_ITEM_FIELD_MIN_MAX_VALUES } from 'twenty-shared/constants';
+import {
+  ALLOWED_ADDRESS_SUBFIELDS,
+  type AllowedAddressSubField,
+  FieldMetadataType,
+  type FieldMetadataSettings,
+} from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
 
-import { FieldMetadataSettings } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata-settings.interface';
-import { FieldMetadataInterface } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata.interface';
-
-import { CreateFieldInput } from 'src/engine/metadata-modules/field-metadata/dtos/create-field.input';
-import { UpdateFieldInput } from 'src/engine/metadata-modules/field-metadata/dtos/update-field.input';
+import { type CreateFieldInput } from 'src/engine/metadata-modules/field-metadata/dtos/create-field.input';
+import { type UpdateFieldInput } from 'src/engine/metadata-modules/field-metadata/dtos/update-field.input';
+import { type FieldMetadataEntity } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
 import {
   FieldMetadataException,
   FieldMetadataExceptionCode,
 } from 'src/engine/metadata-modules/field-metadata/field-metadata.exception';
 import { FieldMetadataEnumValidationService } from 'src/engine/metadata-modules/field-metadata/services/field-metadata-enum-validation.service';
 import { isEnumFieldMetadataType } from 'src/engine/metadata-modules/field-metadata/utils/is-enum-field-metadata-type.util';
-import { ObjectMetadataItemWithFieldMaps } from 'src/engine/metadata-modules/types/object-metadata-item-with-field-maps';
+import { type ObjectMetadataItemWithFieldMaps } from 'src/engine/metadata-modules/types/object-metadata-item-with-field-maps';
 import { InvalidMetadataException } from 'src/engine/metadata-modules/utils/exceptions/invalid-metadata.exception';
 import { validateFieldNameAvailabilityOrThrow } from 'src/engine/metadata-modules/utils/validate-field-name-availability.utils';
-import { validateMetadataNameOrThrow } from 'src/engine/metadata-modules/utils/validate-metadata-name.utils';
+import { validateMetadataNameOrThrow } from 'src/engine/metadata-modules/utils/validate-metadata-name-or-throw.utils';
 
 type ValidateFieldMetadataArgs = {
   fieldMetadataType: FieldMetadataType;
   fieldMetadataInput: CreateFieldInput | UpdateFieldInput;
   objectMetadata: ObjectMetadataItemWithFieldMaps;
-  existingFieldMetadata?: FieldMetadataInterface;
+  existingFieldMetadata?: FieldMetadataEntity;
 };
 
 enum ValueType {
@@ -61,7 +66,19 @@ class TextSettingsValidation {
   @Max(100)
   displayedMaxRows?: number;
 }
+class AddressSettingsValidation {
+  @IsOptional()
+  @IsArray()
+  @IsEnum(ALLOWED_ADDRESS_SUBFIELDS, { each: true })
+  subFields?: AllowedAddressSubField[];
+}
 
+class MultipleValuesSettingsValidation {
+  @IsOptional()
+  @IsInt()
+  @Min(MULTI_ITEM_FIELD_MIN_MAX_VALUES)
+  maxNumberOfValues?: number;
+}
 @Injectable()
 export class FieldMetadataValidationService {
   constructor(
@@ -77,32 +94,54 @@ export class FieldMetadataValidationService {
   }) {
     switch (fieldType) {
       case FieldMetadataType.NUMBER:
-        await this.validateSettings<FieldMetadataType.NUMBER>(
-          NumberSettingsValidation,
+        await this.validateSettings({
+          type: FieldMetadataType.NUMBER,
+          validator: NumberSettingsValidation,
           settings,
-        );
+        });
         break;
       case FieldMetadataType.TEXT:
-        await this.validateSettings<FieldMetadataType.TEXT>(
-          TextSettingsValidation,
+        await this.validateSettings({
+          type: FieldMetadataType.TEXT,
+          validator: TextSettingsValidation,
           settings,
-        );
+        });
+        break;
+      case FieldMetadataType.ADDRESS:
+        await this.validateSettings({
+          type: FieldMetadataType.ADDRESS,
+          validator: AddressSettingsValidation,
+          settings,
+        });
+        break;
+      case FieldMetadataType.PHONES:
+      case FieldMetadataType.EMAILS:
+      case FieldMetadataType.LINKS:
+      case FieldMetadataType.ARRAY:
+        await this.validateSettings({
+          type: fieldType,
+          validator: MultipleValuesSettingsValidation,
+          settings,
+        });
         break;
       default:
         break;
     }
   }
 
-  private async validateSettings<Type extends FieldMetadataType>(
-    validator: ClassConstructor<
-      Type extends FieldMetadataType.NUMBER
-        ? NumberSettingsValidation
-        : Type extends FieldMetadataType.TEXT
-          ? TextSettingsValidation
-          : never
-    >,
-    settings: FieldMetadataSettings<Type>,
-  ) {
+  private async validateSettings<
+    Type extends FieldMetadataType,
+    TValidator extends ClassConstructor<object>,
+    TFieldMetadataType extends FieldMetadataType,
+  >({
+    type: _type,
+    settings,
+    validator,
+  }: {
+    validator: TValidator;
+    settings: FieldMetadataSettings<Type>;
+    type: TFieldMetadataType;
+  }) {
     try {
       const settingsInstance = plainToInstance(validator, settings);
 
@@ -136,6 +175,9 @@ export class FieldMetadataValidationService {
           throw new FieldMetadataException(
             error.message,
             FieldMetadataExceptionCode.INVALID_FIELD_INPUT,
+            {
+              userFriendlyMessage: error.userFriendlyMessage,
+            },
           );
         }
 
@@ -143,17 +185,17 @@ export class FieldMetadataValidationService {
       }
 
       try {
-        validateFieldNameAvailabilityOrThrow(
-          fieldMetadataInput.name,
-          objectMetadata,
-        );
+        validateFieldNameAvailabilityOrThrow({
+          name: fieldMetadataInput.name,
+          fieldMetadataMapById: objectMetadata.fieldsById,
+        });
       } catch (error) {
         if (error instanceof InvalidMetadataException) {
           throw new FieldMetadataException(
             `Name "${fieldMetadataInput.name}" is not available, check that it is not duplicating another field's name.`,
             FieldMetadataExceptionCode.INVALID_FIELD_INPUT,
             {
-              userFriendlyMessage: t`Name is not available, it may be duplicating another field's name.`,
+              userFriendlyMessage: msg`Name is not available, it may be duplicating another field's name.`,
             },
           );
         }
@@ -195,6 +237,7 @@ export class FieldMetadataValidationService {
     if (
       isRelationField &&
       isDefined(existingFieldMetadata) &&
+      isDefined(fieldMetadataInput.name) &&
       fieldMetadataInput.name !== existingFieldMetadata.name
     ) {
       throw new FieldMetadataException(

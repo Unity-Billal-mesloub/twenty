@@ -6,7 +6,12 @@ import wyw from '@wyw-in-js/vite';
 import fs from 'fs';
 import path from 'path';
 import { visualizer } from 'rollup-plugin-visualizer';
-import { defineConfig, loadEnv, PluginOption, searchForWorkspaceRoot } from 'vite';
+import {
+  defineConfig,
+  loadEnv,
+  type PluginOption,
+  searchForWorkspaceRoot,
+} from 'vite';
 import checker from 'vite-plugin-checker';
 import svgr from 'vite-plugin-svgr';
 import tsconfigPaths from 'vite-tsconfig-paths';
@@ -19,7 +24,6 @@ export default defineConfig(({ command, mode }) => {
     REACT_APP_SERVER_BASE_URL,
     VITE_BUILD_SOURCEMAP,
     VITE_DISABLE_TYPESCRIPT_CHECKER,
-    VITE_DISABLE_ESLINT_CHECKER,
     VITE_HOST,
     SSL_CERT_PATH,
     SSL_KEY_PATH,
@@ -37,12 +41,11 @@ export default defineConfig(({ command, mode }) => {
     ? path.resolve(__dirname, './tsconfig.build.json')
     : path.resolve(__dirname, './tsconfig.dev.json');
 
-
   const CHUNK_SIZE_WARNING_LIMIT = 1024 * 1024; // 1MB
   // Please don't increase this limit for main index chunk
   // If it gets too big then find modules in the code base
   // that can be loaded lazily, there are more!
-  const MAIN_CHUNK_SIZE_LIMIT = 4.7 * 1024 * 1024; // 4.7MB for main index chunk
+  const MAIN_CHUNK_SIZE_LIMIT = 6.1 * 1024 * 1024; // 6.1MB for main index chunk
   const OTHER_CHUNK_SIZE_LIMIT = 5 * 1024 * 1024; // 5MB for other chunks
 
   const checkers: Checkers = {
@@ -55,10 +58,6 @@ export default defineConfig(({ command, mode }) => {
     );
   }
 
-  if (VITE_DISABLE_ESLINT_CHECKER === 'true') {
-    console.log(`VITE_DISABLE_ESLINT_CHECKER: ${VITE_DISABLE_ESLINT_CHECKER}`);
-  }
-
   if (VITE_BUILD_SOURCEMAP === 'true') {
     console.log(`VITE_BUILD_SOURCEMAP: ${VITE_BUILD_SOURCEMAP}`);
   }
@@ -66,14 +65,6 @@ export default defineConfig(({ command, mode }) => {
   if (VITE_DISABLE_TYPESCRIPT_CHECKER !== 'true') {
     checkers['typescript'] = {
       tsconfigPath: tsConfigPath,
-    };
-  }
-
-  if (VITE_DISABLE_ESLINT_CHECKER !== 'true') {
-    checkers['eslint'] = {
-      lintCommand:
-        // Appended to packages/twenty-front/.eslintrc.cjs
-        'eslint ../../packages/twenty-front --report-unused-disable-directives --max-warnings 0 --config .eslintrc.cjs',
     };
   }
 
@@ -109,6 +100,7 @@ export default defineConfig(({ command, mode }) => {
         plugins: [['@lingui/swc-plugin', {}]],
       }),
       tsconfigPaths({
+        root: __dirname,
         projects: ['tsconfig.json'],
       }),
       svgr(),
@@ -116,44 +108,48 @@ export default defineConfig(({ command, mode }) => {
         configPath: path.resolve(__dirname, './lingui.config.ts'),
       }),
       checker(checkers),
-      // TODO: fix this, we have to restrict the include to only the components that are using linaria
-      // Otherwise the build will fail because wyw tries to include emotion styled components
-      wyw({
-        include: [
-          '**/CurrencyDisplay.tsx',
-          '**/EllipsisDisplay.tsx',
-          '**/ContactLink.tsx',
-          '**/BooleanDisplay.tsx',
-          '**/LinksDisplay.tsx',
-          '**/RoundedLink.tsx',
-          '**/OverflowingTextWithTooltip.tsx',
-          '**/Chip.tsx',
-          '**/Tag.tsx',
-          '**/MultiSelectFieldDisplay.tsx',
-          '**/RatingInput.tsx',
-          '**/RecordTableCellContainer.tsx',
-          '**/RecordTableCellDisplayContainer.tsx',
-          '**/Avatar.tsx',
-          '**/RecordTableBodyDroppable.tsx',
-          '**/RecordTableCellBaseContainer.tsx',
-          '**/RecordTableCellTd.tsx',
-          '**/RecordTableTd.tsx',
-          '**/RecordTableHeaderDragDropColumn.tsx',
-          '**/ActorDisplay.tsx',
-          '**/BooleanDisplay.tsx',
-          '**/CurrencyDisplay.tsx',
-          '**/TextDisplay.tsx',
-          '**/EllipsisDisplay.tsx',
-          '**/AvatarChip.tsx',
-          '**/URLDisplay.tsx',
-          '**/EmailsDisplay.tsx',
-          '**/PhonesDisplay.tsx',
-          '**/MultiSelectDisplay.tsx',
-        ],
-        babelOptions: {
-          presets: ['@babel/preset-typescript', '@babel/preset-react'],
-        },
-      }),
+      {
+        ...wyw({
+          include: [
+            '**/CurrencyDisplay.tsx',
+            '**/EllipsisDisplay.tsx',
+            '**/ContactLink.tsx',
+            '**/BooleanDisplay.tsx',
+            '**/LinksDisplay.tsx',
+            '**/RoundedLink.tsx',
+            '**/OverflowingTextWithTooltip.tsx',
+            '**/Chip.tsx',
+            '**/Tag.tsx',
+            '**/MultiSelectFieldDisplay.tsx',
+            '**/RatingInput.tsx',
+            '**/RecordTableCellContainer.tsx',
+            '**/RecordTableCellDisplayContainer.tsx',
+            '**/Avatar.tsx',
+            '**/RecordTableBodyDroppable.tsx',
+            '**/RecordTableCellBaseContainer.tsx',
+            '**/RecordTableCellTd.tsx',
+            '**/RecordTableCellStyleWrapper.tsx',
+            '**/RecordTableHeaderDragDropColumn.tsx',
+            '**/ActorDisplay.tsx',
+            '**/BooleanDisplay.tsx',
+            '**/CurrencyDisplay.tsx',
+            '**/TextDisplay.tsx',
+            '**/EllipsisDisplay.tsx',
+            '**/AvatarChip.tsx',
+            '**/URLDisplay.tsx',
+            '**/EmailsDisplay.tsx',
+            '**/PhonesDisplay.tsx',
+            '**/MultiSelectDisplay.tsx',
+            '**/RecordTableRowVirtualizedContainer.tsx',
+            '**/RecordTableVirtualizedBodyPlaceholder.tsx',
+            '**/RecordTableCellLoading.tsx',
+          ],
+          babelOptions: {
+            presets: ['@babel/preset-typescript', '@babel/preset-react'],
+          },
+        }),
+        enforce: 'pre',
+      },
       visualizer({
         open: true,
         gzipSize: true,
@@ -187,32 +183,37 @@ export default defineConfig(({ command, mode }) => {
               name: 'chunk-size-limit',
               generateBundle(_options, bundle) {
                 const oversizedChunks: string[] = [];
-                
+
                 Object.entries(bundle).forEach(([fileName, chunk]) => {
-                  if (chunk.type === 'chunk' && chunk.code) {
+                  if (chunk.type === 'chunk' && chunk.code !== undefined) {
                     const size = Buffer.byteLength(chunk.code, 'utf8');
-                    const isMainChunk = fileName.includes('index') && chunk.isEntry;
-                    const sizeLimit = isMainChunk ? MAIN_CHUNK_SIZE_LIMIT : OTHER_CHUNK_SIZE_LIMIT;
+                    const isMainChunk =
+                      fileName.includes('index') && chunk.isEntry;
+                    const sizeLimit = isMainChunk
+                      ? MAIN_CHUNK_SIZE_LIMIT
+                      : OTHER_CHUNK_SIZE_LIMIT;
                     const limitType = isMainChunk ? 'main' : 'other';
-                    
+
                     if (size > sizeLimit) {
-                      oversizedChunks.push(`${fileName} (${limitType}): ${(size / 1024 / 1024).toFixed(2)}MB (limit: ${(sizeLimit / 1024 / 1024).toFixed(2)}MB)`);
+                      oversizedChunks.push(
+                        `${fileName} (${limitType}): ${(size / 1024 / 1024).toFixed(2)}MB (limit: ${(sizeLimit / 1024 / 1024).toFixed(2)}MB)`,
+                      );
                     }
                   }
                 });
-                
+
                 if (oversizedChunks.length > 0) {
-                  const errorMessage = `Build failed: The following chunks exceed their size limits:\n${oversizedChunks.map(chunk => `  - ${chunk}`).join('\n')}`;
+                  const errorMessage = `Build failed: The following chunks exceed their size limits:\n${oversizedChunks.map((chunk) => `  - ${chunk}`).join('\n')}`;
                   this.error(errorMessage);
                 }
-              }
+              },
             },
-            // TODO; later - think about prefetching modules such 
+            // TODO; later - think about prefetching modules such
             // as date time picker, phone input etc...
             /*
             {
               name: 'add-prefetched-modules',
-              transformIndexHtml(html: string, 
+              transformIndexHtml(html: string,
                 ctx: {
                   path: string;
                   filename: string;
@@ -227,13 +228,13 @@ export default defineConfig(({ command, mode }) => {
                     (bundle) => bundle.endsWith('.map') === false
                   );
 
-                  
+
                   // Remove existing files and concatenate them into link tags
                   const prefechBundlesString = modernBundles
                     .filter((bundle) => html.includes(bundle) === false)
                     .map((bundle) => `<link rel="prefetch" href="${ctx.server?.config.base}${bundle}">`)
                     .join('');
-            
+
                   // Use regular expression to get the content within <head> </head>
                   const headContent = html.match(/<head>([\s\S]*)<\/head>/)?.[1] ?? '';
                   // Insert the content of prefetch into the head
@@ -243,14 +244,14 @@ export default defineConfig(({ command, mode }) => {
                     /<head>([\s\S]*)<\/head>/,
                     `<head>${newHeadContent}</head>`
                   );
-            
+
                   return html;
-            
-             
+
+
               },
             }*/
-          ]
-        }
+          ],
+        },
       },
     },
 

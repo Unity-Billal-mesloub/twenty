@@ -21,6 +21,7 @@ import { BillingWebhookEntitlementService } from 'src/engine/core-modules/billin
 import { BillingWebhookInvoiceService } from 'src/engine/core-modules/billing-webhook/services/billing-webhook-invoice.service';
 import { BillingWebhookPriceService } from 'src/engine/core-modules/billing-webhook/services/billing-webhook-price.service';
 import { BillingWebhookProductService } from 'src/engine/core-modules/billing-webhook/services/billing-webhook-product.service';
+import { BillingWebhookSubscriptionScheduleService } from 'src/engine/core-modules/billing-webhook/services/billing-webhook-subscription-schedule.service';
 import { BillingWebhookSubscriptionService } from 'src/engine/core-modules/billing-webhook/services/billing-webhook-subscription.service';
 import {
   BillingException,
@@ -30,6 +31,7 @@ import { BillingWebhookEvent } from 'src/engine/core-modules/billing/enums/billi
 import { BillingRestApiExceptionFilter } from 'src/engine/core-modules/billing/filters/billing-api-exception.filter';
 import { BillingSubscriptionService } from 'src/engine/core-modules/billing/services/billing-subscription.service';
 import { StripeWebhookService } from 'src/engine/core-modules/billing/stripe/services/stripe-webhook.service';
+import { NoPermissionGuard } from 'src/engine/guards/no-permission.guard';
 import { PublicEndpointGuard } from 'src/engine/guards/public-endpoint.guard';
 
 @Controller()
@@ -47,10 +49,11 @@ export class BillingWebhookController {
     private readonly billingWebhookAlertService: BillingWebhookAlertService,
     private readonly billingWebhookInvoiceService: BillingWebhookInvoiceService,
     private readonly billingWebhookCustomerService: BillingWebhookCustomerService,
+    private readonly billingWebhookSubscriptionScheduleService: BillingWebhookSubscriptionScheduleService,
   ) {}
 
   @Post(['webhooks/stripe'])
-  @UseGuards(PublicEndpointGuard)
+  @UseGuards(PublicEndpointGuard, NoPermissionGuard)
   async handleWebhooks(
     @Headers('stripe-signature') signature: string,
     @Req() req: RawBodyRequest<Request>,
@@ -97,6 +100,11 @@ export class BillingWebhookController {
       case BillingWebhookEvent.PRICE_UPDATED:
       case BillingWebhookEvent.PRICE_CREATED:
         return await this.billingWebhookPriceService.processStripeEvent(
+          event.data,
+        );
+
+      case BillingWebhookEvent.SUBSCRIPTION_SCHEDULE_UPDATED:
+        return await this.billingWebhookSubscriptionScheduleService.processStripeEvent(
           event.data,
         );
 

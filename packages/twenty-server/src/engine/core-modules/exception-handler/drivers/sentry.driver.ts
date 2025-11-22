@@ -5,10 +5,11 @@ import {
   isDefined,
 } from 'twenty-shared/utils';
 
-import { ExceptionHandlerOptions } from 'src/engine/core-modules/exception-handler/interfaces/exception-handler-options.interface';
+import { type ExceptionHandlerOptions } from 'src/engine/core-modules/exception-handler/interfaces/exception-handler-options.interface';
 
 import { PostgresException } from 'src/engine/api/graphql/workspace-query-runner/utils/postgres-exception';
-import { ExceptionHandlerDriverInterface } from 'src/engine/core-modules/exception-handler/interfaces';
+import { type ExceptionHandlerDriverInterface } from 'src/engine/core-modules/exception-handler/interfaces';
+import { MessageImportDriverException } from 'src/modules/messaging/message-import-manager/drivers/exceptions/message-import-driver.exception';
 import { CustomException } from 'src/utils/custom-exception';
 
 export class ExceptionHandlerSentryDriver
@@ -61,6 +62,20 @@ export class ExceptionHandlerSentryDriver
           });
         }
 
+        if ('context' in exception && exception.context) {
+          Object.entries(exception.context).forEach(([key, value]) => {
+            scope.setExtra(key, value);
+          });
+        }
+
+        if ('cause' in exception && exception.cause) {
+          scope.setContext('cause', {
+            name: exception.cause.name,
+            message: exception.cause.message,
+            stack: exception.cause.stack,
+          });
+        }
+
         if (
           exception instanceof CustomException &&
           exception.code !== 'UNKNOWN'
@@ -82,6 +97,11 @@ export class ExceptionHandlerSentryDriver
           }
           scope.setFingerprint(fingerPrint);
           exception.name = exception.message;
+        }
+
+        if (exception instanceof MessageImportDriverException) {
+          scope.setTag('messageImportDriverCode', exception.code);
+          scope.setFingerprint([exception.code]);
         }
 
         const eventId = Sentry.captureException(exception, {

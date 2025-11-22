@@ -1,9 +1,9 @@
 import { registerEnumType } from '@nestjs/graphql';
 
 import { msg } from '@lingui/core/macro';
-import { FieldMetadataType } from 'twenty-shared/types';
+import { FieldMetadataType, RelationOnDeleteAction } from 'twenty-shared/types';
+import { STANDARD_OBJECT_IDS } from 'twenty-shared/metadata';
 
-import { RelationOnDeleteAction } from 'src/engine/metadata-modules/field-metadata/interfaces/relation-on-delete-action.interface';
 import { RelationType } from 'src/engine/metadata-modules/field-metadata/interfaces/relation-type.interface';
 import { Relation } from 'src/engine/workspace-manager/workspace-sync-metadata/interfaces/relation.interface';
 
@@ -17,7 +17,6 @@ import { WorkspaceJoinColumn } from 'src/engine/twenty-orm/decorators/workspace-
 import { WorkspaceRelation } from 'src/engine/twenty-orm/decorators/workspace-relation.decorator';
 import { CALENDAR_CHANNEL_STANDARD_FIELD_IDS } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-field-ids';
 import { STANDARD_OBJECT_ICONS } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-object-icons';
-import { STANDARD_OBJECT_IDS } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-object-ids';
 import { CalendarChannelEventAssociationWorkspaceEntity } from 'src/modules/calendar/common/standard-objects/calendar-channel-event-association.workspace-entity';
 import { ConnectedAccountWorkspaceEntity } from 'src/modules/connected-account/standard-objects/connected-account.workspace-entity';
 
@@ -35,10 +34,12 @@ export enum CalendarChannelSyncStatus {
 }
 
 export enum CalendarChannelSyncStage {
-  FULL_CALENDAR_EVENT_LIST_FETCH_PENDING = 'FULL_CALENDAR_EVENT_LIST_FETCH_PENDING',
-  PARTIAL_CALENDAR_EVENT_LIST_FETCH_PENDING = 'PARTIAL_CALENDAR_EVENT_LIST_FETCH_PENDING',
+  PENDING_CONFIGURATION = 'PENDING_CONFIGURATION',
+  CALENDAR_EVENT_LIST_FETCH_PENDING = 'CALENDAR_EVENT_LIST_FETCH_PENDING',
+  CALENDAR_EVENT_LIST_FETCH_SCHEDULED = 'CALENDAR_EVENT_LIST_FETCH_SCHEDULED',
   CALENDAR_EVENT_LIST_FETCH_ONGOING = 'CALENDAR_EVENT_LIST_FETCH_ONGOING',
   CALENDAR_EVENTS_IMPORT_PENDING = 'CALENDAR_EVENTS_IMPORT_PENDING',
+  CALENDAR_EVENTS_IMPORT_SCHEDULED = 'CALENDAR_EVENTS_IMPORT_SCHEDULED',
   CALENDAR_EVENTS_IMPORT_ONGOING = 'CALENDAR_EVENTS_IMPORT_ONGOING',
   FAILED = 'FAILED',
 }
@@ -68,6 +69,7 @@ registerEnumType(CalendarChannelContactAutoCreationPolicy, {
 
 @WorkspaceEntity({
   standardId: STANDARD_OBJECT_IDS.calendarChannel,
+
   namePlural: 'calendarChannels',
   labelSingular: msg`Calendar Channel`,
   labelPlural: msg`Calendar Channels`,
@@ -137,17 +139,16 @@ export class CalendarChannelWorkspaceEntity extends BaseWorkspaceEntity {
     icon: 'IconStatusChange',
     options: [
       {
-        value: CalendarChannelSyncStage.FULL_CALENDAR_EVENT_LIST_FETCH_PENDING,
-        label: 'Full calendar event list fetch pending',
+        value: CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_PENDING,
+        label: 'Calendar event list fetch pending',
         position: 0,
         color: 'blue',
       },
       {
-        value:
-          CalendarChannelSyncStage.PARTIAL_CALENDAR_EVENT_LIST_FETCH_PENDING,
-        label: 'Partial calendar event list fetch pending',
+        value: CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_SCHEDULED,
+        label: 'Calendar event list fetch scheduled',
         position: 1,
-        color: 'blue',
+        color: 'green',
       },
       {
         value: CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_ONGOING,
@@ -162,19 +163,31 @@ export class CalendarChannelWorkspaceEntity extends BaseWorkspaceEntity {
         color: 'blue',
       },
       {
+        value: CalendarChannelSyncStage.CALENDAR_EVENTS_IMPORT_SCHEDULED,
+        label: 'Calendar events import scheduled',
+        position: 4,
+        color: 'green',
+      },
+      {
         value: CalendarChannelSyncStage.CALENDAR_EVENTS_IMPORT_ONGOING,
         label: 'Calendar events import ongoing',
-        position: 4,
+        position: 5,
         color: 'orange',
       },
       {
         value: CalendarChannelSyncStage.FAILED,
         label: 'Failed',
-        position: 5,
+        position: 6,
         color: 'red',
       },
+      {
+        value: CalendarChannelSyncStage.PENDING_CONFIGURATION,
+        label: 'Pending configuration',
+        position: 9,
+        color: 'gray',
+      },
     ],
-    defaultValue: `'${CalendarChannelSyncStage.FULL_CALENDAR_EVENT_LIST_FETCH_PENDING}'`,
+    defaultValue: `'${CalendarChannelSyncStage.PENDING_CONFIGURATION}'`,
   })
   syncStage: CalendarChannelSyncStage;
 

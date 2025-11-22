@@ -1,5 +1,3 @@
-import console from 'console';
-
 import { rawDataSource } from 'src/database/typeorm/raw/raw.datasource';
 
 export const camelToSnakeCase = (str: string) =>
@@ -14,7 +12,10 @@ export const performQuery = async <T = unknown>(
   try {
     const result = await rawDataSource.query<T>(query);
 
-    withLog && console.log(`Performed '${consoleDescription}' successfully`);
+    if (withLog) {
+      // eslint-disable-next-line no-console
+      console.log(`Performed '${consoleDescription}' successfully`);
+    }
 
     return result;
   } catch (err) {
@@ -25,6 +26,9 @@ export const performQuery = async <T = unknown>(
     } else {
       message = `Failed to perform '${consoleDescription}': ${err}`;
     }
-    withLog && console.error(message);
+    if (withLog) {
+      // eslint-disable-next-line no-console
+      console.error(message);
+    }
   }
 };

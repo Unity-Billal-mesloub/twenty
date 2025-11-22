@@ -1,16 +1,20 @@
 import { registerEnumType } from '@nestjs/graphql';
 
 import { msg } from '@lingui/core/macro';
-import { APP_LOCALES, SOURCE_LOCALE } from 'twenty-shared/translations';
-import { FieldMetadataType } from 'twenty-shared/types';
+import { type APP_LOCALES, SOURCE_LOCALE } from 'twenty-shared/translations';
+import {
+  FieldMetadataType,
+  NumberDataType,
+  RelationOnDeleteAction,
+  FullNameMetadata,
+} from 'twenty-shared/types';
+import { STANDARD_OBJECT_IDS } from 'twenty-shared/metadata';
 
-import { RelationOnDeleteAction } from 'src/engine/metadata-modules/field-metadata/interfaces/relation-on-delete-action.interface';
 import { RelationType } from 'src/engine/metadata-modules/field-metadata/interfaces/relation-type.interface';
 import { Relation } from 'src/engine/workspace-manager/workspace-sync-metadata/interfaces/relation.interface';
 
 import { SEARCH_VECTOR_FIELD } from 'src/engine/metadata-modules/constants/search-vector-field.constants';
-import { FullNameMetadata } from 'src/engine/metadata-modules/field-metadata/composite-types/full-name.composite-type';
-import { IndexType } from 'src/engine/metadata-modules/index-metadata/index-metadata.entity';
+import { IndexType } from 'src/engine/metadata-modules/index-metadata/types/indexType.types';
 import { BaseWorkspaceEntity } from 'src/engine/twenty-orm/base.workspace-entity';
 import { WorkspaceEntity } from 'src/engine/twenty-orm/decorators/workspace-entity.decorator';
 import { WorkspaceFieldIndex } from 'src/engine/twenty-orm/decorators/workspace-field-index.decorator';
@@ -18,12 +22,12 @@ import { WorkspaceField } from 'src/engine/twenty-orm/decorators/workspace-field
 import { WorkspaceIsNullable } from 'src/engine/twenty-orm/decorators/workspace-is-nullable.decorator';
 import { WorkspaceIsSearchable } from 'src/engine/twenty-orm/decorators/workspace-is-searchable.decorator';
 import { WorkspaceIsSystem } from 'src/engine/twenty-orm/decorators/workspace-is-system.decorator';
+import { WorkspaceIsUnique } from 'src/engine/twenty-orm/decorators/workspace-is-unique.decorator';
 import { WorkspaceRelation } from 'src/engine/twenty-orm/decorators/workspace-relation.decorator';
 import { WORKSPACE_MEMBER_STANDARD_FIELD_IDS } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-field-ids';
 import { STANDARD_OBJECT_ICONS } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-object-icons';
-import { STANDARD_OBJECT_IDS } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-object-ids';
 import {
-  FieldTypeAndNameMetadata,
+  type FieldTypeAndNameMetadata,
   getTsVectorColumnExpressionFromFields,
 } from 'src/engine/workspace-manager/workspace-sync-metadata/utils/get-ts-vector-column-expression.util';
 import { AttachmentWorkspaceEntity } from 'src/modules/attachment/standard-objects/attachment.workspace-entity';
@@ -49,6 +53,19 @@ export enum WorkspaceMemberTimeFormatEnum {
   HOUR_24 = 'HOUR_24',
 }
 
+export enum WorkspaceMemberNumberFormatEnum {
+  SYSTEM = 'SYSTEM',
+  COMMAS_AND_DOT = 'COMMAS_AND_DOT',
+  SPACES_AND_COMMA = 'SPACES_AND_COMMA',
+  DOTS_AND_COMMA = 'DOTS_AND_COMMA',
+  APOSTROPHE_AND_DOT = 'APOSTROPHE_AND_DOT',
+}
+
+registerEnumType(WorkspaceMemberNumberFormatEnum, {
+  name: 'WorkspaceMemberNumberFormatEnum',
+  description: 'Number format for displaying numbers',
+});
+
 registerEnumType(WorkspaceMemberTimeFormatEnum, {
   name: 'WorkspaceMemberTimeFormatEnum',
   description: 'Time time as Military, Standard or system as default',
@@ -70,6 +87,7 @@ export const SEARCH_FIELDS_FOR_WORKSPACE_MEMBER: FieldTypeAndNameMetadata[] = [
 
 @WorkspaceEntity({
   standardId: STANDARD_OBJECT_IDS.workspaceMember,
+
   namePlural: 'workspaceMembers',
   labelSingular: msg`Workspace Member`,
   labelPlural: msg`Workspace Members`,
@@ -133,6 +151,7 @@ export class WorkspaceMemberWorkspaceEntity extends BaseWorkspaceEntity {
   @WorkspaceIsSystem()
   avatarUrl: string;
 
+  @WorkspaceIsUnique()
   @WorkspaceField({
     standardId: WORKSPACE_MEMBER_STANDARD_FIELD_IDS.userEmail,
     type: FieldMetadataType.TEXT,
@@ -142,6 +161,19 @@ export class WorkspaceMemberWorkspaceEntity extends BaseWorkspaceEntity {
   })
   @WorkspaceIsSystem()
   userEmail: string;
+
+  @WorkspaceField({
+    standardId: WORKSPACE_MEMBER_STANDARD_FIELD_IDS.calendarStartDay,
+    type: FieldMetadataType.NUMBER,
+    label: msg`Start of the week`,
+    defaultValue: 7,
+    description: msg`User's preferred start day of the week`,
+    settings: {
+      dataType: NumberDataType.INT,
+    },
+  })
+  @WorkspaceIsSystem()
+  calendarStartDay: number;
 
   @WorkspaceField({
     standardId: WORKSPACE_MEMBER_STANDARD_FIELD_IDS.userId,
@@ -279,6 +311,7 @@ export class WorkspaceMemberWorkspaceEntity extends BaseWorkspaceEntity {
     inverseSideFieldKey: 'author',
     onDelete: RelationOnDeleteAction.SET_NULL,
   })
+  @WorkspaceIsSystem()
   authoredAttachments: Relation<AttachmentWorkspaceEntity[]>;
 
   @WorkspaceRelation({
@@ -359,4 +392,47 @@ export class WorkspaceMemberWorkspaceEntity extends BaseWorkspaceEntity {
   @WorkspaceIsSystem()
   @WorkspaceFieldIndex({ indexType: IndexType.GIN })
   searchVector: string;
+
+  @WorkspaceField({
+    standardId: WORKSPACE_MEMBER_STANDARD_FIELD_IDS.numberFormat,
+    type: FieldMetadataType.SELECT,
+    label: msg`Number format`,
+    description: msg`User's preferred number format`,
+    icon: 'IconNumbers',
+    options: [
+      {
+        value: WorkspaceMemberNumberFormatEnum.SYSTEM,
+        label: 'System',
+        position: 0,
+        color: 'turquoise',
+      },
+      {
+        value: WorkspaceMemberNumberFormatEnum.COMMAS_AND_DOT,
+        label: 'Commas and dot (1,234.56)',
+        position: 1,
+        color: 'blue',
+      },
+      {
+        value: WorkspaceMemberNumberFormatEnum.SPACES_AND_COMMA,
+        label: 'Spaces and comma (1 234,56)',
+        position: 2,
+        color: 'green',
+      },
+      {
+        value: WorkspaceMemberNumberFormatEnum.DOTS_AND_COMMA,
+        label: 'Dots and comma (1.234,56)',
+        position: 3,
+        color: 'orange',
+      },
+      {
+        value: WorkspaceMemberNumberFormatEnum.APOSTROPHE_AND_DOT,
+        label: "Apostrophe and dot (1'234.56)",
+        position: 4,
+        color: 'purple',
+      },
+    ],
+    defaultValue: `'${WorkspaceMemberNumberFormatEnum.SYSTEM}'`,
+  })
+  @WorkspaceIsSystem()
+  numberFormat: string;
 }

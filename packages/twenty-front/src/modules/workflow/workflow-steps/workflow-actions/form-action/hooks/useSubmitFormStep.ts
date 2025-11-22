@@ -4,9 +4,9 @@ import { useFindOneRecordQuery } from '@/object-record/hooks/useFindOneRecordQue
 import { SUBMIT_FORM_STEP } from '@/workflow/workflow-steps/workflow-actions/form-action/graphql/mutations/submitFormStep';
 import { useMutation } from '@apollo/client';
 import {
-  SubmitFormStepInput,
-  SubmitFormStepMutation,
-  SubmitFormStepMutationVariables,
+  type SubmitFormStepInput,
+  type SubmitFormStepMutation,
+  type SubmitFormStepMutationVariables,
 } from '~/generated-metadata/graphql';
 
 export const useSubmitFormStep = () => {
@@ -25,8 +25,6 @@ export const useSubmitFormStep = () => {
         id: true,
         name: true,
         status: true,
-        output: true,
-        context: true,
         startedAt: true,
         endedAt: true,
       },

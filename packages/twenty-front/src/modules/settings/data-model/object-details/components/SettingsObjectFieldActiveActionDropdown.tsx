@@ -19,17 +19,19 @@ type SettingsObjectFieldActiveActionDropdownProps = {
   onDeactivate?: () => void;
   onEdit: () => void;
   onSetAsLabelIdentifier?: () => void;
-  scopeKey: string;
+  fieldMetadataItemId: string;
+  readonly?: boolean;
 };
 
 export const SettingsObjectFieldActiveActionDropdown = ({
   isCustomField,
+  readonly = false,
   onDeactivate,
   onEdit,
   onSetAsLabelIdentifier,
-  scopeKey,
+  fieldMetadataItemId,
 }: SettingsObjectFieldActiveActionDropdownProps) => {
-  const dropdownId = `${scopeKey}-settings-field-active-action-dropdown`;
+  const dropdownId = `${fieldMetadataItemId}-settings-field-active-action-dropdown`;
 
   const { closeDropdown } = useCloseDropdown();
 
@@ -62,18 +64,18 @@ export const SettingsObjectFieldActiveActionDropdown = ({
         <DropdownContent widthInPixels={GenericDropdownContentWidth.Narrow}>
           <DropdownMenuItemsContainer>
             <MenuItem
-              text={isCustomField ? 'Edit' : 'View'}
+              text={isCustomField && !readonly ? 'Edit' : 'View'}
               LeftIcon={isCustomField ? IconPencil : IconEye}
               onClick={handleEdit}
             />
-            {isDefined(onSetAsLabelIdentifier) && (
+            {isDefined(onSetAsLabelIdentifier) && !readonly && (
               <MenuItem
                 text="Set as record text"
                 LeftIcon={IconTextSize}
                 onClick={handleSetAsLabelIdentifier}
               />
             )}
-            {isDefined(onDeactivate) && (
+            {isDefined(onDeactivate) && !readonly && (
               <MenuItem
                 text="Deactivate"
                 LeftIcon={IconArchive}

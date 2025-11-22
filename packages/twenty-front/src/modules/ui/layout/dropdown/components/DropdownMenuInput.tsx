@@ -1,9 +1,14 @@
 import { css } from '@emotion/react';
 import styled from '@emotion/styled';
-import { forwardRef, InputHTMLAttributes, ReactNode, useRef } from 'react';
+import {
+  forwardRef,
+  useRef,
+  type InputHTMLAttributes,
+  type ReactNode,
+} from 'react';
 import 'react-phone-number-input/style.css';
 
-import { useRegisterInputEvents } from '@/object-record/record-field/meta-types/input/hooks/useRegisterInputEvents';
+import { useRegisterInputEvents } from '@/object-record/record-field/ui/meta-types/input/hooks/useRegisterInputEvents';
 import { TEXT_INPUT_STYLE } from 'twenty-ui/theme';
 import { useCombinedRefs } from '~/hooks/useCombinedRefs';
 
@@ -53,7 +58,6 @@ type HTMLInputProps = InputHTMLAttributes<HTMLInputElement>;
 
 export type DropdownMenuInputProps = HTMLInputProps & {
   instanceId: string;
-  hotkeyScope?: string;
   onClickOutside?: () => void;
   onEnter?: () => void;
   onEscape?: () => void;
@@ -81,7 +85,6 @@ export const DropdownMenuInput = forwardRef<
       value,
       placeholder,
       instanceId,
-      hotkeyScope = 'dropdown-menu-input',
       onChange,
       onClickOutside,
       onEnter = () => {},
@@ -107,7 +110,6 @@ export const DropdownMenuInput = forwardRef<
       onClickOutside,
       onTab,
       onShiftTab,
-      hotkeyScope,
     });
 
     return (

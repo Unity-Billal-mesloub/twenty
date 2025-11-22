@@ -1,21 +1,21 @@
 import { ActionModal } from '@/action-menu/actions/components/ActionModal';
 import { useSelectedRecordIdOrThrow } from '@/action-menu/actions/record-actions/single-record/hooks/useSelectedRecordIdOrThrow';
-import { useContextStoreObjectMetadataItemOrThrow } from '@/context-store/hooks/useContextStoreObjectMetadataItemOrThrow';
 import { useDestroyOneRecord } from '@/object-record/hooks/useDestroyOneRecord';
-import { useRecordTable } from '@/object-record/record-table/hooks/useRecordTable';
-import { AppPath } from '@/types/AppPath';
+import { useRecordIndexIdFromCurrentContextStore } from '@/object-record/record-index/hooks/useRecordIndexIdFromCurrentContextStore';
+import { useResetTableRowSelection } from '@/object-record/record-table/hooks/internal/useResetTableRowSelection';
+import { t } from '@lingui/core/macro';
+import { AppPath } from 'twenty-shared/types';
 import { useNavigateApp } from '~/hooks/useNavigateApp';
 
 export const DestroySingleRecordAction = () => {
-  const { objectMetadataItem } = useContextStoreObjectMetadataItemOrThrow();
+  const { recordIndexId, objectMetadataItem } =
+    useRecordIndexIdFromCurrentContextStore();
 
   const recordId = useSelectedRecordIdOrThrow();
 
   const navigateApp = useNavigateApp();
 
-  const { resetTableRowSelection } = useRecordTable({
-    recordTableId: objectMetadataItem.namePlural,
-  });
+  const { resetTableRowSelection } = useResetTableRowSelection(recordIndexId);
 
   const { destroyOneRecord } = useDestroyOneRecord({
     objectNameSingular: objectMetadataItem.nameSingular,
@@ -32,10 +32,10 @@ export const DestroySingleRecordAction = () => {
 
   return (
     <ActionModal
-      title="Permanently Destroy Record"
-      subtitle="Are you sure you want to destroy this record? It cannot be recovered anymore."
+      title={t`Permanently Destroy Record`}
+      subtitle={t`Are you sure you want to destroy this record? It cannot be recovered anymore.`}
       onConfirmClick={handleDeleteClick}
-      confirmButtonText="Permanently Destroy Record"
+      confirmButtonText={t`Permanently Destroy Record`}
       closeSidePanelOnShowPageOptionsActionExecution={true}
     />
   );

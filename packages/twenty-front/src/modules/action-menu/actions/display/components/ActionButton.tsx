@@ -1,4 +1,4 @@
-import { ActionDisplayProps } from '@/action-menu/actions/display/components/ActionDisplay';
+import { type ActionDisplayProps } from '@/action-menu/actions/display/components/ActionDisplay';
 import { getActionLabel } from '@/action-menu/utils/getActionLabel';
 import styled from '@emotion/styled';
 import { isDefined } from 'twenty-shared/utils';
@@ -24,6 +24,8 @@ export const ActionButton = ({
     ? getActionLabel(action.shortLabel)
     : undefined;
 
+  const buttonAccent = action.isPrimaryCTA ? 'blue' : 'default';
+
   return (
     <>
       {action.shortLabel ? (
@@ -31,7 +33,7 @@ export const ActionButton = ({
           Icon={action.Icon}
           size="small"
           variant="secondary"
-          accent="default"
+          accent={buttonAccent}
           to={to}
           onClick={onClick}
           title={shortLabel}
@@ -43,7 +45,7 @@ export const ActionButton = ({
             Icon={action.Icon}
             size="small"
             variant="secondary"
-            accent="default"
+            accent={buttonAccent}
             to={to}
             onClick={onClick}
             ariaLabel={label}

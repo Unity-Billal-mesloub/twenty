@@ -1,90 +1,69 @@
-import {
-  BadRequestException,
-  Injectable,
-  InternalServerErrorException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
-import { Request } from 'express';
-import { isDefined } from 'twenty-shared/utils';
+import { type ObjectRecord } from 'twenty-shared/types';
+import { capitalize } from 'twenty-shared/utils';
 
-import { RestApiBaseHandler } from 'src/engine/api/rest/core/interfaces/rest-api-base.handler';
-
-import { getObjectMetadataFromObjectMetadataItemWithFieldMaps } from 'src/engine/metadata-modules/utils/get-object-metadata-from-object-metadata-Item-with-field-maps';
-
+import { CommonCreateManyQueryRunnerService } from 'src/engine/api/common/common-query-runners/common-create-many-query-runner/common-create-many-query-runner.service';
+import { RestApiBaseHandler } from 'src/engine/api/rest/core/handlers/rest-api-base.handler';
+import { parseDepthRestRequest } from 'src/engine/api/rest/input-request-parsers/depth-parser-utils/parse-depth-rest-request.util';
+import { parseUpsertRestRequest } from 'src/engine/api/rest/input-request-parsers/upsert-parser-utils/parse-upsert-rest-request.util';
+import { AuthenticatedRequest } from 'src/engine/api/rest/types/authenticated-request';
+import { workspaceQueryRunnerRestApiExceptionHandler } from 'src/engine/api/rest/utils/workspace-query-runner-rest-api-exception-handler.util';
 @Injectable()
 export class RestApiCreateManyHandler extends RestApiBaseHandler {
-  async handle(request: Request) {
-    const { objectMetadata, repository } =
-      await this.getRepositoryAndMetadataOrFail(request);
+  constructor(
+    private readonly commonCreateManyQueryRunnerService: CommonCreateManyQueryRunnerService,
+  ) {
+    super();
+  }
 
-    const body = request.body;
+  async handle(request: AuthenticatedRequest) {
+    try {
+      const { data, depth, upsert } = this.parseRequestArgs(request);
 
-    if (!Array.isArray(body)) {
-      throw new BadRequestException('Body must be an array');
-    }
+      const {
+        authContext,
+        objectMetadataItemWithFieldMaps,
+        objectMetadataMaps,
+      } = await this.buildCommonOptions(request);
 
-    if (body.length === 0) {
-      throw new BadRequestException('Input must not be empty');
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const overriddenRecordsToCreate: Record<string, any>[] = [];
-
-    for (const recordToCreate of body) {
-      const overriddenBody = await this.recordInputTransformerService.process({
-        recordInput: recordToCreate,
-        objectMetadataMapItem: objectMetadata.objectMetadataMapItem,
+      const selectedFields = await this.computeSelectedFields({
+        depth,
+        objectMetadataMapItem: objectMetadataItemWithFieldMaps,
+        objectMetadataMaps,
+        authContext,
       });
 
-      const recordExists =
-        isDefined(overriddenBody.id) &&
-        (await repository.exists({
-          where: {
-            id: overriddenBody.id,
-          },
-        }));
-
-      if (recordExists) {
-        throw new BadRequestException('Record already exists');
-      }
-
-      overriddenRecordsToCreate.push(overriddenBody);
-    }
-
-    const recordsToCreate =
-      await this.createdByFromAuthContextService.injectCreatedBy(
-        overriddenRecordsToCreate,
-        objectMetadata.objectMetadataMapItem.nameSingular,
-        this.getAuthContextFromRequest(request),
+      const records = await this.commonCreateManyQueryRunnerService.execute(
+        { data, selectedFields, upsert },
+        {
+          authContext,
+          objectMetadataMaps,
+          objectMetadataItemWithFieldMaps,
+        },
       );
 
-    const createdRecords = await repository.save(recordsToCreate);
-
-    this.apiEventEmitterService.emitCreateEvents({
-      records: createdRecords,
-      authContext: this.getAuthContextFromRequest(request),
-      objectMetadataItem: getObjectMetadataFromObjectMetadataItemWithFieldMaps(
-        objectMetadata.objectMetadataMapItem,
-      ),
-    });
-
-    const records = await this.getRecord({
-      recordIds: createdRecords.map((record) => record.id),
-      repository,
-      objectMetadata,
-      depth: this.depthInputFactory.create(request),
-    });
-
-    if (records.length !== body.length) {
-      throw new InternalServerErrorException(
-        `Error when creating records. ${body.length - records.length} records are missing after creation.`,
+      return this.formatRestResponse(
+        records,
+        objectMetadataItemWithFieldMaps.namePlural,
       );
+    } catch (error) {
+      return workspaceQueryRunnerRestApiExceptionHandler(error);
     }
+  }
 
-    return this.formatResult({
-      operation: 'create',
-      objectNamePlural: objectMetadata.objectMetadataMapItem.namePlural,
-      data: records,
-    });
+  private formatRestResponse(
+    records: ObjectRecord[],
+    objectNamePlural: string,
+  ) {
+    return { data: { [`create${capitalize(objectNamePlural)}`]: records } };
+  }
+
+  private parseRequestArgs(request: AuthenticatedRequest) {
+    return {
+      data: request.body,
+      depth: parseDepthRestRequest(request),
+      upsert: parseUpsertRestRequest(request),
+    };
   }
 }

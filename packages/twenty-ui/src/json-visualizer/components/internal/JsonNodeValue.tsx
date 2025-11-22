@@ -1,6 +1,6 @@
 import styled from '@emotion/styled';
 import { useJsonTreeContextOrThrow } from '@ui/json-visualizer/hooks/useJsonTreeContextOrThrow';
-import { JsonNodeHighlighting } from '@ui/json-visualizer/types/JsonNodeHighlighting';
+import { type JsonNodeHighlighting } from '@ui/json-visualizer/types/JsonNodeHighlighting';
 
 const StyledText = styled.span<{
   highlighting: JsonNodeHighlighting | undefined;
@@ -9,9 +9,9 @@ const StyledText = styled.span<{
   box-sizing: border-box;
   color: ${({ theme, highlighting }) =>
     highlighting === 'blue'
-      ? theme.adaptiveColors.blue4
+      ? theme.color.blue8
       : highlighting === 'red'
-        ? theme.adaptiveColors.red4
+        ? theme.color.red8
         : theme.font.color.tertiary};
   display: inline-flex;
   height: 24px;

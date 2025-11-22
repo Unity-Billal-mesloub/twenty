@@ -1,24 +1,26 @@
 import { ActivityRow } from '@/activities/components/ActivityRow';
 import { AttachmentDropdown } from '@/activities/files/components/AttachmentDropdown';
-import { AttachmentIcon } from '@/activities/files/components/AttachmentIcon';
-import { Attachment } from '@/activities/files/types/Attachment';
+import { type Attachment } from '@/activities/files/types/Attachment';
 import { downloadFile } from '@/activities/files/utils/downloadFile';
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
 import { useDestroyOneRecord } from '@/object-record/hooks/useDestroyOneRecord';
 import { useUpdateOneRecord } from '@/object-record/hooks/useUpdateOneRecord';
 import {
   FieldContext,
-  GenericFieldContextType,
-} from '@/object-record/record-field/contexts/FieldContext';
-import { TextInput } from '@/ui/input/components/TextInput';
+  type GenericFieldContextType,
+} from '@/object-record/record-field/ui/contexts/FieldContext';
+import { SettingsTextInput } from '@/ui/input/components/SettingsTextInput';
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
 import { useState } from 'react';
 import { isDefined } from 'twenty-shared/utils';
 
 import { PREVIEWABLE_EXTENSIONS } from '@/activities/files/const/previewable-extensions.const';
+import { FileIcon } from '@/file/components/FileIcon';
+import { useHasPermissionFlag } from '@/settings/roles/hooks/useHasPermissionFlag';
 import { IconCalendar, OverflowingTextWithTooltip } from 'twenty-ui/display';
 import { isNavigationModifierPressed } from 'twenty-ui/utilities';
+import { PermissionFlagType } from '~/generated-metadata/graphql';
 import { formatToHumanReadableDate } from '~/utils/date-utils';
 import { getFileNameAndExtension } from '~/utils/file/getFileNameAndExtension';
 
@@ -80,6 +82,10 @@ export const AttachmentRow = ({
 }: AttachmentRowProps) => {
   const theme = useTheme();
   const [isEditing, setIsEditing] = useState(false);
+
+  const hasDownloadPermission = useHasPermissionFlag(
+    PermissionFlagType.DOWNLOAD_FILE,
+  );
 
   const { name: originalFileName, extension: attachmentFileExtension } =
     getFileNameAndExtension(attachment.name);
@@ -162,9 +168,9 @@ export const AttachmentRow = ({
     >
       <ActivityRow disabled>
         <StyledLeftContent>
-          <AttachmentIcon attachmentType={attachment.type} />
+          <FileIcon fileCategory={attachment.fileCategory} />
           {isEditing ? (
-            <TextInput
+            <SettingsTextInput
               instanceId={`attachment-${attachment.id}-name`}
               value={attachmentFileName}
               onChange={handleOnChange}
@@ -199,10 +205,11 @@ export const AttachmentRow = ({
           </StyledCalendarIconContainer>
           {formatToHumanReadableDate(attachment.createdAt)}
           <AttachmentDropdown
-            scopeKey={attachment.id}
+            attachmentId={attachment.id}
             onDelete={handleDelete}
             onDownload={handleDownload}
             onRename={handleRename}
+            hasDownloadPermission={hasDownloadPermission}
           />
         </StyledRightContent>
       </ActivityRow>

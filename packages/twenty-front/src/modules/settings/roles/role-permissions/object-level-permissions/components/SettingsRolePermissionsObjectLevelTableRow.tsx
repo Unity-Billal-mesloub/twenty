@@ -1,17 +1,19 @@
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
+import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
 import { SettingsRolePermissionsObjectLevelOverrideCellContainer } from '@/settings/roles/role-permissions/object-level-permissions/components/SettingsRolePermissionsObjectLevelOverrideCellContainer';
-import { SettingsPath } from '@/types/SettingsPath';
+import { SettingsRolePermissionsObjectLevelSeeFieldsValueForObject } from '@/settings/roles/role-permissions/object-level-permissions/components/SettingsRolePermissionsObjectLevelSeeFieldsValueForObject';
+import { SettingsRolePermissionsObjectLevelUpdateFieldsValueForObject } from '@/settings/roles/role-permissions/object-level-permissions/components/SettingsRolePermissionsObjectLevelUpdateFieldsValueForObject';
+import { OBJECT_LEVEL_PERMISSION_TABLE_GRID_AUTO_COLUMNS } from '@/settings/roles/role-permissions/object-level-permissions/constants/ObjectLevelPermissionTableGridAutoColumns';
 import { TableCell } from '@/ui/layout/table/components/TableCell';
 import { TableRow } from '@/ui/layout/table/components/TableRow';
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
+import { SettingsPath } from 'twenty-shared/types';
+import { getSettingsPath } from 'twenty-shared/utils';
 import {
   IconChevronRight,
   OverflowingTextWithTooltip,
   useIcons,
 } from 'twenty-ui/display';
-import { ObjectPermission } from '~/generated/graphql';
-import { getSettingsPath } from '~/utils/navigation/getSettingsPath';
 
 const StyledNameTableCell = styled(TableCell)`
   color: ${({ theme }) => theme.font.color.primary};
@@ -25,34 +27,36 @@ const StyledNameLabel = styled.div`
 `;
 
 type SettingsRolePermissionsObjectLevelTableRowProps = {
-  objectPermission: ObjectPermission;
   objectMetadataItem: ObjectMetadataItem;
   roleId: string;
+  fromAgentId?: string;
 };
 
 export const SettingsRolePermissionsObjectLevelTableRow = ({
-  objectPermission,
   objectMetadataItem,
   roleId,
+  fromAgentId,
 }: SettingsRolePermissionsObjectLevelTableRowProps) => {
   const { getIcon } = useIcons();
   const theme = useTheme();
 
-  if (!objectMetadataItem) {
-    throw new Error('Object metadata item not found');
-  }
-
   const Icon = getIcon(objectMetadataItem.icon);
 
-  const objectLabel = objectMetadataItem.labelPlural;
+  const objectLabelPlural = objectMetadataItem.labelPlural;
+
+  const navigationPath = getSettingsPath(SettingsPath.RoleObjectLevel, {
+    roleId: roleId,
+    objectMetadataId: objectMetadataItem.id,
+  });
+
+  const navigationUrl = fromAgentId
+    ? `${navigationPath}?fromAgent=${fromAgentId}`
+    : navigationPath;
 
   return (
     <TableRow
-      to={getSettingsPath(SettingsPath.RoleObjectLevel, {
-        roleId: roleId,
-        objectMetadataId: objectPermission.objectMetadataId,
-      })}
-      gridAutoColumns="180px 1fr 1fr"
+      to={navigationUrl}
+      gridAutoColumns={OBJECT_LEVEL_PERMISSION_TABLE_GRID_AUTO_COLUMNS}
     >
       <StyledNameTableCell>
         {!!Icon && (
@@ -62,18 +66,30 @@ export const SettingsRolePermissionsObjectLevelTableRow = ({
             stroke={theme.icon.stroke.sm}
           />
         )}
-        <StyledNameLabel title={objectLabel}>
-          <OverflowingTextWithTooltip text={objectLabel} />
+        <StyledNameLabel title={objectLabelPlural}>
+          <OverflowingTextWithTooltip text={objectLabelPlural} />
         </StyledNameLabel>
       </StyledNameTableCell>
       <TableCell>
         <SettingsRolePermissionsObjectLevelOverrideCellContainer
-          objectPermissions={objectPermission}
+          objectMetadataItem={objectMetadataItem}
           roleId={roleId}
-          objectLabel={objectLabel}
+          objectLabel={objectLabelPlural}
         />
       </TableCell>
-      <TableCell align={'right'}>
+      <TableCell>
+        <SettingsRolePermissionsObjectLevelSeeFieldsValueForObject
+          roleId={roleId}
+          objectMetadataItemId={objectMetadataItem.id}
+        />
+      </TableCell>
+      <TableCell>
+        <SettingsRolePermissionsObjectLevelUpdateFieldsValueForObject
+          roleId={roleId}
+          objectMetadataItemId={objectMetadataItem.id}
+        />
+      </TableCell>
+      <TableCell align="right">
         <IconChevronRight
           size={theme.icon.size.md}
           color={theme.font.color.tertiary}

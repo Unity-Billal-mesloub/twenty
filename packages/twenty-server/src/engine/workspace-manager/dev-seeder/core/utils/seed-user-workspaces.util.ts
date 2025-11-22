@@ -1,11 +1,12 @@
-import { DataSource } from 'typeorm';
+import { type QueryRunner } from 'typeorm';
 
-import { UserWorkspace } from 'src/engine/core-modules/user-workspace/user-workspace.entity';
-import { USER_DATA_SEED_IDS } from 'src/engine/workspace-manager/dev-seeder/core/utils/seed-users.util';
+import { type UserWorkspaceEntity } from 'src/engine/core-modules/user-workspace/user-workspace.entity';
 import {
   SEED_APPLE_WORKSPACE_ID,
   SEED_YCOMBINATOR_WORKSPACE_ID,
-} from 'src/engine/workspace-manager/dev-seeder/core/utils/seed-workspaces.util';
+} from 'src/engine/workspace-manager/dev-seeder/core/constants/seeder-workspaces.constant';
+import { generateRandomUsers } from 'src/engine/workspace-manager/dev-seeder/core/utils/generate-random-users.util';
+import { USER_DATA_SEED_IDS } from 'src/engine/workspace-manager/dev-seeder/core/utils/seed-users.util';
 
 const tableName = 'userWorkspace';
 
@@ -20,16 +21,31 @@ export const USER_WORKSPACE_DATA_SEED_IDS = {
   PHIL_ACME: '20202020-e10a-4c27-a90b-b08c57b02d46',
 };
 
-export const seedUserWorkspaces = async (
-  dataSource: DataSource,
-  schemaName: string,
-  workspaceId: string,
-) => {
-  let userWorkspaces: Pick<UserWorkspace, 'id' | 'userId' | 'workspaceId'>[] =
-    [];
+const {
+  userWorkspaces: randomUserWorkspaces,
+  userWorkspaceIds: randomUserWorkspaceIds,
+} = generateRandomUsers();
+
+export const RANDOM_USER_WORKSPACE_IDS = randomUserWorkspaceIds;
+
+type SeedUserWorkspacesArgs = {
+  queryRunner: QueryRunner;
+  schemaName: string;
+  workspaceId: string;
+};
+
+export const seedUserWorkspaces = async ({
+  queryRunner,
+  schemaName,
+  workspaceId,
+}: SeedUserWorkspacesArgs) => {
+  let userWorkspaces: Pick<
+    UserWorkspaceEntity,
+    'id' | 'userId' | 'workspaceId'
+  >[] = [];
 
   if (workspaceId === SEED_APPLE_WORKSPACE_ID) {
-    userWorkspaces = [
+    const originalUserWorkspaces = [
       {
         id: USER_WORKSPACE_DATA_SEED_IDS.TIM,
         userId: USER_DATA_SEED_IDS.TIM,
@@ -51,6 +67,8 @@ export const seedUserWorkspaces = async (
         workspaceId,
       },
     ];
+
+    userWorkspaces = [...originalUserWorkspaces, ...randomUserWorkspaces];
   }
 
   if (workspaceId === SEED_YCOMBINATOR_WORKSPACE_ID) {
@@ -77,7 +95,7 @@ export const seedUserWorkspaces = async (
       },
     ];
   }
-  await dataSource
+  await queryRunner.manager
     .createQueryBuilder()
     .insert()
     .into(`${schemaName}.${tableName}`, ['id', 'userId', 'workspaceId'])
@@ -86,12 +104,18 @@ export const seedUserWorkspaces = async (
     .execute();
 };
 
-export const deleteUserWorkspaces = async (
-  dataSource: DataSource,
-  schemaName: string,
-  workspaceId: string,
-) => {
-  await dataSource
+type DeleteUserWorkspacesArgs = {
+  queryRunner: QueryRunner;
+  schemaName: string;
+  workspaceId: string;
+};
+
+export const deleteUserWorkspaces = async ({
+  queryRunner,
+  schemaName,
+  workspaceId,
+}: DeleteUserWorkspacesArgs) => {
+  await queryRunner.manager
     .createQueryBuilder()
     .delete()
     .from(`${schemaName}.${tableName}`)

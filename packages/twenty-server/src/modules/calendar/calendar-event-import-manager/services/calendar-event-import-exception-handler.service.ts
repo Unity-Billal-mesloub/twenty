@@ -1,10 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 
 import { ExceptionHandlerService } from 'src/engine/core-modules/exception-handler/exception-handler.service';
+import {
+  type TwentyORMException,
+  TwentyORMExceptionCode,
+} from 'src/engine/twenty-orm/exceptions/twenty-orm.exception';
 import { TwentyORMManager } from 'src/engine/twenty-orm/twenty-orm.manager';
 import { CALENDAR_THROTTLE_MAX_ATTEMPTS } from 'src/modules/calendar/calendar-event-import-manager/constants/calendar-throttle-max-attempts';
 import {
-  CalendarEventImportDriverException,
+  type CalendarEventImportDriverException,
   CalendarEventImportDriverExceptionCode,
 } from 'src/modules/calendar/calendar-event-import-manager/drivers/exceptions/calendar-event-import-driver.exception';
 import {
@@ -12,10 +16,9 @@ import {
   CalendarEventImportExceptionCode,
 } from 'src/modules/calendar/calendar-event-import-manager/exceptions/calendar-event-import.exception';
 import { CalendarChannelSyncStatusService } from 'src/modules/calendar/common/services/calendar-channel-sync-status.service';
-import { CalendarChannelWorkspaceEntity } from 'src/modules/calendar/common/standard-objects/calendar-channel.workspace-entity';
+import { type CalendarChannelWorkspaceEntity } from 'src/modules/calendar/common/standard-objects/calendar-channel.workspace-entity';
 export enum CalendarEventImportSyncStep {
-  FULL_CALENDAR_EVENT_LIST_FETCH = 'FULL_CALENDAR_EVENT_LIST_FETCH',
-  PARTIAL_CALENDAR_EVENT_LIST_FETCH = 'PARTIAL_CALENDAR_EVENT_LIST_FETCH',
+  CALENDAR_EVENT_LIST_FETCH = 'CALENDAR_EVENT_LIST_FETCH',
   CALENDAR_EVENTS_IMPORT = 'CALENDAR_EVENTS_IMPORT',
 }
 
@@ -31,7 +34,7 @@ export class CalendarEventImportErrorHandlerService {
   ) {}
 
   public async handleDriverException(
-    exception: CalendarEventImportDriverException,
+    exception: CalendarEventImportDriverException | TwentyORMException,
     syncStep: CalendarEventImportSyncStep,
     calendarChannel: Pick<
       CalendarChannelWorkspaceEntity,
@@ -47,6 +50,7 @@ export class CalendarEventImportErrorHandlerService {
           workspaceId,
         );
         break;
+      case TwentyORMExceptionCode.QUERY_READ_TIMEOUT:
       case CalendarEventImportDriverExceptionCode.TEMPORARY_ERROR:
         await this.handleTemporaryException(
           syncStep,
@@ -60,6 +64,9 @@ export class CalendarEventImportErrorHandlerService {
           workspaceId,
         );
         break;
+      case CalendarEventImportDriverExceptionCode.SYNC_CURSOR_ERROR:
+        await this.handleSyncCursorErrorException(calendarChannel, workspaceId);
+        break;
       case CalendarEventImportDriverExceptionCode.UNKNOWN:
       case CalendarEventImportDriverExceptionCode.UNKNOWN_NETWORK_ERROR:
       default:
@@ -70,6 +77,20 @@ export class CalendarEventImportErrorHandlerService {
         );
         break;
     }
+  }
+
+  private async handleSyncCursorErrorException(
+    calendarChannel: Pick<CalendarChannelWorkspaceEntity, 'id'>,
+    workspaceId: string,
+  ): Promise<void> {
+    this.logger.log(
+      `CalendarChannelId: ${calendarChannel.id} - Sync cursor error, resetting and rescheduling`,
+    );
+
+    await this.calendarChannelSyncStatusService.resetAndScheduleCalendarEventListFetch(
+      [calendarChannel.id],
+      workspaceId,
+    );
   }
 
   private async handleTemporaryException(
@@ -119,17 +140,13 @@ export class CalendarEventImportErrorHandlerService {
       },
       'throttleFailureCount',
       1,
+      undefined,
+      ['throttleFailureCount', 'id'],
     );
 
     switch (syncStep) {
-      case CalendarEventImportSyncStep.FULL_CALENDAR_EVENT_LIST_FETCH:
-        await this.calendarChannelSyncStatusService.scheduleFullCalendarEventListFetch(
-          [calendarChannel.id],
-        );
-        break;
-
-      case CalendarEventImportSyncStep.PARTIAL_CALENDAR_EVENT_LIST_FETCH:
-        await this.calendarChannelSyncStatusService.schedulePartialCalendarEventListFetch(
+      case CalendarEventImportSyncStep.CALENDAR_EVENT_LIST_FETCH:
+        await this.calendarChannelSyncStatusService.scheduleCalendarEventListFetch(
           [calendarChannel.id],
         );
         break;
@@ -156,7 +173,7 @@ export class CalendarEventImportErrorHandlerService {
   }
 
   private async handleUnknownException(
-    exception: CalendarEventImportDriverException,
+    exception: { message: string },
     calendarChannel: Pick<CalendarChannelWorkspaceEntity, 'id'>,
     workspaceId: string,
   ): Promise<void> {
@@ -192,13 +209,11 @@ export class CalendarEventImportErrorHandlerService {
     calendarChannel: Pick<CalendarChannelWorkspaceEntity, 'id'>,
     workspaceId: string,
   ): Promise<void> {
-    if (
-      syncStep === CalendarEventImportSyncStep.FULL_CALENDAR_EVENT_LIST_FETCH
-    ) {
+    if (syncStep === CalendarEventImportSyncStep.CALENDAR_EVENT_LIST_FETCH) {
       return;
     }
 
-    await this.calendarChannelSyncStatusService.resetAndScheduleFullCalendarEventListFetch(
+    await this.calendarChannelSyncStatusService.resetAndScheduleCalendarEventListFetch(
       [calendarChannel.id],
       workspaceId,
     );

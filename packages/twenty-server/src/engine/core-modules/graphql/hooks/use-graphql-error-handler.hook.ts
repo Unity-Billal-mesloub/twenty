@@ -1,23 +1,33 @@
 import {
   getDocumentString,
   handleStreamOrSingleExecutionResult,
-  OnExecuteDoneHookResultOnNextHook,
-  Plugin,
+  type OnExecuteDoneHookResultOnNextHook,
+  type Plugin,
 } from '@envelop/core';
-import { t } from '@lingui/core/macro';
-import { GraphQLError, Kind, OperationDefinitionNode, print } from 'graphql';
+import { msg } from '@lingui/core/macro';
+import {
+  GraphQLError,
+  Kind,
+  type OperationDefinitionNode,
+  print,
+} from 'graphql';
+import semver from 'semver';
+import { SOURCE_LOCALE } from 'twenty-shared/translations';
+import { isDefined } from 'twenty-shared/utils';
 
-import { GraphQLContext } from 'src/engine/api/graphql/graphql-config/interfaces/graphql-context.interface';
+import { type GraphQLContext } from 'src/engine/api/graphql/graphql-config/interfaces/graphql-context.interface';
 
-import { ExceptionHandlerService } from 'src/engine/core-modules/exception-handler/exception-handler.service';
+import { type ExceptionHandlerService } from 'src/engine/core-modules/exception-handler/exception-handler.service';
 import { generateGraphQLErrorFromError } from 'src/engine/core-modules/graphql/utils/generate-graphql-error-from-error.util';
 import {
   BaseGraphQLError,
   convertGraphQLErrorToBaseGraphQLError,
   ErrorCode,
 } from 'src/engine/core-modules/graphql/utils/graphql-errors.util';
-import { MetricsService } from 'src/engine/core-modules/metrics/metrics.service';
+import { type I18nService } from 'src/engine/core-modules/i18n/i18n.service';
+import { type MetricsService } from 'src/engine/core-modules/metrics/metrics.service';
 import { MetricsKeys } from 'src/engine/core-modules/metrics/types/metrics-keys.type';
+import { type TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
 import {
   graphQLErrorCodesToFilter,
   shouldCaptureException,
@@ -26,6 +36,9 @@ import {
 const DEFAULT_EVENT_ID_KEY = 'exceptionEventId';
 const SCHEMA_VERSION_HEADER = 'x-schema-version';
 const SCHEMA_MISMATCH_ERROR = 'Schema version mismatch.';
+const APP_VERSION_HEADER = 'x-app-version';
+const APP_VERSION_MISMATCH_ERROR = 'App version mismatch.';
+const APP_VERSION_MISMATCH_CODE = 'APP_VERSION_MISMATCH';
 
 type GraphQLErrorHandlerHookOptions = {
   metricsService: MetricsService;
@@ -34,6 +47,10 @@ type GraphQLErrorHandlerHookOptions = {
    * The exception handler service to use.
    */
   exceptionHandlerService: ExceptionHandlerService;
+
+  i18nService: I18nService;
+
+  twentyConfigService: TwentyConfigService;
   /**
    * The key of the event id in the error's extension. `null` to disable.
    * @default exceptionEventId
@@ -188,6 +205,10 @@ export const useGraphQLErrorHandlerHook = <
             }
 
             // Step 3: Transform errors for GraphQL response (clean GraphQL errors)
+            const userLocale = args.contextValue.req.locale ?? SOURCE_LOCALE;
+            const i18n = options.i18nService.getI18nInstance(userLocale);
+            const defaultErrorMessage = msg`An error occurred.`;
+
             const transformedErrors = processedErrors.map((error) => {
               const graphqlError =
                 error instanceof BaseGraphQLError
@@ -195,12 +216,13 @@ export const useGraphQLErrorHandlerHook = <
                       ...error,
                       extensions: {
                         ...error.extensions,
-                        userFriendlyMessage:
+                        userFriendlyMessage: i18n._(
                           error.extensions.userFriendlyMessage ??
-                          t`An error occurred.`,
+                            defaultErrorMessage,
+                        ),
                       },
                     }
-                  : generateGraphQLErrorFromError(error);
+                  : generateGraphQLErrorFromError(error, i18n);
 
               if (error.eventId && eventIdKey) {
                 graphqlError.extensions = {
@@ -226,18 +248,64 @@ export const useGraphQLErrorHandlerHook = <
     onValidate: ({ context, validateFn, params: { documentAST, schema } }) => {
       const errors = validateFn(schema, documentAST);
 
+      const userLocale = context.req.locale ?? SOURCE_LOCALE;
+      const i18n = options.i18nService.getI18nInstance(userLocale);
+
       if (Array.isArray(errors) && errors.length > 0) {
         const headers = context.req.headers;
         const currentMetadataVersion = context.req.workspaceMetadataVersion;
         const requestMetadataVersion = headers[SCHEMA_VERSION_HEADER];
+        const backendAppVersion =
+          options.twentyConfigService.get('APP_VERSION');
+        const appVersionHeaderValue = headers[APP_VERSION_HEADER];
+        const frontEndAppVersion =
+          appVersionHeaderValue && Array.isArray(appVersionHeaderValue)
+            ? appVersionHeaderValue[0]
+            : appVersionHeaderValue;
 
         if (
           requestMetadataVersion &&
           requestMetadataVersion !== `${currentMetadataVersion}`
         ) {
+          options.metricsService.incrementCounter({
+            key: MetricsKeys.SchemaVersionMismatch,
+          });
+
           throw new GraphQLError(SCHEMA_MISMATCH_ERROR, {
             extensions: {
-              userFriendlyMessage: t`Your workspace has been updated with a new data model. Please refresh the page.`,
+              userFriendlyMessage: i18n._(
+                msg`Your workspace has been updated with a new data model. Please refresh the page.`,
+              ),
+            },
+          });
+        }
+
+        if (
+          !frontEndAppVersion ||
+          !backendAppVersion ||
+          !semver.valid(frontEndAppVersion) ||
+          !semver.valid(backendAppVersion)
+        ) {
+          return;
+        }
+
+        const frontEndMajor = semver.parse(frontEndAppVersion)?.major;
+        const backendMajor = semver.parse(backendAppVersion)?.major;
+
+        if (
+          isDefined(frontEndMajor) &&
+          isDefined(backendMajor) &&
+          frontEndMajor < backendMajor
+        ) {
+          options.metricsService.incrementCounter({
+            key: MetricsKeys.AppVersionMismatch,
+          });
+          throw new GraphQLError(APP_VERSION_MISMATCH_ERROR, {
+            extensions: {
+              code: APP_VERSION_MISMATCH_CODE,
+              userFriendlyMessage: i18n._(
+                msg`Your app version is out of date. Please refresh the page to continue.`,
+              ),
             },
           });
         }

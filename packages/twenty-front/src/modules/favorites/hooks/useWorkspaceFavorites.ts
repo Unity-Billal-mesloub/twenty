@@ -4,15 +4,21 @@ import { useGetObjectRecordIdentifierByNameSingular } from '@/object-metadata/ho
 import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
 import { objectMetadataItemsState } from '@/object-metadata/states/objectMetadataItemsState';
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
-import { prefetchViewsState } from '@/prefetch/states/prefetchViewsState';
+import { coreViewsState } from '@/views/states/coreViewState';
+import { convertCoreViewToView } from '@/views/utils/convertCoreViewToView';
+import { useFeatureFlagsMap } from '@/workspace/hooks/useFeatureFlagsMap';
 import { useMemo } from 'react';
 import { useRecoilValue } from 'recoil';
-import { FieldMetadataType } from '~/generated-metadata/graphql';
+import {
+  FeatureFlagKey,
+  FieldMetadataType,
+} from '~/generated-metadata/graphql';
 import { usePrefetchedFavoritesData } from './usePrefetchedFavoritesData';
 
 export const useWorkspaceFavorites = () => {
+  const featureFlags = useFeatureFlagsMap();
   const { workspaceFavorites } = usePrefetchedFavoritesData();
-  const prefetchViews = useRecoilValue(prefetchViewsState);
+  const coreViews = useRecoilValue(coreViewsState);
   const objectMetadataItems = useRecoilValue(objectMetadataItemsState);
   const { objectMetadataItem: favoriteObjectMetadataItem } =
     useObjectMetadataItem({
@@ -32,6 +38,18 @@ export const useWorkspaceFavorites = () => {
     [favoriteObjectMetadataItem.fields],
   );
 
+  const [dashboardObjectMetadataId] = objectMetadataItems
+    .filter((item) => item.nameSingular === CoreObjectNameSingular.Dashboard)
+    .map((item) => item.id);
+
+  const views = coreViews
+    .map(convertCoreViewToView)
+    .filter(
+      (view) =>
+        featureFlags[FeatureFlagKey.IS_PAGE_LAYOUT_ENABLED] === true ||
+        view.objectMetadataId !== dashboardObjectMetadataId,
+    );
+
   const sortedWorkspaceFavorites = useMemo(
     () =>
       sortFavorites(
@@ -39,14 +57,14 @@ export const useWorkspaceFavorites = () => {
         favoriteRelationFieldMetadataItems,
         getObjectRecordIdentifierByNameSingular,
         false,
-        prefetchViews,
+        views,
         objectMetadataItems,
       ),
     [
       workspaceFavorites,
       favoriteRelationFieldMetadataItems,
       getObjectRecordIdentifierByNameSingular,
-      prefetchViews,
+      views,
       objectMetadataItems,
     ],
   );
@@ -56,7 +74,7 @@ export const useWorkspaceFavorites = () => {
   );
 
   const favoriteViewObjectMetadataIds = new Set(
-    prefetchViews.reduce<string[]>((acc, view) => {
+    views.reduce<string[]>((acc, view) => {
       if (workspaceFavoriteIds.has(view.id)) {
         acc.push(view.objectMetadataId);
       }
@@ -73,7 +91,6 @@ export const useWorkspaceFavorites = () => {
     );
 
   return {
-    workspaceFavorites: sortedWorkspaceFavorites,
     workspaceFavoritesObjectMetadataItems:
       activeNonSystemObjectMetadataItemsInWorkspaceFavorites,
   };

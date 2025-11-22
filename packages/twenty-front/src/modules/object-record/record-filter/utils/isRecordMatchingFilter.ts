@@ -1,32 +1,6 @@
 import { isObject } from '@sniptt/guards';
 
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
-import {
-  ActorFilter,
-  AddressFilter,
-  AndObjectRecordFilter,
-  ArrayFilter,
-  BooleanFilter,
-  CurrencyFilter,
-  DateFilter,
-  EmailsFilter,
-  FloatFilter,
-  FullNameFilter,
-  LeafObjectRecordFilter,
-  LinksFilter,
-  MultiSelectFilter,
-  NotObjectRecordFilter,
-  OrObjectRecordFilter,
-  PhonesFilter,
-  RatingFilter,
-  RawJsonFilter,
-  RecordGqlOperationFilter,
-  RichTextV2Filter,
-  SelectFilter,
-  StringFilter,
-  TSVectorFilter,
-  UUIDFilter,
-} from '@/object-record/graphql/types/RecordGqlOperationFilter';
+import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
 import { isMatchingArrayFilter } from '@/object-record/record-filter/utils/isMatchingArrayFilter';
 import { isMatchingBooleanFilter } from '@/object-record/record-filter/utils/isMatchingBooleanFilter';
 import { isMatchingCurrencyFilter } from '@/object-record/record-filter/utils/isMatchingCurrencyFilter';
@@ -40,6 +14,32 @@ import { isMatchingSelectFilter } from '@/object-record/record-filter/utils/isMa
 import { isMatchingStringFilter } from '@/object-record/record-filter/utils/isMatchingStringFilter';
 import { isMatchingTSVectorFilter } from '@/object-record/record-filter/utils/isMatchingTSVectorFilter';
 import { isMatchingUUIDFilter } from '@/object-record/record-filter/utils/isMatchingUUIDFilter';
+import {
+  type ActorFilter,
+  type AddressFilter,
+  type AndObjectRecordFilter,
+  type ArrayFilter,
+  type BooleanFilter,
+  type CurrencyFilter,
+  type DateFilter,
+  type EmailsFilter,
+  type FloatFilter,
+  type FullNameFilter,
+  type LeafObjectRecordFilter,
+  type LinksFilter,
+  type MultiSelectFilter,
+  type NotObjectRecordFilter,
+  type OrObjectRecordFilter,
+  type PhonesFilter,
+  type RatingFilter,
+  type RawJsonFilter,
+  type RecordGqlOperationFilter,
+  type RichTextV2Filter,
+  type SelectFilter,
+  type StringFilter,
+  type TSVectorFilter,
+  type UUIDFilter,
+} from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
 import { FieldMetadataType } from '~/generated-metadata/graphql';
 import { isEmptyObject } from '~/utils/isEmptyObject';

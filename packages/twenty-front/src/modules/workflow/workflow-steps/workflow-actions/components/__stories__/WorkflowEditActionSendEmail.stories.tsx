@@ -1,5 +1,5 @@
-import { WorkflowSendEmailAction } from '@/workflow/types/Workflow';
-import { Meta, StoryObj } from '@storybook/react';
+import { type WorkflowSendEmailAction } from '@/workflow/types/Workflow';
+import { type Meta, type StoryObj } from '@storybook/react';
 import { expect, fn, within } from '@storybook/test';
 import { graphql, HttpResponse } from 'msw';
 import { ComponentDecorator, RouterDecorator } from 'twenty-ui/testing';
@@ -28,6 +28,7 @@ const DEFAULT_ACTION: WorkflowSendEmailAction = {
       email: '',
       subject: '',
       body: '',
+      files: [],
     },
     outputSchema: {},
     errorHandlingOptions: {
@@ -52,6 +53,7 @@ const CONFIGURED_ACTION: WorkflowSendEmailAction = {
       email: 'test@twenty.com',
       subject: 'Welcome to Twenty!',
       body: 'Dear Tim,\n\nWelcome to Twenty! We are excited to have you on board.\n\nBest regards,\nThe Team',
+      files: [],
     },
     outputSchema: {},
     errorHandlingOptions: {
@@ -66,7 +68,7 @@ const CONFIGURED_ACTION: WorkflowSendEmailAction = {
 };
 
 const meta: Meta<typeof WorkflowEditActionSendEmail> = {
-  title: 'Modules/Workflow/WorkflowEditActionSendEmail',
+  title: 'Modules/Workflow/Actions/SendEmail/EditAction',
   component: WorkflowEditActionSendEmail,
   parameters: {
     msw: {
@@ -110,7 +112,6 @@ export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    expect(await canvas.findByText('Send Email')).toBeVisible();
     expect(await canvas.findByText('Account')).toBeVisible();
     expect(await canvas.findByText('Subject')).toBeVisible();
     expect(await canvas.findByText('Body')).toBeVisible();
@@ -126,8 +127,6 @@ export const Configured: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-
-    expect(await canvas.findByText('Send Welcome Email')).toBeVisible();
 
     expect(await canvas.findByText('Account')).toBeVisible();
     expect(await canvas.findByText('Subject')).toBeVisible();

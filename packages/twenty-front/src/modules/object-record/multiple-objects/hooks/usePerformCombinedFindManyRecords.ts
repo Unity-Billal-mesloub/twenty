@@ -1,24 +1,23 @@
-import { ApolloClient, gql } from '@apollo/client';
+import { type ApolloClient, gql } from '@apollo/client';
 import { isUndefined } from '@sniptt/guards';
 
 import { useApolloCoreClient } from '@/object-metadata/hooks/useApolloCoreClient';
-import { objectMetadataItemsState } from '@/object-metadata/states/objectMetadataItemsState';
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
+import { useObjectMetadataItems } from '@/object-metadata/hooks/useObjectMetadataItems';
+import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
 import { mapObjectMetadataToGraphQLQuery } from '@/object-metadata/utils/mapObjectMetadataToGraphQLQuery';
 import { getRecordsFromRecordConnection } from '@/object-record/cache/utils/getRecordsFromRecordConnection';
 import { EMPTY_QUERY } from '@/object-record/constants/EmptyQuery';
-import { RecordGqlOperationSignature } from '@/object-record/graphql/types/RecordGqlOperationSignature';
-import { generateDepthOneRecordGqlFields } from '@/object-record/graphql/utils/generateDepthOneRecordGqlFields';
+import { generateDepthRecordGqlFieldsFromObject } from '@/object-record/graphql/record-gql-fields/utils/generateDepthRecordGqlFieldsFromObject';
+import { type RecordGqlOperationSignature } from '@/object-record/graphql/types/RecordGqlOperationSignature';
 import { useObjectPermissions } from '@/object-record/hooks/useObjectPermissions';
-import { CombinedFindManyRecordsQueryResult } from '@/object-record/multiple-objects/types/CombinedFindManyRecordsQueryResult';
+import { type CombinedFindManyRecordsQueryResult } from '@/object-record/multiple-objects/types/CombinedFindManyRecordsQueryResult';
 import { generateCombinedFindManyRecordsQueryVariables } from '@/object-record/multiple-objects/utils/generateCombinedFindManyRecordsQueryVariables';
 import { getCombinedFindManyRecordsQueryFilteringPart } from '@/object-record/multiple-objects/utils/getCombinedFindManyRecordsQueryFilteringPart';
-import { useRecoilValue } from 'recoil';
 import { capitalize } from 'twenty-shared/utils';
 
 export const usePerformCombinedFindManyRecords = () => {
   const apolloCoreClient = useApolloCoreClient();
-  const objectMetadataItems = useRecoilValue(objectMetadataItemsState);
+  const { objectMetadataItems } = useObjectMetadataItems();
 
   const { objectPermissionsByObjectMetadataId } = useObjectPermissions();
 
@@ -51,13 +50,6 @@ export const usePerformCombinedFindManyRecords = () => {
       )
       .join(', ');
 
-    const limitPerMetadataItemArray = operationSignatures
-      .map(
-        ({ objectNameSingular }) =>
-          `$limit${capitalize(objectNameSingular)}: Int`,
-      )
-      .join(', ');
-
     const queryOperationSignatureWithObjectMetadataItemArray =
       operationSignatures.map((operationSignature) => {
         const objectMetadataItem = objectMetadataItemsValue.find(
@@ -80,7 +72,6 @@ export const usePerformCombinedFindManyRecords = () => {
       ${filterPerMetadataItemArray}, 
       ${orderByPerMetadataItemArray}, 
       ${cursorFilteringPerMetadataItemArray}, 
-      ${limitPerMetadataItemArray}
     ) {
       ${queryOperationSignatureWithObjectMetadataItemArray
         .map(
@@ -94,8 +85,10 @@ export const usePerformCombinedFindManyRecords = () => {
               objectMetadataItem,
               recordGqlFields:
                 operationSignature.fields ??
-                generateDepthOneRecordGqlFields({
+                generateDepthRecordGqlFieldsFromObject({
                   objectMetadataItem,
+                  objectMetadataItems,
+                  depth: 1,
                 }),
               objectPermissionsByObjectMetadataId,
             })}

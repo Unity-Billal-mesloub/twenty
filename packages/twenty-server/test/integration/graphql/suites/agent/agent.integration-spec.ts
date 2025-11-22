@@ -1,11 +1,19 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
 
-import { AgentService } from 'src/engine/metadata-modules/agent/agent.service';
-import { AgentResolver } from 'src/engine/metadata-modules/agent/agent.resolver';
+import { AgentRoleService } from 'src/engine/metadata-modules/agent-role/agent-role.service';
+import { AgentChatService } from 'src/engine/metadata-modules/agent/agent-chat.service';
+import { AgentHandoffEntity } from 'src/engine/metadata-modules/agent/agent-handoff.entity';
+import { AgentHandoffService } from 'src/engine/metadata-modules/agent/agent-handoff.service';
+import { AgentEntity } from 'src/engine/metadata-modules/agent/agent.entity';
 import {
   AgentException,
   AgentExceptionCode,
 } from 'src/engine/metadata-modules/agent/agent.exception';
+import { AgentResolver } from 'src/engine/metadata-modules/agent/agent.resolver';
+import { AgentService } from 'src/engine/metadata-modules/agent/agent.service';
+import { PermissionsService } from 'src/engine/metadata-modules/permissions/permissions.service';
+import { RoleTargetsEntity } from 'src/engine/metadata-modules/role/role-targets.entity';
 
 // Mock the agent service
 jest.mock('../../../../../src/engine/metadata-modules/agent/agent.service');
@@ -39,6 +47,60 @@ describe('agentResolver', () => {
           useValue: {
             findOneAgent: jest.fn(),
             updateOneAgent: jest.fn(),
+          },
+        },
+        {
+          provide: AgentHandoffService,
+          useValue: {
+            getHandoffTargets: jest.fn(),
+            canHandoffTo: jest.fn(),
+            createHandoff: jest.fn(),
+            removeHandoff: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(AgentEntity),
+          useValue: {
+            find: jest.fn(),
+            findOne: jest.fn(),
+            save: jest.fn(),
+            softDelete: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(AgentHandoffEntity),
+          useValue: {
+            find: jest.fn(),
+            findOne: jest.fn(),
+            save: jest.fn(),
+            delete: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(RoleTargetsEntity),
+          useValue: {
+            findOne: jest.fn(),
+          },
+        },
+        {
+          provide: AgentChatService,
+          useValue: {
+            createThread: jest.fn(),
+          },
+        },
+        {
+          provide: AgentRoleService,
+          useValue: {
+            assignRoleToAgent: jest.fn(),
+            removeRoleFromAgent: jest.fn(),
+          },
+        },
+        {
+          provide: PermissionsService,
+          useValue: {
+            userHasWorkspaceSettingPermission: jest
+              .fn()
+              .mockResolvedValue(true),
           },
         },
       ],

@@ -4,10 +4,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { isDefined } from 'twenty-shared/utils';
 import { In, Repository } from 'typeorm';
 
-import { Workspace } from 'src/engine/core-modules/workspace/workspace.entity';
+import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import { IndexMetadataEntity } from 'src/engine/metadata-modules/index-metadata/index-metadata.entity';
 import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
-import { ObjectMetadataMaps } from 'src/engine/metadata-modules/types/object-metadata-maps';
+import { type ObjectMetadataMaps } from 'src/engine/metadata-modules/types/object-metadata-maps';
 import { generateObjectMetadataMaps } from 'src/engine/metadata-modules/utils/generate-object-metadata-maps.util';
 import {
   WorkspaceMetadataVersionException,
@@ -15,7 +15,7 @@ import {
 } from 'src/engine/metadata-modules/workspace-metadata-version/exceptions/workspace-metadata-version.exception';
 import { WorkspaceCacheStorageService } from 'src/engine/workspace-cache-storage/workspace-cache-storage.service';
 
-type getExistingOrRecomputeMetadataMapsResult = {
+type GetExistingOrRecomputeMetadataMapsResult = {
   objectMetadataMaps: ObjectMetadataMaps;
   metadataVersion: number;
 };
@@ -25,12 +25,12 @@ export class WorkspaceMetadataCacheService {
   logger = new Logger(WorkspaceMetadataCacheService.name);
 
   constructor(
-    @InjectRepository(Workspace, 'core')
-    private readonly workspaceRepository: Repository<Workspace>,
+    @InjectRepository(WorkspaceEntity)
+    private readonly workspaceRepository: Repository<WorkspaceEntity>,
     private readonly workspaceCacheStorageService: WorkspaceCacheStorageService,
-    @InjectRepository(ObjectMetadataEntity, 'core')
+    @InjectRepository(ObjectMetadataEntity)
     private readonly objectMetadataRepository: Repository<ObjectMetadataEntity>,
-    @InjectRepository(IndexMetadataEntity, 'core')
+    @InjectRepository(IndexMetadataEntity)
     private readonly indexMetadataRepository: Repository<IndexMetadataEntity>,
   ) {}
 
@@ -38,7 +38,7 @@ export class WorkspaceMetadataCacheService {
     workspaceId,
   }: {
     workspaceId: string;
-  }): Promise<getExistingOrRecomputeMetadataMapsResult> {
+  }): Promise<GetExistingOrRecomputeMetadataMapsResult> {
     const currentCacheVersion =
       await this.getMetadataVersionFromCache(workspaceId);
 
@@ -84,7 +84,7 @@ export class WorkspaceMetadataCacheService {
     workspaceId,
   }: {
     workspaceId: string;
-  }): Promise<getExistingOrRecomputeMetadataMapsResult> {
+  }): Promise<GetExistingOrRecomputeMetadataMapsResult> {
     const currentDatabaseVersion =
       await this.getMetadataVersionFromDatabase(workspaceId);
 

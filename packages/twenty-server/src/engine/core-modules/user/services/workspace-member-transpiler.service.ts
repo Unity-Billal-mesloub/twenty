@@ -4,21 +4,22 @@ import { isNonEmptyString } from '@sniptt/guards';
 import { isDefined } from 'twenty-shared/utils';
 
 import { FileService } from 'src/engine/core-modules/file/services/file.service';
-import { UserWorkspace } from 'src/engine/core-modules/user-workspace/user-workspace.entity';
-import { DeletedWorkspaceMember } from 'src/engine/core-modules/user/dtos/deleted-workspace-member.dto';
-import { WorkspaceMember } from 'src/engine/core-modules/user/dtos/workspace-member.dto';
-import { RoleEntity } from 'src/engine/metadata-modules/role/role.entity';
+import { UserWorkspaceEntity } from 'src/engine/core-modules/user-workspace/user-workspace.entity';
+import { type DeletedWorkspaceMemberDTO } from 'src/engine/core-modules/user/dtos/deleted-workspace-member.dto';
+import { type WorkspaceMemberDTO } from 'src/engine/core-modules/user/dtos/workspace-member.dto';
+import { type RoleEntity } from 'src/engine/metadata-modules/role/role.entity';
 import { fromRoleEntitiesToRoleDtos } from 'src/engine/metadata-modules/role/utils/fromRoleEntityToRoleDto.util';
 import {
-  WorkspaceMemberDateFormatEnum,
-  WorkspaceMemberTimeFormatEnum,
-  WorkspaceMemberWorkspaceEntity,
+  type WorkspaceMemberDateFormatEnum,
+  type WorkspaceMemberNumberFormatEnum,
+  type WorkspaceMemberTimeFormatEnum,
+  type WorkspaceMemberWorkspaceEntity,
 } from 'src/modules/workspace-member/standard-objects/workspace-member.workspace-entity';
 
 export type ToWorkspaceMemberDtoArgs = {
   workspaceMemberEntity: WorkspaceMemberWorkspaceEntity;
   userWorkspaceRoles: RoleEntity[];
-  userWorkspace: UserWorkspace;
+  userWorkspace: UserWorkspaceEntity;
 };
 
 @Injectable()
@@ -49,7 +50,7 @@ export class WorkspaceMemberTranspiler {
     userWorkspace,
     workspaceMemberEntity,
     userWorkspaceRoles,
-  }: ToWorkspaceMemberDtoArgs): WorkspaceMember {
+  }: ToWorkspaceMemberDtoArgs): WorkspaceMemberDTO {
     const {
       avatarUrl: avatarUrlFromEntity,
       id,
@@ -60,6 +61,8 @@ export class WorkspaceMemberTranspiler {
       timeFormat,
       timeZone,
       dateFormat,
+      calendarStartDay,
+      numberFormat,
     } = workspaceMemberEntity;
 
     const avatarUrl = this.generateSignedAvatarUrl({
@@ -84,7 +87,9 @@ export class WorkspaceMemberTranspiler {
       timeFormat: timeFormat as WorkspaceMemberTimeFormatEnum,
       timeZone,
       roles,
-    } satisfies WorkspaceMember;
+      calendarStartDay,
+      numberFormat: numberFormat as WorkspaceMemberNumberFormatEnum,
+    } satisfies WorkspaceMemberDTO;
   }
 
   toWorkspaceMemberDtos(
@@ -98,7 +103,7 @@ export class WorkspaceMemberTranspiler {
   toDeletedWorkspaceMemberDto(
     workspaceMember: WorkspaceMemberWorkspaceEntity,
     userWorkspaceId?: string,
-  ): DeletedWorkspaceMember {
+  ): DeletedWorkspaceMemberDTO {
     const {
       avatarUrl: avatarUrlFromEntity,
       id,
@@ -122,13 +127,13 @@ export class WorkspaceMemberTranspiler {
       userEmail,
       avatarUrl,
       userWorkspaceId: userWorkspaceId ?? null,
-    } satisfies DeletedWorkspaceMember;
+    } satisfies DeletedWorkspaceMemberDTO;
   }
 
   toDeletedWorkspaceMemberDtos(
     workspaceMembers: WorkspaceMemberWorkspaceEntity[],
     userWorkspaceId?: string,
-  ): DeletedWorkspaceMember[] {
+  ): DeletedWorkspaceMemberDTO[] {
     return workspaceMembers.map((workspaceMember) =>
       this.toDeletedWorkspaceMemberDto(workspaceMember, userWorkspaceId),
     );

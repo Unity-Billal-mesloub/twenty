@@ -14,8 +14,8 @@ export class ConnectionParameters {
   @Field(() => Number)
   port: number;
 
-  @Field(() => String)
-  username: string;
+  @Field(() => String, { nullable: true })
+  username?: string;
 
   /**
    * Note: This field is stored in plain text in the database.
@@ -29,16 +29,28 @@ export class ConnectionParameters {
   secure?: boolean;
 }
 
-@ObjectType()
-export class ConnectionParametersOutput {
+@InputType()
+export class EmailAccountConnectionParameters {
+  @Field(() => ConnectionParameters, { nullable: true })
+  IMAP?: ConnectionParameters;
+
+  @Field(() => ConnectionParameters, { nullable: true })
+  SMTP?: ConnectionParameters;
+
+  @Field(() => ConnectionParameters, { nullable: true })
+  CALDAV?: ConnectionParameters;
+}
+
+@ObjectType('ConnectionParametersOutput')
+export class ConnectionParametersOutputDTO {
   @Field(() => String)
   host: string;
 
   @Field(() => Number)
   port: number;
 
-  @Field(() => String)
-  username: string;
+  @Field(() => String, { nullable: true })
+  username?: string;
 
   @Field(() => String)
   password: string;
@@ -47,14 +59,14 @@ export class ConnectionParametersOutput {
   secure?: boolean;
 }
 
-@ObjectType()
-export class ImapSmtpCaldavConnectionParameters {
-  @Field(() => ConnectionParametersOutput, { nullable: true })
-  IMAP?: ConnectionParametersOutput;
+@ObjectType('ImapSmtpCaldavConnectionParameters')
+export class ImapSmtpCaldavConnectionParametersDTO {
+  @Field(() => ConnectionParametersOutputDTO, { nullable: true })
+  IMAP?: ConnectionParametersOutputDTO;
 
-  @Field(() => ConnectionParametersOutput, { nullable: true })
-  SMTP?: ConnectionParametersOutput;
+  @Field(() => ConnectionParametersOutputDTO, { nullable: true })
+  SMTP?: ConnectionParametersOutputDTO;
 
-  @Field(() => ConnectionParametersOutput, { nullable: true })
-  CALDAV?: ConnectionParametersOutput;
+  @Field(() => ConnectionParametersOutputDTO, { nullable: true })
+  CALDAV?: ConnectionParametersOutputDTO;
 }

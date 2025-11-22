@@ -1,15 +1,16 @@
 import {
-  ApiConfig,
-  AuthProviders,
-  Billing,
-  Captcha,
-  ClientAiModelConfig,
-  PublicFeatureFlag,
-  Sentry,
-  Support,
+  type ApiConfig,
+  type AuthProviders,
+  type Billing,
+  type Captcha,
+  type ClientAiModelConfig,
+  type PublicFeatureFlag,
+  type Sentry,
+  type Support,
 } from '~/generated-metadata/graphql';
 
 export type ClientConfig = {
+  appVersion?: string;
   aiModels: Array<ClientAiModelConfig>;
   analyticsEnabled: boolean;
   api: ApiConfig;
@@ -19,7 +20,6 @@ export type ClientConfig = {
   canManageFeatureFlags: boolean;
   captcha: Captcha;
   chromeExtensionId?: string;
-  debugMode: boolean;
   defaultSubdomain?: string;
   frontDomain: string;
   isAttachmentPreviewEnabled: boolean;
@@ -30,9 +30,11 @@ export type ClientConfig = {
   isMicrosoftCalendarEnabled: boolean;
   isMicrosoftMessagingEnabled: boolean;
   isMultiWorkspaceEnabled: boolean;
-  isIMAPMessagingEnabled: boolean;
+  isImapSmtpCaldavEnabled: boolean;
+  isEmailingDomainsEnabled: boolean;
   publicFeatureFlags: Array<PublicFeatureFlag>;
   sentry: Sentry;
   signInPrefilled: boolean;
   support: Support;
+  isTwoFactorAuthenticationEnabled: boolean;
 };

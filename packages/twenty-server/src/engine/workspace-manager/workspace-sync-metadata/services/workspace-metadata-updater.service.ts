@@ -1,39 +1,42 @@
 import { Injectable } from '@nestjs/common';
 
-import { FieldMetadataType } from 'twenty-shared/types';
+import {
+  FieldMetadataType,
+  compositeTypeDefinitions,
+} from 'twenty-shared/types';
 import { capitalize } from 'twenty-shared/utils';
 import {
-  EntityManager,
-  EntityTarget,
-  FindOptionsWhere,
+  type EntityManager,
+  type EntityTarget,
+  type FindOptionsWhere,
   In,
-  ObjectLiteral,
-  Repository,
+  type ObjectLiteral,
+  type Repository,
 } from 'typeorm';
-import { DeepPartial } from 'typeorm/common/DeepPartial';
+import { type DeepPartial } from 'typeorm/common/DeepPartial';
 import { v4 as uuidV4 } from 'uuid';
+import { STANDARD_OBJECT_IDS } from 'twenty-shared/metadata';
 
-import { PartialFieldMetadata } from 'src/engine/workspace-manager/workspace-sync-metadata/interfaces/partial-field-metadata.interface';
-import { PartialIndexMetadata } from 'src/engine/workspace-manager/workspace-sync-metadata/interfaces/partial-index-metadata.interface';
-import { UpdaterOptions } from 'src/engine/workspace-manager/workspace-sync-metadata/interfaces/updater-options.interface';
+import { type PartialFieldMetadata } from 'src/engine/workspace-manager/workspace-sync-metadata/interfaces/partial-field-metadata.interface';
+import { type PartialIndexMetadata } from 'src/engine/workspace-manager/workspace-sync-metadata/interfaces/partial-index-metadata.interface';
+import { type UpdaterOptions } from 'src/engine/workspace-manager/workspace-sync-metadata/interfaces/updater-options.interface';
 
-import { FeatureFlagService } from 'src/engine/core-modules/feature-flag/services/feature-flag.service';
-import { compositeTypeDefinitions } from 'src/engine/metadata-modules/field-metadata/composite-types';
-import { FieldMetadataComplexOption } from 'src/engine/metadata-modules/field-metadata/dtos/options.input';
+import { isFieldMetadataRelationOrMorphRelation } from 'src/engine/api/graphql/workspace-schema-builder/utils/is-field-metadata-relation-or-morph-relation.utils';
+import { type FieldMetadataComplexOption } from 'src/engine/metadata-modules/field-metadata/dtos/options.input';
 import { FieldMetadataEntity } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
 import { isCompositeFieldMetadataType } from 'src/engine/metadata-modules/field-metadata/utils/is-composite-field-metadata-type.util';
 import { IndexFieldMetadataEntity } from 'src/engine/metadata-modules/index-metadata/index-field-metadata.entity';
 import { IndexMetadataEntity } from 'src/engine/metadata-modules/index-metadata/index-metadata.entity';
 import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
-import { CompositeFieldMetadataType } from 'src/engine/metadata-modules/workspace-migration/factories/composite-column-action.factory';
+import { type CompositeFieldMetadataType } from 'src/engine/metadata-modules/workspace-migration/factories/composite-column-action.factory';
 import { isFieldMetadataEntityOfType } from 'src/engine/utils/is-field-metadata-of-type.util';
-import { FieldMetadataUpdate } from 'src/engine/workspace-manager/workspace-migration-builder/factories/workspace-migration-field.factory';
-import { ObjectMetadataUpdate } from 'src/engine/workspace-manager/workspace-migration-builder/factories/workspace-migration-object.factory';
-import { WorkspaceSyncStorage } from 'src/engine/workspace-manager/workspace-sync-metadata/storage/workspace-sync.storage';
+import { type FieldMetadataUpdate } from 'src/engine/workspace-manager/workspace-migration-builder/factories/workspace-migration-field.factory';
+import { type ObjectMetadataUpdate } from 'src/engine/workspace-manager/workspace-migration-builder/factories/workspace-migration-object.factory';
+import { type WorkspaceSyncStorage } from 'src/engine/workspace-manager/workspace-sync-metadata/storage/workspace-sync.storage';
 
 @Injectable()
 export class WorkspaceMetadataUpdaterService {
-  constructor(private readonly featureFlagService: FeatureFlagService) {}
+  constructor() {}
 
   async updateObjectMetadata(
     manager: EntityManager,
@@ -213,21 +216,31 @@ export class WorkspaceMetadataUpdaterService {
     storage: WorkspaceSyncStorage,
     options?: UpdaterOptions,
   ): Promise<{
-    createdFieldRelationMetadataCollection: FieldMetadataUpdate<FieldMetadataType.RELATION>[];
-    updatedFieldRelationMetadataCollection: FieldMetadataUpdate<FieldMetadataType.RELATION>[];
-    deletedFieldRelationMetadataCollection: FieldMetadataUpdate<FieldMetadataType.RELATION>[];
+    createdFieldRelationMetadataCollection: FieldMetadataUpdate<
+      FieldMetadataType.RELATION | FieldMetadataType.MORPH_RELATION
+    >[];
+    updatedFieldRelationMetadataCollection: FieldMetadataUpdate<
+      FieldMetadataType.RELATION | FieldMetadataType.MORPH_RELATION
+    >[];
+    deletedFieldRelationMetadataCollection: FieldMetadataUpdate<
+      FieldMetadataType.RELATION | FieldMetadataType.MORPH_RELATION
+    >[];
   }> {
-    let createdFieldRelationMetadataCollection: FieldMetadataUpdate<FieldMetadataType.RELATION>[] =
-      [];
-    let updatedFieldRelationMetadataCollection: FieldMetadataUpdate<FieldMetadataType.RELATION>[] =
-      [];
+    let createdFieldRelationMetadataCollection: FieldMetadataUpdate<
+      FieldMetadataType.RELATION | FieldMetadataType.MORPH_RELATION
+    >[] = [];
+    let updatedFieldRelationMetadataCollection: FieldMetadataUpdate<
+      FieldMetadataType.RELATION | FieldMetadataType.MORPH_RELATION
+    >[] = [];
 
     /**
      * Create field relation metadata
      */
     if (!options || options.actions.includes('create')) {
       createdFieldRelationMetadataCollection = await this.updateEntities<
-        FieldMetadataEntity<FieldMetadataType.RELATION>
+        FieldMetadataEntity<
+          FieldMetadataType.RELATION | FieldMetadataType.MORPH_RELATION
+        >
       >(
         manager,
         FieldMetadataEntity,
@@ -241,7 +254,9 @@ export class WorkspaceMetadataUpdaterService {
      */
     if (!options || options.actions.includes('update')) {
       updatedFieldRelationMetadataCollection = await this.updateEntities<
-        FieldMetadataEntity<FieldMetadataType.RELATION>
+        FieldMetadataEntity<
+          FieldMetadataType.RELATION | FieldMetadataType.MORPH_RELATION
+        >
       >(
         manager,
         FieldMetadataEntity,
@@ -321,12 +336,19 @@ export class WorkspaceMetadataUpdaterService {
         const fieldMetadata = originalObjectMetadataCollection
           .find((object) => object.id === indexMetadata.objectMetadataId)
           ?.fields.find((field) => {
-            if (
-              isFieldMetadataEntityOfType(field, FieldMetadataType.RELATION)
-            ) {
+            if (isFieldMetadataRelationOrMorphRelation(field)) {
               if (field.settings?.joinColumnName === column) {
                 return true;
               }
+            }
+
+            if (
+              isFieldMetadataEntityOfType(
+                field,
+                FieldMetadataType.MORPH_RELATION,
+              )
+            ) {
+              return;
             }
 
             if (field.name === column) {
@@ -452,6 +474,20 @@ export class WorkspaceMetadataUpdaterService {
         ...oldEntity,
         ...updateItem,
       };
+
+      // Do not update isSystem for workspaceMember
+      // TODO to remove after https://github.com/twentyhq/twenty/issues/15688
+      const isObjectMetadataUpdate = entityClass === ObjectMetadataEntity;
+
+      if (
+        isObjectMetadataUpdate &&
+        oldEntity?.standardId === STANDARD_OBJECT_IDS.workspaceMember &&
+        'isSystem' in updateItem &&
+        'isSystem' in oldEntity
+      ) {
+        (mergedUpdate as unknown as { isSystem: boolean }).isSystem =
+          oldEntity.isSystem as boolean;
+      }
 
       // Omit keys that we don't want to override
       keysToOmit.forEach((key) => {

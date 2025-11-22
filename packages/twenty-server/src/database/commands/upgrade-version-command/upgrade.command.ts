@@ -1,118 +1,39 @@
-import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { exec } from 'child_process';
-import { promisify } from 'util';
-
-import chalk from 'chalk';
 import { Command } from 'nest-commander';
-import { WorkspaceActivationStatus } from 'twenty-shared/workspace';
-import { In, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 
-import { ActiveOrSuspendedWorkspacesMigrationCommandOptions } from 'src/database/commands/command-runners/active-or-suspended-workspaces-migration.command-runner';
+import { type ActiveOrSuspendedWorkspacesMigrationCommandOptions } from 'src/database/commands/command-runners/active-or-suspended-workspaces-migration.command-runner';
 import {
-  AllCommands,
+  type AllCommands,
   UpgradeCommandRunner,
-  VersionCommands,
+  type VersionCommands,
 } from 'src/database/commands/command-runners/upgrade.command-runner';
-import { CleanNotFoundFilesCommand } from 'src/database/commands/upgrade-version-command/0-54/0-54-clean-not-found-files.command';
-import { FixCreatedByDefaultValueCommand } from 'src/database/commands/upgrade-version-command/0-54/0-54-created-by-default-value.command';
-import { FixStandardSelectFieldsPositionCommand } from 'src/database/commands/upgrade-version-command/0-54/0-54-fix-standard-select-fields-position.command';
-import { LowercaseUserAndInvitationEmailsCommand } from 'src/database/commands/upgrade-version-command/0-54/0-54-lowercase-user-and-invitation-emails.command';
-import { MigrateDefaultAvatarUrlToUserWorkspaceCommand } from 'src/database/commands/upgrade-version-command/0-54/0-54-migrate-default-avatar-url-to-user-workspace.command';
-import { DeduplicateIndexedFieldsCommand } from 'src/database/commands/upgrade-version-command/0-55/0-55-deduplicate-indexed-fields.command';
-import { FixSchemaArrayTypeCommand } from 'src/database/commands/upgrade-version-command/1-1/1-1-fix-schema-array-type.command';
-import { FixUpdateStandardFieldsIsLabelSyncedWithName } from 'src/database/commands/upgrade-version-command/1-1/1-1-fix-update-standard-field-is-label-synced-with-name.command';
-import { AddEnqueuedStatusToWorkflowRunCommand } from 'src/database/commands/upgrade-version-command/1-2/1-2-add-enqueued-status-to-workflow-run.command';
+import { AddWorkflowRunStopStatusesCommand } from 'src/database/commands/upgrade-version-command/1-10/1-10-add-workflow-run-stop-statuses.command';
+import { CleanOrphanedKanbanAggregateOperationFieldMetadataIdCommand } from 'src/database/commands/upgrade-version-command/1-10/1-10-clean-orphaned-kanban-aggregate-operation-field-metadata-id.command';
+import { CreateViewKanbanFieldMetadataIdForeignKeyMigrationCommand } from 'src/database/commands/upgrade-version-command/1-10/1-10-create-view-kanban-field-metadata-id-foreign-key-migration.command';
+import { FlushCacheCommand } from 'src/database/commands/upgrade-version-command/1-10/1-10-flush-cache.command';
+import { MakeSureDashboardNamingAvailableCommand } from 'src/database/commands/upgrade-version-command/1-10/1-10-make-sure-dashboard-naming-available.command';
+import { MigrateAttachmentAuthorToCreatedByCommand } from 'src/database/commands/upgrade-version-command/1-10/1-10-migrate-attachment-author-to-created-by.command';
+import { MigrateAttachmentTypeToFileCategoryCommand } from 'src/database/commands/upgrade-version-command/1-10/1-10-migrate-attachment-type-to-file-category.command';
+import { MigrateChannelPartialFullSyncStagesCommand } from 'src/database/commands/upgrade-version-command/1-10/1-10-migrate-channel-partial-full-sync-stages.command';
+import { RegenerateSearchVectorsCommand } from 'src/database/commands/upgrade-version-command/1-10/1-10-regenerate-search-vectors.command';
+import { SeedDashboardViewCommand } from 'src/database/commands/upgrade-version-command/1-10/1-10-seed-dashboard-view.command';
+import { CleanOrphanedRoleTargetsCommand } from 'src/database/commands/upgrade-version-command/1-11/1-11-clean-orphaned-role-targets.command';
+import { CleanOrphanedUserWorkspacesCommand } from 'src/database/commands/upgrade-version-command/1-11/1-11-clean-orphaned-user-workspaces.command';
+import { CreateTwentyStandardApplicationCommand } from 'src/database/commands/upgrade-version-command/1-11/1-11-create-twenty-standard-application.command';
+import { FixLabelIdentifierPositionAndVisibilityCommand } from 'src/database/commands/upgrade-version-command/1-6/1-6-fix-label-identifier-position-and-visibility.command';
+import { BackfillWorkflowManualTriggerAvailabilityCommand } from 'src/database/commands/upgrade-version-command/1-7/1-7-backfill-workflow-manual-trigger-availability.command';
+import { DeduplicateUniqueFieldsCommand } from 'src/database/commands/upgrade-version-command/1-8/1-8-deduplicate-unique-fields.command';
+import { FillNullServerlessFunctionLayerIdCommand } from 'src/database/commands/upgrade-version-command/1-8/1-8-fill-null-serverless-function-layer-id.command';
+import { MigrateChannelSyncStagesCommand } from 'src/database/commands/upgrade-version-command/1-8/1-8-migrate-channel-sync-stages.command';
+import { MigrateWorkflowStepFilterOperandValueCommand } from 'src/database/commands/upgrade-version-command/1-8/1-8-migrate-workflow-step-filter-operand-value';
+import { RegeneratePersonSearchVectorWithPhonesCommand } from 'src/database/commands/upgrade-version-command/1-8/1-8-regenerate-person-search-vector-with-phones.command';
 import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
-import { Workspace } from 'src/engine/core-modules/workspace/workspace.entity';
+import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import { TwentyORMGlobalManager } from 'src/engine/twenty-orm/twenty-orm-global.manager';
 import { SyncWorkspaceMetadataCommand } from 'src/engine/workspace-manager/workspace-sync-metadata/commands/sync-workspace-metadata.command';
-import { compareVersionMajorAndMinor } from 'src/utils/version/compare-version-minor-and-major';
-import { MigrateWorkflowRunStatesCommand } from 'src/database/commands/upgrade-version-command/1-1/1-1-migrate-workflow-run-state.command';
-
-const execPromise = promisify(exec);
-
-@Injectable()
-export class DatabaseMigrationService {
-  private logger = new Logger(DatabaseMigrationService.name);
-
-  constructor(
-    @InjectRepository(Workspace, 'core')
-    private readonly workspaceRepository: Repository<Workspace>,
-  ) {}
-
-  // TODO centralize with ActiveOrSuspendedRunner method
-  private async loadActiveOrSuspendedWorkspace() {
-    return await this.workspaceRepository.find({
-      select: ['id', 'version'],
-      where: {
-        activationStatus: In([
-          WorkspaceActivationStatus.ACTIVE,
-          WorkspaceActivationStatus.SUSPENDED,
-        ]),
-      },
-      order: {
-        id: 'ASC',
-      },
-    });
-  }
-
-  async shouldSkipUpgradeIfFreshInstallation(): Promise<boolean> {
-    const activeWorkspaceOrSuspendedWorkspaceCount =
-      await this.loadActiveOrSuspendedWorkspace();
-
-    return activeWorkspaceOrSuspendedWorkspaceCount.length === 0;
-  }
-
-  async runMigrations(): Promise<void> {
-    this.logger.log('Running global database migrations');
-
-    try {
-      this.logger.log('Running core datasource migrations...');
-      const coreResult = await execPromise(
-        'npx -y typeorm migration:run -d dist/src/database/typeorm/core/core.datasource',
-      );
-
-      this.logger.log(coreResult.stdout);
-
-      this.logger.log('Database migrations completed successfully');
-    } catch (error) {
-      this.logger.error('Error running database migrations:', error);
-      throw error;
-    }
-  }
-
-  public async areAllWorkspacesAboveVersion0_53(): Promise<boolean> {
-    try {
-      const allActiveOrSuspendedWorkspaces =
-        await this.loadActiveOrSuspendedWorkspace();
-
-      if (allActiveOrSuspendedWorkspaces.length === 0) {
-        this.logger.log(
-          'No workspaces found. Running migrations for fresh installation.',
-        );
-
-        return true;
-      }
-
-      const workspacesBelowVersion = allActiveOrSuspendedWorkspaces.filter(
-        ({ version }) =>
-          version === null ||
-          compareVersionMajorAndMinor(version, '0.53.0') === 'lower',
-      );
-
-      this.logger.log(
-        `Found ${workspacesBelowVersion.length} active or suspended workspaces that are below version 0.53.0 \n${workspacesBelowVersion.map((el) => el.id).join('\n')}`,
-      );
-
-      return workspacesBelowVersion.length === 0;
-    } catch (error) {
-      this.logger.error('Error checking workspaces below version:', error);
-      throw error;
-    }
-  }
-}
+import { SetStandardApplicationNotUninstallableCommand } from 'src/database/commands/upgrade-version-command/1-12/1-12-set-standard-application-not-uninstallable.command';
 
 @Command({
   name: 'upgrade',
@@ -122,31 +43,44 @@ export class UpgradeCommand extends UpgradeCommandRunner {
   override allCommands: AllCommands;
 
   constructor(
-    @InjectRepository(Workspace, 'core')
-    protected readonly workspaceRepository: Repository<Workspace>,
+    @InjectRepository(WorkspaceEntity)
+    protected readonly workspaceRepository: Repository<WorkspaceEntity>,
     protected readonly twentyConfigService: TwentyConfigService,
     protected readonly twentyORMGlobalManager: TwentyORMGlobalManager,
     protected readonly syncWorkspaceMetadataCommand: SyncWorkspaceMetadataCommand,
 
-    private readonly databaseMigrationService: DatabaseMigrationService,
+    // 1.6 Commands
+    protected readonly fixLabelIdentifierPositionAndVisibilityCommand: FixLabelIdentifierPositionAndVisibilityCommand,
 
-    // 0.54 Commands
-    protected readonly fixStandardSelectFieldsPositionCommand: FixStandardSelectFieldsPositionCommand,
-    protected readonly fixCreatedByDefaultValueCommand: FixCreatedByDefaultValueCommand,
-    protected readonly cleanNotFoundFilesCommand: CleanNotFoundFilesCommand,
-    protected readonly lowercaseUserAndInvitationEmailsCommand: LowercaseUserAndInvitationEmailsCommand,
-    protected readonly migrateDefaultAvatarUrlToUserWorkspaceCommand: MigrateDefaultAvatarUrlToUserWorkspaceCommand,
+    // 1.7 Commands
+    protected readonly backfillWorkflowManualTriggerAvailabilityCommand: BackfillWorkflowManualTriggerAvailabilityCommand,
 
-    // 0.55 Commands
-    protected readonly deduplicateIndexedFieldsCommand: DeduplicateIndexedFieldsCommand,
+    // 1.8 Commands
+    protected readonly fillNullServerlessFunctionLayerIdCommand: FillNullServerlessFunctionLayerIdCommand,
+    protected readonly migrateWorkflowStepFilterOperandValueCommand: MigrateWorkflowStepFilterOperandValueCommand,
+    protected readonly deduplicateUniqueFieldsCommand: DeduplicateUniqueFieldsCommand,
+    protected readonly regeneratePersonSearchVectorWithPhonesCommand: RegeneratePersonSearchVectorWithPhonesCommand,
+    protected readonly migrateChannelSyncStagesCommand: MigrateChannelSyncStagesCommand,
 
-    // 1.1 Commands
-    protected readonly fixSchemaArrayTypeCommand: FixSchemaArrayTypeCommand,
-    protected readonly fixUpdateStandardFieldsIsLabelSyncedWithNameCommand: FixUpdateStandardFieldsIsLabelSyncedWithName,
+    // 1.10 Commands
+    protected readonly migrateAttachmentAuthorToCreatedByCommand: MigrateAttachmentAuthorToCreatedByCommand,
+    protected readonly migrateAttachmentTypeToFileCategoryCommand: MigrateAttachmentTypeToFileCategoryCommand,
+    protected readonly regenerateSearchVectorsCommand: RegenerateSearchVectorsCommand,
+    protected readonly addWorkflowRunStopStatusesCommand: AddWorkflowRunStopStatusesCommand,
+    protected readonly cleanOrphanedKanbanAggregateOperationFieldMetadataIdCommand: CleanOrphanedKanbanAggregateOperationFieldMetadataIdCommand,
+    protected readonly migrateChannelPartialFullSyncStagesCommand: MigrateChannelPartialFullSyncStagesCommand,
+    protected readonly makeSureDashboardNamingAvailableCommand: MakeSureDashboardNamingAvailableCommand,
+    protected readonly seedDashboardViewCommand: SeedDashboardViewCommand,
+    protected readonly createViewKanbanFieldMetadataIdForeignKeyMigrationCommand: CreateViewKanbanFieldMetadataIdForeignKeyMigrationCommand,
+    protected readonly flushWorkspaceCacheCommand: FlushCacheCommand,
 
-    // 1.2 Commands
-    protected readonly migrateWorkflowRunStatesCommand: MigrateWorkflowRunStatesCommand,
-    protected readonly addEnqueuedStatusToWorkflowRunCommand: AddEnqueuedStatusToWorkflowRunCommand,
+    // 1.11 Commands
+    protected readonly cleanOrphanedUserWorkspacesCommand: CleanOrphanedUserWorkspacesCommand,
+    protected readonly cleanOrphanedRoleTargetsCommand: CleanOrphanedRoleTargetsCommand,
+    protected readonly seedStandardApplicationsCommand: CreateTwentyStandardApplicationCommand,
+
+    // 1.12 Commands
+    protected readonlysetStandardApplicationNotUninstallableCommand: SetStandardApplicationNotUninstallableCommand,
   ) {
     super(
       workspaceRepository,
@@ -155,59 +89,68 @@ export class UpgradeCommand extends UpgradeCommandRunner {
       syncWorkspaceMetadataCommand,
     );
 
-    const commands_053: VersionCommands = {
-      beforeSyncMetadata: [],
+    const commands_160: VersionCommands = {
+      beforeSyncMetadata: [this.fixLabelIdentifierPositionAndVisibilityCommand],
       afterSyncMetadata: [],
     };
 
-    const commands_054: VersionCommands = {
+    const commands_170: VersionCommands = {
       beforeSyncMetadata: [
-        this.fixStandardSelectFieldsPositionCommand,
-        this.fixCreatedByDefaultValueCommand,
+        this.backfillWorkflowManualTriggerAvailabilityCommand,
+      ],
+      afterSyncMetadata: [],
+    };
+
+    const commands_180: VersionCommands = {
+      beforeSyncMetadata: [
+        this.migrateWorkflowStepFilterOperandValueCommand,
+        this.deduplicateUniqueFieldsCommand,
+        this.regeneratePersonSearchVectorWithPhonesCommand,
+        this.migrateChannelSyncStagesCommand,
+        this.fillNullServerlessFunctionLayerIdCommand,
+      ],
+      afterSyncMetadata: [],
+    };
+
+    const commands_1100: VersionCommands = {
+      beforeSyncMetadata: [
+        this.regenerateSearchVectorsCommand,
+        this.addWorkflowRunStopStatusesCommand,
+        this.cleanOrphanedKanbanAggregateOperationFieldMetadataIdCommand,
+        this.createViewKanbanFieldMetadataIdForeignKeyMigrationCommand,
+        this.migrateChannelPartialFullSyncStagesCommand,
+        this.makeSureDashboardNamingAvailableCommand,
       ],
       afterSyncMetadata: [
-        this.cleanNotFoundFilesCommand,
-        this.lowercaseUserAndInvitationEmailsCommand,
-        this.migrateDefaultAvatarUrlToUserWorkspaceCommand,
+        this.migrateAttachmentAuthorToCreatedByCommand,
+        this.migrateAttachmentTypeToFileCategoryCommand,
+        this.seedDashboardViewCommand,
+        this.flushWorkspaceCacheCommand,
       ],
     };
 
-    const commands_055: VersionCommands = {
-      beforeSyncMetadata: [this.deduplicateIndexedFieldsCommand],
-      afterSyncMetadata: [],
-    };
-
-    const commands_060: VersionCommands = {
-      afterSyncMetadata: [],
-      beforeSyncMetadata: [],
-    };
-
-    const commands_100: VersionCommands = {
-      afterSyncMetadata: [],
-      beforeSyncMetadata: [],
-    };
-
-    const commands_110: VersionCommands = {
-      beforeSyncMetadata: [
-        this.fixUpdateStandardFieldsIsLabelSyncedWithNameCommand,
-        this.fixSchemaArrayTypeCommand,
+    const commands_1110: VersionCommands = {
+      beforeSyncMetadata: [this.seedStandardApplicationsCommand],
+      afterSyncMetadata: [
+        this.cleanOrphanedUserWorkspacesCommand,
+        this.cleanOrphanedRoleTargetsCommand,
       ],
-      afterSyncMetadata: [],
     };
 
-    const commands_120: VersionCommands = {
-      beforeSyncMetadata: [this.addEnqueuedStatusToWorkflowRunCommand],
-      afterSyncMetadata: [this.migrateWorkflowRunStatesCommand],
+    const commands_1120: VersionCommands = {
+      beforeSyncMetadata: [],
+      afterSyncMetadata: [
+        this.readonlysetStandardApplicationNotUninstallableCommand,
+      ],
     };
 
     this.allCommands = {
-      '0.53.0': commands_053,
-      '0.54.0': commands_054,
-      '0.55.0': commands_055,
-      '0.60.0': commands_060,
-      '1.0.0': commands_100,
-      '1.1.0': commands_110,
-      '1.2.0': commands_120,
+      '1.6.0': commands_160,
+      '1.7.0': commands_170,
+      '1.8.0': commands_180,
+      '1.10.0': commands_1100,
+      '1.11.0': commands_1110,
+      '1.12.0': commands_1120,
     };
   }
 
@@ -215,31 +158,6 @@ export class UpgradeCommand extends UpgradeCommandRunner {
     passedParams: string[],
     options: ActiveOrSuspendedWorkspacesMigrationCommandOptions,
   ): Promise<void> {
-    const shouldSkipUpgradeIfFreshInstallation =
-      await this.databaseMigrationService.shouldSkipUpgradeIfFreshInstallation();
-
-    if (shouldSkipUpgradeIfFreshInstallation) {
-      this.logger.log(
-        chalk.blue('Fresh installation detected, skipping migration'),
-      );
-
-      return;
-    }
-
-    const shouldPreventFromUpgradingIfWorkspaceIsBelowVersion0_53 =
-      !(await this.databaseMigrationService.areAllWorkspacesAboveVersion0_53());
-
-    if (shouldPreventFromUpgradingIfWorkspaceIsBelowVersion0_53) {
-      this.logger.log(
-        chalk.red(
-          'Not able to run migrate command, aborting the whole migrate-upgrade operation',
-        ),
-      );
-      throw new Error('Could not run migration aborting');
-    }
-
-    await this.databaseMigrationService.runMigrations();
-
-    await super.runMigrationCommand(passedParams, options);
+    return await super.runMigrationCommand(passedParams, options);
   }
 }

@@ -1,15 +1,16 @@
 import { getOperationName } from '@apollo/client/utilities';
-import { Meta, StoryObj } from '@storybook/react';
-import { within } from '@storybook/testing-library';
+import { type Meta, type StoryObj } from '@storybook/react';
+import { within } from '@storybook/test';
 import { HttpResponse, graphql } from 'msw';
 
-import { AppPath } from '@/types/AppPath';
 import { GET_CURRENT_USER } from '@/users/graphql/queries/getCurrentUser';
+import { AppPath } from 'twenty-shared/types';
 import { OnboardingStatus } from '~/generated/graphql';
 import { PaymentSuccess } from '~/pages/onboarding/PaymentSuccess';
+import { I18nFrontDecorator } from '~/testing/decorators/I18nFrontDecorator';
 import {
   PageDecorator,
-  PageDecoratorArgs,
+  type PageDecoratorArgs,
 } from '~/testing/decorators/PageDecorator';
 import { graphqlMocks } from '~/testing/graphqlMocks';
 import { mockedOnboardingUserData } from '~/testing/mock-data/users';
@@ -17,7 +18,7 @@ import { mockedOnboardingUserData } from '~/testing/mock-data/users';
 const meta: Meta<PageDecoratorArgs> = {
   title: 'Pages/Onboarding/PaymentSuccess',
   component: PaymentSuccess,
-  decorators: [PageDecorator],
+  decorators: [PageDecorator, I18nFrontDecorator],
   args: { routePath: AppPath.PlanRequiredSuccess },
   parameters: {
     msw: {

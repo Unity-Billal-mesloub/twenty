@@ -4,9 +4,9 @@ import {
   Entity,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { type RelationOnDeleteAction } from 'twenty-shared/types';
 
-import { IndexType } from 'src/engine/metadata-modules/index-metadata/index-metadata.entity';
-import { RelationOnDeleteAction } from 'src/engine/metadata-modules/relation-metadata/relation-on-delete-action.type';
+import { type IndexType } from 'src/engine/metadata-modules/index-metadata/types/indexType.types';
 
 export enum WorkspaceMigrationColumnActionType {
   CREATE = 'CREATE',

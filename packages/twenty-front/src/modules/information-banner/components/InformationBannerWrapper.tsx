@@ -13,7 +13,6 @@ import { WorkspaceActivationStatus } from 'twenty-shared/workspace';
 import { SubscriptionStatus } from '~/generated-metadata/graphql';
 
 const StyledInformationBannerWrapper = styled.div`
-  height: 40px;
   position: relative;
 
   &:empty {

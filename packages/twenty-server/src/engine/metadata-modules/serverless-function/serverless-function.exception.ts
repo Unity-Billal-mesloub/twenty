@@ -1,11 +1,6 @@
 import { CustomException } from 'src/utils/custom-exception';
 
-export class ServerlessFunctionException extends CustomException {
-  declare code: ServerlessFunctionExceptionCode;
-  constructor(message: string, code: ServerlessFunctionExceptionCode) {
-    super(message, code);
-  }
-}
+export class ServerlessFunctionException extends CustomException<ServerlessFunctionExceptionCode> {}
 
 export enum ServerlessFunctionExceptionCode {
   SERVERLESS_FUNCTION_NOT_FOUND = 'SERVERLESS_FUNCTION_NOT_FOUND',
@@ -15,4 +10,6 @@ export enum ServerlessFunctionExceptionCode {
   SERVERLESS_FUNCTION_BUILDING = 'SERVERLESS_FUNCTION_BUILDING',
   SERVERLESS_FUNCTION_CODE_UNCHANGED = 'SERVERLESS_FUNCTION_CODE_UNCHANGED',
   SERVERLESS_FUNCTION_EXECUTION_LIMIT_REACHED = 'SERVERLESS_FUNCTION_EXECUTION_LIMIT_REACHED',
+  SERVERLESS_FUNCTION_CREATE_FAILED = 'SERVERLESS_FUNCTION_CREATE_FAILED',
+  SERVERLESS_FUNCTION_EXECUTION_TIMEOUT = 'SERVERLESS_FUNCTION_EXECUTION_TIMEOUT',
 }

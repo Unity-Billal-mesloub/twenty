@@ -1,21 +1,27 @@
+import { useWorkflowCommandMenu } from '@/command-menu/hooks/useWorkflowCommandMenu';
+import { commandMenuNavigationStackState } from '@/command-menu/states/commandMenuNavigationStackState';
 import { activeTabIdComponentState } from '@/ui/layout/tab-list/states/activeTabIdComponentState';
-import { useSetRecoilComponentStateV2 } from '@/ui/utilities/state/component-state/hooks/useSetRecoilComponentStateV2';
-import { workflowDiagramTriggerNodeSelectionComponentState } from '@/workflow/workflow-diagram/states/workflowDiagramTriggerNodeSelectionComponentState';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
+import { useSetRecoilComponentState } from '@/ui/utilities/state/component-state/hooks/useSetRecoilComponentState';
+import { workflowVisualizerWorkflowIdComponentState } from '@/workflow/states/workflowVisualizerWorkflowIdComponentState';
+import { workflowDiagramComponentState } from '@/workflow/workflow-diagram/states/workflowDiagramComponentState';
 import { workflowSelectedNodeComponentState } from '@/workflow/workflow-diagram/states/workflowSelectedNodeComponentState';
+import { type LinkOutputSchema } from '@/workflow/workflow-variables/types/LinkOutputSchema';
+import { type FieldOutputSchemaV2 } from '@/workflow/workflow-variables/types/RecordOutputSchemaV2';
+import { type StepOutputSchemaV2 } from '@/workflow/workflow-variables/types/StepOutputSchemaV2';
+import { getVariableTemplateFromPath } from '@/workflow/workflow-variables/utils/getVariableTemplateFromPath';
 import { useState } from 'react';
+import { useSetRecoilState } from 'recoil';
 import { isDefined } from 'twenty-shared/utils';
-import {
-  BaseOutputSchema,
-  LinkOutputSchema,
-  StepOutputSchema,
-} from '../types/StepOutputSchema';
+import { type BaseOutputSchemaV2 } from 'twenty-shared/workflow';
+import { useIcons } from 'twenty-ui/display';
+import { isBaseOutputSchemaV2 } from '../types/guards/isBaseOutputSchemaV2';
+import { isLinkOutputSchema } from '../types/guards/isLinkOutputSchema';
+import { isRecordOutputSchemaV2 } from '../types/guards/isRecordOutputSchemaV2';
 import { getCurrentSubStepFromPath } from '../utils/getCurrentSubStepFromPath';
-import { isBaseOutputSchema } from '../utils/isBaseOutputSchema';
-import { isLinkOutputSchema } from '../utils/isLinkOutputSchema';
-import { isRecordOutputSchema } from '../utils/isRecordOutputSchema';
 
 type UseVariableDropdownProps = {
-  step: StepOutputSchema;
+  step: StepOutputSchemaV2;
   onSelect: (value: string) => void;
   onBack: () => void;
 };
@@ -26,6 +32,7 @@ type UseVariableDropdownReturn = {
   setSearchInputValue: (value: string) => void;
   handleSelectField: (key: string) => void;
   goBack: () => void;
+  // TODO: fix typing here
   filteredOptions: [string, any][];
 };
 
@@ -34,18 +41,29 @@ export const useVariableDropdown = ({
   onSelect,
   onBack,
 }: UseVariableDropdownProps): UseVariableDropdownReturn => {
+  const { getIcon } = useIcons();
+
   const [currentPath, setCurrentPath] = useState<string[]>([]);
   const [searchInputValue, setSearchInputValue] = useState('');
 
-  const setWorkflowSelectedNode = useSetRecoilComponentStateV2(
+  const { openWorkflowEditStepInCommandMenu } = useWorkflowCommandMenu();
+
+  const workflowVisualizerWorkflowId = useRecoilComponentValue(
+    workflowVisualizerWorkflowIdComponentState,
+  );
+
+  const setWorkflowSelectedNode = useSetRecoilComponentState(
     workflowSelectedNodeComponentState,
   );
-  const setActiveTabId = useSetRecoilComponentStateV2(
+  const setActiveTabId = useSetRecoilComponentState(
     activeTabIdComponentState,
     'workflow-serverless-function-tab-list-component-id',
   );
-  const setWorkflowDiagramTriggerNodeSelection = useSetRecoilComponentStateV2(
-    workflowDiagramTriggerNodeSelectionComponentState,
+  const setWorkflowDiagram = useSetRecoilComponentState(
+    workflowDiagramComponentState,
+  );
+  const setCommandMenuNavigationStack = useSetRecoilState(
+    commandMenuNavigationStackState,
   );
 
   const getDisplayedSubStepFields = () => {
@@ -53,9 +71,9 @@ export const useVariableDropdown = ({
 
     if (isLinkOutputSchema(currentSubStep)) {
       return { link: currentSubStep.link };
-    } else if (isRecordOutputSchema(currentSubStep)) {
+    } else if (isRecordOutputSchemaV2(currentSubStep)) {
       return currentSubStep.fields;
-    } else if (isBaseOutputSchema(currentSubStep)) {
+    } else if (isBaseOutputSchemaV2(currentSubStep)) {
       return currentSubStep;
     }
   };
@@ -64,21 +82,55 @@ export const useVariableDropdown = ({
     const currentSubStep = getCurrentSubStepFromPath(step, currentPath);
 
     const handleSelectBaseOutputSchema = (
-      baseOutputSchema: BaseOutputSchema,
+      baseOutputSchema:
+        | BaseOutputSchemaV2
+        | Record<string, FieldOutputSchemaV2>,
     ) => {
       if (!baseOutputSchema[key]?.isLeaf) {
         setCurrentPath([...currentPath, key]);
         setSearchInputValue('');
       } else {
-        onSelect(`{{${step.id}.${[...currentPath, key].join('.')}}}`);
+        onSelect(
+          getVariableTemplateFromPath({
+            stepId: step.id,
+            path: [...currentPath, key],
+          }),
+        );
       }
     };
 
     const handleSelectLinkOutputSchema = (
       linkOutputSchema: LinkOutputSchema,
     ) => {
+      if (!isDefined(workflowVisualizerWorkflowId)) {
+        throw new Error('Workflow ID must be configured');
+      }
+
       setWorkflowSelectedNode(step.id);
-      setWorkflowDiagramTriggerNodeSelection(step.id);
+
+      setWorkflowDiagram((diagram) => {
+        if (!isDefined(diagram)) {
+          throw new Error('Workflow diagram must be defined');
+        }
+
+        return {
+          ...diagram,
+          nodes: diagram.nodes.map((node) => ({
+            ...node,
+            selected: node.id === step.id,
+          })),
+        };
+      });
+
+      setCommandMenuNavigationStack([]);
+
+      openWorkflowEditStepInCommandMenu(
+        workflowVisualizerWorkflowId,
+        step.name,
+        getIcon(step.icon),
+        step.id,
+      );
+
       if (isDefined(linkOutputSchema.link.tab)) {
         setActiveTabId(linkOutputSchema.link.tab);
       }
@@ -86,9 +138,9 @@ export const useVariableDropdown = ({
 
     if (isLinkOutputSchema(currentSubStep)) {
       handleSelectLinkOutputSchema(currentSubStep);
-    } else if (isRecordOutputSchema(currentSubStep)) {
+    } else if (isRecordOutputSchemaV2(currentSubStep)) {
       handleSelectBaseOutputSchema(currentSubStep.fields);
-    } else if (isBaseOutputSchema(currentSubStep)) {
+    } else if (isBaseOutputSchemaV2(currentSubStep)) {
       handleSelectBaseOutputSchema(currentSubStep);
     }
   };

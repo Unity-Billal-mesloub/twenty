@@ -1,5 +1,5 @@
-import { EnvironmentVariable } from '@/settings/serverless-functions/components/tabs/SettingsServerlessFunctionTabEnvironmentVariablesSection';
-import { TextInputV2 } from '@/ui/input/components/TextInputV2';
+import { type EnvironmentVariable } from '~/pages/settings/applications/tabs/SettingsApplicationDetailEnvironmentVariablesTableRow';
+import { TextInput } from '@/ui/input/components/TextInput';
 import { Dropdown } from '@/ui/layout/dropdown/components/Dropdown';
 import { DropdownContent } from '@/ui/layout/dropdown/components/DropdownContent';
 import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
@@ -7,6 +7,7 @@ import { useCloseDropdown } from '@/ui/layout/dropdown/hooks/useCloseDropdown';
 import { TableCell } from '@/ui/layout/table/components/TableCell';
 import { TableRow } from '@/ui/layout/table/components/TableRow';
 import styled from '@emotion/styled';
+import { t } from '@lingui/core/macro';
 import { useState } from 'react';
 import {
   IconCheck,
@@ -46,7 +47,7 @@ export const SettingsServerlessFunctionTabEnvironmentVariableTableRow = ({
   return editMode ? (
     <StyledEditModeTableRow>
       <TableCell>
-        <TextInputV2
+        <TextInput
           autoFocus
           value={editedEnvVariable.key}
           onChange={(newKey) =>
@@ -57,18 +58,18 @@ export const SettingsServerlessFunctionTabEnvironmentVariableTableRow = ({
         />
       </TableCell>
       <TableCell>
-        <TextInputV2
+        <TextInput
           value={editedEnvVariable.value}
           onChange={(newValue) =>
             setEditedEnvVariable({ ...editedEnvVariable, value: newValue })
           }
-          placeholder="Value"
+          placeholder={t`Value`}
           fullWidth
         />
       </TableCell>
       <TableCell>
         <LightIconButton
-          accent={'tertiary'}
+          accent="tertiary"
           Icon={IconX}
           onClick={() => {
             if (envVariable.key === '' && envVariable.value === '') {
@@ -79,7 +80,7 @@ export const SettingsServerlessFunctionTabEnvironmentVariableTableRow = ({
           }}
         />
         <LightIconButton
-          accent={'tertiary'}
+          accent="tertiary"
           Icon={IconCheck}
           disabled={
             editedEnvVariable.key === '' || editedEnvVariable.value === ''
@@ -113,7 +114,7 @@ export const SettingsServerlessFunctionTabEnvironmentVariableTableRow = ({
             <DropdownContent>
               <DropdownMenuItemsContainer>
                 <MenuItem
-                  text={'Edit'}
+                  text={t`Edit`}
                   LeftIcon={IconPencil}
                   onClick={() => {
                     setEditMode(true);
@@ -121,7 +122,7 @@ export const SettingsServerlessFunctionTabEnvironmentVariableTableRow = ({
                   }}
                 />
                 <MenuItem
-                  text={'Delete'}
+                  text={t`Delete`}
                   LeftIcon={IconTrash}
                   onClick={() => {
                     onDelete();

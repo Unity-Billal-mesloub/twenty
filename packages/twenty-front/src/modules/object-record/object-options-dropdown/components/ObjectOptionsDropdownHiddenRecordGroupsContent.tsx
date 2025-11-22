@@ -7,36 +7,35 @@ import { RecordGroupsVisibilityDropdownSection } from '@/object-record/record-gr
 import { useRecordGroupVisibility } from '@/object-record/record-group/hooks/useRecordGroupVisibility';
 import { recordGroupFieldMetadataComponentState } from '@/object-record/record-group/states/recordGroupFieldMetadataComponentState';
 import { hiddenRecordGroupIdsComponentSelector } from '@/object-record/record-group/states/selectors/hiddenRecordGroupIdsComponentSelector';
-import { SettingsPath } from '@/types/SettingsPath';
 import { DropdownContent } from '@/ui/layout/dropdown/components/DropdownContent';
 import { DropdownMenuHeader } from '@/ui/layout/dropdown/components/DropdownMenuHeader/DropdownMenuHeader';
 import { DropdownMenuHeaderLeftComponent } from '@/ui/layout/dropdown/components/DropdownMenuHeader/internal/DropdownMenuHeaderLeftComponent';
 import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
 import { DropdownMenuSeparator } from '@/ui/layout/dropdown/components/DropdownMenuSeparator';
 import { navigationMemorizedUrlState } from '@/ui/navigation/states/navigationMemorizedUrlState';
-import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
 import { useLingui } from '@lingui/react/macro';
 import { useLocation } from 'react-router-dom';
 import { useSetRecoilState } from 'recoil';
+import { SettingsPath } from 'twenty-shared/types';
+import { getSettingsPath } from 'twenty-shared/utils';
 import { IconChevronLeft, IconSettings } from 'twenty-ui/display';
 import { MenuItem, UndecoratedLink } from 'twenty-ui/navigation';
-import { getSettingsPath } from '~/utils/navigation/getSettingsPath';
 
 export const ObjectOptionsDropdownHiddenRecordGroupsContent = () => {
   const { t } = useLingui();
   const {
-    viewType,
     currentContentId,
     objectMetadataItem,
     onContentChange,
     closeDropdown,
   } = useObjectOptionsDropdown();
 
-  const recordGroupFieldMetadata = useRecoilComponentValueV2(
+  const recordGroupFieldMetadata = useRecoilComponentValue(
     recordGroupFieldMetadataComponentState,
   );
 
-  const hiddenRecordGroupIds = useRecoilComponentValueV2(
+  const hiddenRecordGroupIds = useRecoilComponentValue(
     hiddenRecordGroupIdsComponentSelector,
   );
 
@@ -45,9 +44,7 @@ export const ObjectOptionsDropdownHiddenRecordGroupsContent = () => {
   });
 
   const { handleVisibilityChange: handleRecordGroupVisibilityChange } =
-    useRecordGroupVisibility({
-      viewType,
-    });
+    useRecordGroupVisibility();
 
   const viewGroupSettingsUrl = getSettingsPath(SettingsPath.ObjectFieldEdit, {
     objectNamePlural,

@@ -1,19 +1,20 @@
+import { RECORD_TABLE_ROW_HEIGHT } from '@/object-record/record-table/constants/RecordTableRowHeight';
 import { useRecordTableContextOrThrow } from '@/object-record/record-table/contexts/RecordTableContext';
 import { isRecordTableCellFocusActiveComponentState } from '@/object-record/record-table/states/isRecordTableCellFocusActiveComponentState';
 import { recordTableFocusPositionComponentState } from '@/object-record/record-table/states/recordTableFocusPositionComponentState';
-import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
 import { useEffect } from 'react';
 import { isDefined } from 'twenty-shared/utils';
 
 export const RecordTableScrollToFocusedCellEffect = () => {
   const { recordTableId } = useRecordTableContextOrThrow();
 
-  const isRecordTableCellFocusActive = useRecoilComponentValueV2(
+  const isRecordTableCellFocusActive = useRecoilComponentValue(
     isRecordTableCellFocusActiveComponentState,
     recordTableId,
   );
 
-  const focusPosition = useRecoilComponentValueV2(
+  const focusPosition = useRecoilComponentValue(
     recordTableFocusPositionComponentState,
     recordTableId,
   );
@@ -51,8 +52,8 @@ export const RecordTableScrollToFocusedCellEffect = () => {
       }
     }
 
-    focusElement.style.scrollMarginTop = '32px';
-    focusElement.style.scrollMarginBottom = '32px';
+    focusElement.style.scrollMarginTop = `${RECORD_TABLE_ROW_HEIGHT}px`;
+    focusElement.style.scrollMarginBottom = `${RECORD_TABLE_ROW_HEIGHT}px`;
 
     focusElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 

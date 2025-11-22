@@ -3,15 +3,15 @@ import { useRecoilCallback } from 'recoil';
 
 import { findActivitiesOperationSignatureFactory } from '@/activities/graphql/operation-signatures/factories/findActivitiesOperationSignatureFactory';
 import { useActivityTargetsForTargetableObjects } from '@/activities/hooks/useActivityTargetsForTargetableObjects';
-import { ActivityTargetableObject } from '@/activities/types/ActivityTargetableEntity';
-import { Note } from '@/activities/types/Note';
-import { Task } from '@/activities/types/Task';
+import { type ActivityTargetableObject } from '@/activities/types/ActivityTargetableEntity';
+import { type Note } from '@/activities/types/Note';
+import { type Task } from '@/activities/types/Task';
 import { useObjectMetadataItems } from '@/object-metadata/hooks/useObjectMetadataItems';
-import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
-import { RecordGqlOperationFilter } from '@/object-record/graphql/types/RecordGqlOperationFilter';
-import { RecordGqlOperationOrderBy } from '@/object-record/graphql/types/RecordGqlOperationOrderBy';
+import { type CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
+import { type RecordGqlOperationOrderBy } from '@/object-record/graphql/types/RecordGqlOperationOrderBy';
 import { useFindManyRecords } from '@/object-record/hooks/useFindManyRecords';
 import { recordStoreFamilyState } from '@/object-record/record-store/states/recordStoreFamilyState';
+import { type RecordGqlOperationFilter } from 'twenty-shared/types';
 import { sortByAscString } from '~/utils/array/sortByAscString';
 
 export const useActivities = <T extends Task | Note>({

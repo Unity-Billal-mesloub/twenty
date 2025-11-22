@@ -1,28 +1,41 @@
-import { useSetRecoilState } from 'recoil';
+import { useAvailableComponentInstanceIdOrThrow } from '@/ui/utilities/state/component-state/hooks/useAvailableComponentInstanceIdOrThrow';
+import { type ComponentSelector } from '@/ui/utilities/state/component-state/types/ComponentSelector';
+import { type ComponentState } from '@/ui/utilities/state/component-state/types/ComponentState';
+import { globalComponentInstanceContextMap } from '@/ui/utilities/state/component-state/utils/globalComponentInstanceContextMap';
+import {
+  type RecoilState,
+  type SetterOrUpdater,
+  useSetRecoilState,
+} from 'recoil';
 
-import { useAvailableScopeIdOrThrow } from '@/ui/utilities/recoil-scope/scopes-internal/hooks/useAvailableScopeId';
-import { RecoilComponentState } from '@/ui/utilities/state/component-state/types/RecoilComponentState';
-
-export const useSetRecoilComponentState = <StateType>(
-  componentState: RecoilComponentState<StateType>,
-  componentId?: string,
-) => {
-  const componentContext = (window as any).componentContextStateMap?.get(
+export const useSetRecoilComponentState = <ValueType>(
+  componentState: ComponentState<ValueType> | ComponentSelector<ValueType>,
+  instanceIdFromProps?: string,
+): SetterOrUpdater<ValueType> => {
+  const componentInstanceContext = globalComponentInstanceContextMap.get(
     componentState.key,
   );
 
-  if (!componentContext) {
+  if (!componentInstanceContext) {
     throw new Error(
-      `Component context for key "${componentState.key}" is not defined`,
+      `Instance context for key "${componentState.key}" is not defined`,
     );
   }
 
-  const internalComponentId = useAvailableScopeIdOrThrow(
-    componentContext,
-    componentId,
+  const instanceId = useAvailableComponentInstanceIdOrThrow(
+    componentInstanceContext,
+    instanceIdFromProps,
   );
 
-  return useSetRecoilState(
-    componentState.atomFamily({ scopeId: internalComponentId }),
-  );
+  let state: RecoilState<ValueType>;
+
+  if (componentState.type === 'ComponentState') {
+    state = componentState.atomFamily({ instanceId });
+  } else if (componentState.type === 'ComponentSelector') {
+    state = componentState.selectorFamily({ instanceId });
+  } else {
+    throw new Error('Invalid component state type');
+  }
+
+  return useSetRecoilState(state);
 };

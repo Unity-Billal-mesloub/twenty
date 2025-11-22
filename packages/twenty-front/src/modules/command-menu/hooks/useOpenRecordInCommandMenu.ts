@@ -1,13 +1,14 @@
 import { useCommandMenu } from '@/command-menu/hooks/useCommandMenu';
 import { viewableRecordIdComponentState } from '@/command-menu/pages/record-page/states/viewableRecordIdComponentState';
 import { viewableRecordNameSingularComponentState } from '@/command-menu/pages/record-page/states/viewableRecordNameSingularComponentState';
-import { commandMenuNavigationMorphItemByPageState } from '@/command-menu/states/commandMenuNavigationMorphItemsState';
+import { commandMenuNavigationMorphItemsByPageState } from '@/command-menu/states/commandMenuNavigationMorphItemsByPageState';
 import { commandMenuNavigationStackState } from '@/command-menu/states/commandMenuNavigationStackState';
 import { CommandMenuPages } from '@/command-menu/types/CommandMenuPages';
 import { MAIN_CONTEXT_STORE_INSTANCE_ID } from '@/context-store/constants/MainContextStoreInstanceId';
 import { contextStoreCurrentObjectMetadataItemIdComponentState } from '@/context-store/states/contextStoreCurrentObjectMetadataItemIdComponentState';
 import { contextStoreCurrentViewIdComponentState } from '@/context-store/states/contextStoreCurrentViewIdComponentState';
 import { contextStoreCurrentViewTypeComponentState } from '@/context-store/states/contextStoreCurrentViewTypeComponentState';
+import { contextStoreIsPageInEditModeComponentState } from '@/context-store/states/contextStoreIsPageInEditModeComponentState';
 import { contextStoreNumberOfSelectedRecordsComponentState } from '@/context-store/states/contextStoreNumberOfSelectedRecordsComponentState';
 import { contextStoreTargetedRecordsRuleComponentState } from '@/context-store/states/contextStoreTargetedRecordsRuleComponentState';
 import { ContextStoreViewType } from '@/context-store/types/ContextStoreViewType';
@@ -15,12 +16,13 @@ import { objectMetadataItemFamilySelector } from '@/object-metadata/states/objec
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
 import { getIconColorForObjectType } from '@/object-metadata/utils/getIconColorForObjectType';
 import { viewableRecordIdState } from '@/object-record/record-right-drawer/states/viewableRecordIdState';
-import { getSnapshotValue } from '@/ui/utilities/recoil-scope/utils/getSnapshotValue';
+import { getSnapshotValue } from '@/ui/utilities/state/utils/getSnapshotValue';
+
 import { useRunWorkflowRunOpeningInCommandMenuSideEffects } from '@/workflow/hooks/useRunWorkflowRunOpeningInCommandMenuSideEffects';
 import { useTheme } from '@emotion/react';
 import { t } from '@lingui/core/macro';
 import { useRecoilCallback } from 'recoil';
-import { capitalize, isDefined } from 'twenty-shared/utils';
+import { isDefined } from 'twenty-shared/utils';
 import { useIcons } from 'twenty-ui/display';
 import { v4 } from 'uuid';
 
@@ -140,8 +142,21 @@ export const useOpenRecordInCommandMenu = () => {
             .getValue(),
         );
 
+        set(
+          contextStoreIsPageInEditModeComponentState.atomFamily({
+            instanceId: pageComponentInstanceId,
+          }),
+          snapshot
+            .getLoadable(
+              contextStoreIsPageInEditModeComponentState.atomFamily({
+                instanceId: MAIN_CONTEXT_STORE_INSTANCE_ID,
+              }),
+            )
+            .getValue(),
+        );
+
         const currentMorphItems = snapshot
-          .getLoadable(commandMenuNavigationMorphItemByPageState)
+          .getLoadable(commandMenuNavigationMorphItemsByPageState)
           .getValue();
 
         const morphItemToAdd = {
@@ -149,10 +164,10 @@ export const useOpenRecordInCommandMenu = () => {
           recordId,
         };
 
-        const newMorphItems = new Map(currentMorphItems);
-        newMorphItems.set(pageComponentInstanceId, morphItemToAdd);
+        const newMorphItemsMap = new Map(currentMorphItems);
+        newMorphItemsMap.set(pageComponentInstanceId, [morphItemToAdd]);
 
-        set(commandMenuNavigationMorphItemByPageState, newMorphItems);
+        set(commandMenuNavigationMorphItemsByPageState, newMorphItemsMap);
 
         const Icon = objectMetadataItem?.icon
           ? getIcon(objectMetadataItem.icon)
@@ -163,13 +178,13 @@ export const useOpenRecordInCommandMenu = () => {
           theme,
         });
 
-        const capitalizedObjectNameSingular = capitalize(objectNameSingular);
+        const objectLabelSingular = objectMetadataItem.labelSingular;
 
         navigateCommandMenu({
           page: CommandMenuPages.ViewRecord,
           pageTitle: isNewRecord
-            ? t`New ${capitalizedObjectNameSingular}`
-            : capitalizedObjectNameSingular,
+            ? t`New ${objectLabelSingular}`
+            : objectLabelSingular,
           pageIcon: Icon,
           pageIconColor: IconColor,
           pageId: pageComponentInstanceId,

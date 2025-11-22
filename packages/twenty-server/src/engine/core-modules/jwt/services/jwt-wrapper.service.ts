@@ -1,27 +1,31 @@
 import { Injectable } from '@nestjs/common';
-import { JwtService, JwtSignOptions, JwtVerifyOptions } from '@nestjs/jwt';
+import {
+  JwtService,
+  type JwtSignOptions,
+  type JwtVerifyOptions,
+} from '@nestjs/jwt';
 
 import { createHash } from 'crypto';
 
-import { Request as ExpressRequest } from 'express';
+import { type Request as ExpressRequest } from 'express';
 import * as jwt from 'jsonwebtoken';
-import { ExtractJwt, JwtFromRequestFunction } from 'passport-jwt';
+import { ExtractJwt, type JwtFromRequestFunction } from 'passport-jwt';
 import { isDefined } from 'twenty-shared/utils';
 
 import {
   AuthException,
   AuthExceptionCode,
 } from 'src/engine/core-modules/auth/auth.exception';
-import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
 import {
-  JwtPayload,
+  type AccessTokenJwtPayload,
+  type FileTokenJwtPayload,
+  type JwtPayload,
   JwtTokenTypeEnum,
-  TransientTokenJwtPayload,
-  RefreshTokenJwtPayload,
-  WorkspaceAgnosticTokenJwtPayload,
-  AccessTokenJwtPayload,
-  FileTokenJwtPayload,
+  type RefreshTokenJwtPayload,
+  type TransientTokenJwtPayload,
+  type WorkspaceAgnosticTokenJwtPayload,
 } from 'src/engine/core-modules/auth/types/auth-context.type';
+import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
 
 @Injectable()
 export class JwtWrapperService {

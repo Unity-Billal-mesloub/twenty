@@ -1,6 +1,11 @@
-import { ApolloLink, Observable, Operation } from '@apollo/client/core';
-import { FetchResult } from '@apollo/client/link/core';
-import { ArgumentNode, DirectiveNode } from 'graphql';
+import {
+  ApolloLink,
+  Observable,
+  type Operation,
+  type ServerError,
+} from '@apollo/client/core';
+import { type FetchResult } from '@apollo/client/link/core';
+import { type ArgumentNode, type DirectiveNode } from 'graphql';
 import { isDefined } from 'twenty-shared/utils';
 
 type StreamingRestLinkOptions = {
@@ -57,7 +62,13 @@ export class StreamingRestLink extends ApolloLink {
       fetch(url, requestConfig)
         .then(async (response) => {
           if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            const networkError = new Error(
+              `HTTP error! status: ${response.status}`,
+            ) as ServerError;
+
+            networkError.statusCode = response.status;
+
+            throw networkError;
           }
 
           if (!response.body) {
@@ -66,7 +77,6 @@ export class StreamingRestLink extends ApolloLink {
 
           const reader = response.body.getReader();
           const decoder = new TextDecoder();
-          let accumulatedData = '';
 
           let isStreaming = true;
           while (isStreaming) {
@@ -79,19 +89,9 @@ export class StreamingRestLink extends ApolloLink {
             }
 
             const decodedChunk = decoder.decode(value, { stream: true });
-            accumulatedData += decodedChunk;
 
             if (isDefined(onChunk) && typeof onChunk === 'function') {
-              onChunk(accumulatedData);
-            }
-
-            try {
-              const parsedData = JSON.parse(decodedChunk);
-              observer.next({ data: parsedData });
-            } catch {
-              observer.next({
-                data: { streamingData: decodedChunk },
-              });
+              onChunk(decodedChunk);
             }
           }
         })
@@ -157,7 +157,7 @@ export class StreamingRestLink extends ApolloLink {
       });
 
       return directive;
-    } catch (error) {
+    } catch {
       return null;
     }
   }

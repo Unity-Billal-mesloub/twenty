@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { fromNodeProviderChain } from '@aws-sdk/credential-providers';
 
-import { StorageDriver } from 'src/engine/core-modules/file-storage/drivers/interfaces/storage-driver.interface';
+import { type StorageDriver } from 'src/engine/core-modules/file-storage/drivers/interfaces/storage-driver.interface';
 import { StorageDriverType } from 'src/engine/core-modules/file-storage/interfaces/file-storage.interface';
 
 import { LocalDriver } from 'src/engine/core-modules/file-storage/drivers/local.driver';
@@ -29,7 +29,7 @@ export class FileStorageDriverFactory extends DriverFactoryBase<StorageDriver> {
 
     if (storageType === StorageDriverType.S_3) {
       const storageConfigHash = this.getConfigGroupHash(
-        ConfigVariablesGroup.StorageConfig,
+        ConfigVariablesGroup.STORAGE_CONFIG,
       );
 
       return `s3|${storageConfigHash}`;

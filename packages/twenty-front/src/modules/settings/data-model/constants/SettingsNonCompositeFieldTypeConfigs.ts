@@ -1,22 +1,21 @@
 import {
-  FieldArrayValue,
-  FieldBooleanValue,
-  FieldDateTimeValue,
-  FieldDateValue,
-  FieldJsonValue,
-  FieldMultiSelectValue,
-  FieldNumberValue,
-  FieldRatingValue,
-  FieldRelationValue,
-  FieldSelectValue,
-  FieldTextValue,
-  FieldUUidValue,
-} from '@/object-record/record-field/types/FieldMetadata';
+  type FieldArrayValue,
+  type FieldBooleanValue,
+  type FieldDateTimeValue,
+  type FieldDateValue,
+  type FieldJsonValue,
+  type FieldMultiSelectValue,
+  type FieldNumberValue,
+  type FieldRelationValue,
+  type FieldSelectValue,
+  type FieldTextValue,
+  type FieldUUidValue,
+} from '@/object-record/record-field/ui/types/FieldMetadata';
 import { DEFAULT_DATE_VALUE } from '@/settings/data-model/constants/DefaultDateValue';
-import { SettingsFieldTypeCategoryType } from '@/settings/data-model/types/SettingsFieldTypeCategoryType';
-import { SettingsNonCompositeFieldType } from '@/settings/data-model/types/SettingsNonCompositeFieldType';
+import { type SettingsFieldTypeCategoryType } from '@/settings/data-model/types/SettingsFieldTypeCategoryType';
+import { type SettingsNonCompositeFieldType } from '@/settings/data-model/types/SettingsNonCompositeFieldType';
+import { type FieldRatingValue } from 'twenty-shared/types';
 import {
-  IconComponent,
   IllustrationIconArray,
   IllustrationIconCalendarEvent,
   IllustrationIconCalendarTime,
@@ -29,6 +28,7 @@ import {
   IllustrationIconText,
   IllustrationIconToggle,
   IllustrationIconUid,
+  type IconComponent,
 } from 'twenty-ui/display';
 import { FieldMetadataType } from '~/generated-metadata/graphql';
 
@@ -53,9 +53,9 @@ export const SETTINGS_NON_COMPOSITE_FIELD_TYPE_CONFIGS: SettingsNonCompositeFiel
       label: 'Unique ID',
       Icon: IllustrationIconUid,
       exampleValues: [
-        '00000000-0000-0000-0000-000000000000',
-        '00000000-0000-0000-0000-000000000001',
-        '00000000-0000-0000-0000-000000000002',
+        '00000000-0000-4000-8000-000000000000',
+        '00000000-0000-4000-8000-000000000001',
+        '00000000-0000-4000-8000-000000000003',
       ],
       category: 'Advanced',
     } as const satisfies SettingsFieldTypeConfig<FieldUUidValue>,

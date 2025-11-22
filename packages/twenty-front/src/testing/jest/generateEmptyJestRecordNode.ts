@@ -1,7 +1,8 @@
 import { getRecordNodeFromRecord } from '@/object-record/cache/utils/getRecordNodeFromRecord';
-import { generateDepthOneRecordGqlFields } from '@/object-record/graphql/utils/generateDepthOneRecordGqlFields';
+import { generateDepthRecordGqlFieldsFromObject } from '@/object-record/graphql/record-gql-fields/utils/generateDepthRecordGqlFieldsFromObject';
 import { prefillRecord } from '@/object-record/utils/prefillRecord';
-import { generatedMockObjectMetadataItems } from '~/testing/mock-data/generatedMockObjectMetadataItems';
+import { generatedMockObjectMetadataItems } from '~/testing/utils/generatedMockObjectMetadataItems';
+import { getMockObjectMetadataItemOrThrow } from '~/testing/utils/getMockObjectMetadataItemOrThrow';
 
 type GenerateEmptyJestRecordNodeArgs = {
   objectNameSingular: string;
@@ -13,9 +14,8 @@ export const generateEmptyJestRecordNode = ({
   input,
   withDepthOneRelation = false,
 }: GenerateEmptyJestRecordNodeArgs) => {
-  const objectMetadataItem = generatedMockObjectMetadataItems.find(
-    (item) => item.nameSingular === objectNameSingular,
-  );
+  const objectMetadataItem =
+    getMockObjectMetadataItemOrThrow(objectNameSingular);
 
   if (!objectMetadataItem) {
     throw new Error(
@@ -33,8 +33,10 @@ export const generateEmptyJestRecordNode = ({
     objectMetadataItem,
     objectMetadataItems: generatedMockObjectMetadataItems,
     recordGqlFields: withDepthOneRelation
-      ? generateDepthOneRecordGqlFields({
+      ? generateDepthRecordGqlFieldsFromObject({
           objectMetadataItem,
+          objectMetadataItems: generatedMockObjectMetadataItems,
+          depth: 1,
         })
       : undefined,
   });

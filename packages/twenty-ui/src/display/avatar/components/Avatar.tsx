@@ -4,13 +4,14 @@ import { useContext } from 'react';
 
 import { invalidAvatarUrlsState } from '@ui/display/avatar/components/states/isInvalidAvatarUrlState';
 import { AVATAR_PROPERTIES_BY_SIZE } from '@ui/display/avatar/constants/AvatarPropertiesBySize';
-import { AvatarSize } from '@ui/display/avatar/types/AvatarSize';
-import { AvatarType } from '@ui/display/avatar/types/AvatarType';
-import { IconComponent } from '@ui/display/icon/types/IconComponent';
+import { type AvatarSize } from '@ui/display/avatar/types/AvatarSize';
+import { type AvatarType } from '@ui/display/avatar/types/AvatarType';
+import { type IconComponent } from '@ui/display/icon/types/IconComponent';
 import { ThemeContext } from '@ui/theme';
-import { Nullable, stringToHslColor } from '@ui/utilities';
+import { stringToThemeColorP3String } from '@ui/utilities';
 import { REACT_APP_SERVER_BASE_URL } from '@ui/utilities/config';
 import { useRecoilState } from 'recoil';
+import { type Nullable } from 'twenty-shared/types';
 import { getImageAbsoluteURI } from 'twenty-shared/utils';
 
 const StyledAvatar = styled.div<{
@@ -112,10 +113,20 @@ export const Avatar = ({
 
   const fixedColor = isPlaceholderFirstCharEmpty
     ? theme.font.color.tertiary
-    : (color ?? stringToHslColor(placeholderColorSeed ?? '', 75, 25));
+    : (color ??
+      stringToThemeColorP3String({
+        string: placeholderColorSeed ?? '',
+        theme,
+        variant: 12,
+      }));
   const fixedBackgroundColor = isPlaceholderFirstCharEmpty
     ? theme.background.transparent.light
-    : (backgroundColor ?? stringToHslColor(placeholderColorSeed ?? '', 75, 85));
+    : (backgroundColor ??
+      stringToThemeColorP3String({
+        string: placeholderColorSeed ?? '',
+        theme,
+        variant: 4,
+      }));
 
   const showBackgroundColor = showPlaceholder;
 

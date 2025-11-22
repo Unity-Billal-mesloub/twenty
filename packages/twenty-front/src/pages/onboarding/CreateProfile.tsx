@@ -1,7 +1,7 @@
 import styled from '@emotion/styled';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useCallback, useState } from 'react';
-import { Controller, SubmitHandler, useForm } from 'react-hook-form';
+import { Controller, type SubmitHandler, useForm } from 'react-hook-form';
 import { useRecoilState, useSetRecoilState } from 'recoil';
 import { Key } from 'ts-key-enum';
 import { z } from 'zod';
@@ -15,12 +15,11 @@ import { useUpdateOneRecord } from '@/object-record/hooks/useUpdateOneRecord';
 import { useSetNextOnboardingStatus } from '@/onboarding/hooks/useSetNextOnboardingStatus';
 import { ProfilePictureUploader } from '@/settings/profile/components/ProfilePictureUploader';
 import { PageFocusId } from '@/types/PageFocusId';
-import { PageHotkeyScope } from '@/types/PageHotkeyScope';
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
-import { TextInputV2 } from '@/ui/input/components/TextInputV2';
+import { TextInput } from '@/ui/input/components/TextInput';
 import { Modal } from '@/ui/layout/modal/components/Modal';
 import { useHotkeysOnFocusedElement } from '@/ui/utilities/hotkey/hooks/useHotkeysOnFocusedElement';
-import { WorkspaceMember } from '@/workspace-member/types/WorkspaceMember';
+import { type WorkspaceMember } from '@/workspace-member/types/WorkspaceMember';
 import { ApolloError } from '@apollo/client';
 import { Trans, useLingui } from '@lingui/react/macro';
 import { isDefined } from 'twenty-shared/utils';
@@ -50,8 +49,12 @@ const StyledComboInputContainer = styled.div`
 
 const validationSchema = z
   .object({
-    firstName: z.string().min(1, { message: 'First name can not be empty' }),
-    lastName: z.string().min(1, { message: 'Last name can not be empty' }),
+    firstName: z.string().min(1, {
+      error: 'First name can not be empty',
+    }),
+    lastName: z.string().min(1, {
+      error: 'Last name can not be empty',
+    }),
   })
   .required();
 
@@ -157,13 +160,8 @@ export const CreateProfile = () => {
 
   useHotkeysOnFocusedElement({
     keys: Key.Enter,
-    callback: () => {
-      if (isEditingMode) {
-        onSubmit(getValues());
-      }
-    },
+    callback: handleEnter,
     focusId: PageFocusId.CreateProfile,
-    scope: PageHotkeyScope.CreateProfile,
     dependencies: [handleEnter],
   });
 
@@ -177,7 +175,7 @@ export const CreateProfile = () => {
       </SubTitle>
       <StyledContentContainer>
         <StyledSectionContainer>
-          <H2Title title="Picture" />
+          <H2Title title={t`Picture`} />
           <ProfilePictureUploader />
         </StyledSectionContainer>
         <StyledSectionContainer>
@@ -194,7 +192,7 @@ export const CreateProfile = () => {
                 field: { onChange, onBlur, value },
                 fieldState: { error },
               }) => (
-                <TextInputV2
+                <TextInput
                   autoFocus
                   label={t`First Name`}
                   value={value}
@@ -217,7 +215,7 @@ export const CreateProfile = () => {
                 field: { onChange, onBlur, value },
                 fieldState: { error },
               }) => (
-                <TextInputV2
+                <TextInput
                   label={t`Last Name`}
                   value={value}
                   onFocus={() => setIsEditingMode(true)}

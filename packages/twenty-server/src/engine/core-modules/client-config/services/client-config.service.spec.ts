@@ -1,22 +1,19 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 
 import { NodeEnvironment } from 'src/engine/core-modules/twenty-config/interfaces/node-environment.interface';
 import { SupportDriver } from 'src/engine/core-modules/twenty-config/interfaces/support.interface';
 
+import { AiModelRegistryService } from 'src/engine/core-modules/ai/services/ai-model-registry.service';
 import { CaptchaDriverType } from 'src/engine/core-modules/captcha/interfaces';
 import { ClientConfigService } from 'src/engine/core-modules/client-config/services/client-config.service';
-import { DomainManagerService } from 'src/engine/core-modules/domain-manager/services/domain-manager.service';
+import { DomainServerConfigService } from 'src/engine/core-modules/domain/domain-server-config/services/domain-server-config.service';
 import { PUBLIC_FEATURE_FLAGS } from 'src/engine/core-modules/feature-flag/constants/public-feature-flag.const';
 import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
-
-jest.mock('src/engine/core-modules/ai/constants/ai-models.const', () => ({
-  AI_MODELS: [],
-}));
 
 describe('ClientConfigService', () => {
   let service: ClientConfigService;
   let twentyConfigService: TwentyConfigService;
-  let domainManagerService: DomainManagerService;
+  let domainServerConfigService: DomainServerConfigService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -29,9 +26,15 @@ describe('ClientConfigService', () => {
           },
         },
         {
-          provide: DomainManagerService,
+          provide: DomainServerConfigService,
           useValue: {
             getFrontUrl: jest.fn(),
+          },
+        },
+        {
+          provide: AiModelRegistryService,
+          useValue: {
+            getAvailableModels: jest.fn().mockReturnValue([]),
           },
         },
       ],
@@ -39,8 +42,9 @@ describe('ClientConfigService', () => {
 
     service = module.get<ClientConfigService>(ClientConfigService);
     twentyConfigService = module.get<TwentyConfigService>(TwentyConfigService);
-    domainManagerService =
-      module.get<DomainManagerService>(DomainManagerService);
+    domainServerConfigService = module.get<DomainServerConfigService>(
+      DomainServerConfigService,
+    );
   });
 
   it('should be defined', () => {
@@ -88,7 +92,7 @@ describe('ClientConfigService', () => {
           return mockValues[key];
         });
 
-      jest.spyOn(domainManagerService, 'getFrontUrl').mockReturnValue({
+      jest.spyOn(domainServerConfigService, 'getFrontUrl').mockReturnValue({
         hostname: 'app.twenty.com',
       } as URL);
     });
@@ -97,6 +101,7 @@ describe('ClientConfigService', () => {
       const result = await service.getClientConfig();
 
       expect(result).toEqual({
+        appVersion: '1.0.0',
         billing: {
           isBillingEnabled: true,
           billingUrl: 'https://billing.example.com',
@@ -124,7 +129,6 @@ describe('ClientConfigService', () => {
         isEmailVerificationRequired: true,
         defaultSubdomain: 'app',
         frontDomain: 'app.twenty.com',
-        debugMode: true,
         support: {
           supportDriver: 'FRONT',
           supportFrontChatId: 'chat-123',
@@ -167,7 +171,6 @@ describe('ClientConfigService', () => {
 
       const result = await service.getClientConfig();
 
-      expect(result.debugMode).toBe(false);
       expect(result.canManageFeatureFlags).toBe(false);
       expect(result.aiModels).toEqual([]);
     });

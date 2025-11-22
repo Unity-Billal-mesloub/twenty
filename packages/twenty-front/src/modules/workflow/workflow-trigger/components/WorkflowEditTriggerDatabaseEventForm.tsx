@@ -1,5 +1,5 @@
 import { useFilteredObjectMetadataItems } from '@/object-metadata/hooks/useFilteredObjectMetadataItems';
-import { FieldMultiSelectValue } from '@/object-record/record-field/types/FieldMetadata';
+import { type FieldMultiSelectValue } from '@/object-record/record-field/ui/types/FieldMetadata';
 import { SelectControl } from '@/ui/input/components/SelectControl';
 import { Dropdown } from '@/ui/layout/dropdown/components/Dropdown';
 import { DropdownContent } from '@/ui/layout/dropdown/components/DropdownContent';
@@ -11,18 +11,16 @@ import { DropdownMenuSeparator } from '@/ui/layout/dropdown/components/DropdownM
 import { GenericDropdownContentWidth } from '@/ui/layout/dropdown/constants/GenericDropdownContentWidth';
 import { useCloseDropdown } from '@/ui/layout/dropdown/hooks/useCloseDropdown';
 import { WorkflowFieldsMultiSelect } from '@/workflow/components/WorkflowEditUpdateEventFieldsMultiSelect';
-import { WorkflowDatabaseEventTrigger } from '@/workflow/types/Workflow';
+import { type WorkflowDatabaseEventTrigger } from '@/workflow/types/Workflow';
 import { splitWorkflowTriggerEventName } from '@/workflow/utils/splitWorkflowTriggerEventName';
 import { WorkflowStepBody } from '@/workflow/workflow-steps/components/WorkflowStepBody';
-import { WorkflowStepHeader } from '@/workflow/workflow-steps/components/WorkflowStepHeader';
-import { getTriggerHeaderType } from '@/workflow/workflow-trigger/utils/getTriggerHeaderType';
-import { getTriggerIcon } from '@/workflow/workflow-trigger/utils/getTriggerIcon';
-import { getTriggerDefaultLabel } from '@/workflow/workflow-trigger/utils/getTriggerLabel';
+import { WorkflowStepFooter } from '@/workflow/workflow-steps/components/WorkflowStepFooter';
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
 import { Trans } from '@lingui/react/macro';
 import { useCallback, useMemo, useState } from 'react';
 import { isDefined } from 'twenty-shared/utils';
+import { TRIGGER_STEP_ID } from 'twenty-shared/workflow';
 import { IconChevronLeft, IconSettings, useIcons } from 'twenty-ui/display';
 import { MenuItem } from 'twenty-ui/navigation';
 
@@ -81,6 +79,8 @@ export const WorkflowEditTriggerDatabaseEventForm = ({
     trigger.settings.eventName,
   );
   const isUpdateEvent = triggerEvent.event === 'updated';
+  const isUpsertEvent = triggerEvent.event === 'upserted';
+  const isFieldFilteringSupported = isUpdateEvent || isUpsertEvent;
 
   const regularObjects = objectMetadataItems
     .filter((item) => item.isActive && !item.isSystem)
@@ -116,10 +116,6 @@ export const WorkflowEditTriggerDatabaseEventForm = ({
     () => filterOptionsBySearch(systemObjects, searchInputValue),
     [systemObjects, searchInputValue],
   );
-
-  const defaultLabel = trigger.name ?? getTriggerDefaultLabel(trigger);
-  const headerIcon = getTriggerIcon(trigger);
-  const headerType = getTriggerHeaderType(trigger);
 
   const handleOptionClick = (value: string) => {
     if (triggerOptions.readonly === true) {
@@ -169,23 +165,6 @@ export const WorkflowEditTriggerDatabaseEventForm = ({
 
   return (
     <>
-      <WorkflowStepHeader
-        onTitleChange={(newName: string) => {
-          if (triggerOptions.readonly === true) {
-            return;
-          }
-
-          triggerOptions.onTriggerUpdate({
-            ...trigger,
-            name: newName,
-          });
-        }}
-        Icon={getIcon(headerIcon)}
-        iconColor={theme.font.color.tertiary}
-        initialTitle={defaultLabel}
-        headerType={headerType}
-        disabled={triggerOptions.readonly}
-      />
       <WorkflowStepBody>
         <StyledRecordTypeSelectContainer fullWidth>
           <StyledLabel>Record Type</StyledLabel>
@@ -270,7 +249,7 @@ export const WorkflowEditTriggerDatabaseEventForm = ({
             dropdownOffset={{ y: parseInt(theme.spacing(1), 10) }}
           />
         </StyledRecordTypeSelectContainer>
-        {isDefined(selectedObjectMetadataItem) && isUpdateEvent && (
+        {isDefined(selectedObjectMetadataItem) && isFieldFilteringSupported && (
           <WorkflowFieldsMultiSelect
             label="Fields (Optional)"
             placeholder="Select specific fields to listen to"
@@ -281,6 +260,9 @@ export const WorkflowEditTriggerDatabaseEventForm = ({
           />
         )}
       </WorkflowStepBody>
+      {!triggerOptions.readonly && (
+        <WorkflowStepFooter stepId={TRIGGER_STEP_ID} />
+      )}
     </>
   );
 };

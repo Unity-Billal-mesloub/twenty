@@ -2,14 +2,14 @@ import { useRef } from 'react';
 
 import {
   SingleRecordPickerMenuItemsWithSearch,
-  SingleRecordPickerMenuItemsWithSearchProps,
+  type SingleRecordPickerMenuItemsWithSearchProps,
 } from '@/object-record/record-picker/single-record-picker/components/SingleRecordPickerMenuItemsWithSearch';
 import { SingleRecordPickerComponentInstanceContext } from '@/object-record/record-picker/single-record-picker/states/contexts/SingleRecordPickerComponentInstanceContext';
 import { singleRecordPickerSearchFilterComponentState } from '@/object-record/record-picker/single-record-picker/states/singleRecordPickerSearchFilterComponentState';
-import { SingleRecordPickerRecord } from '@/object-record/record-picker/single-record-picker/types/SingleRecordPickerRecord';
+import { type RecordPickerPickableMorphItem } from '@/object-record/record-picker/types/RecordPickerPickableMorphItem';
 import { DropdownContent } from '@/ui/layout/dropdown/components/DropdownContent';
 import { useListenClickOutside } from '@/ui/utilities/pointer-event/hooks/useListenClickOutside';
-import { useSetRecoilComponentStateV2 } from '@/ui/utilities/state/component-state/hooks/useSetRecoilComponentStateV2';
+import { useSetRecoilComponentState } from '@/ui/utilities/state/component-state/hooks/useSetRecoilComponentState';
 
 export const SINGLE_RECORD_PICKER_LISTENER_ID = 'single-record-select';
 
@@ -24,8 +24,8 @@ export const SingleRecordPicker = ({
   excludedRecordIds,
   onCancel,
   onCreate,
-  onRecordSelected,
-  objectNameSingular,
+  onMorphItemSelected,
+  objectNameSingulars,
   componentInstanceId,
   layoutDirection,
   dropdownWidth,
@@ -33,7 +33,7 @@ export const SingleRecordPicker = ({
 }: SingleRecordPickerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const setRecordPickerSearchFilter = useSetRecoilComponentStateV2(
+  const setRecordPickerSearchFilter = useSetRecoilComponentState(
     singleRecordPickerSearchFilterComponentState,
     componentInstanceId,
   );
@@ -44,12 +44,12 @@ export const SingleRecordPicker = ({
     onCancel?.();
   };
 
-  const handleRecordSelected = (
-    selectedRecord?: SingleRecordPickerRecord | undefined,
+  const handleMorphItemSelected = (
+    selectedMorphItem?: RecordPickerPickableMorphItem | undefined,
   ) => {
     setRecordPickerSearchFilter('');
 
-    onRecordSelected?.(selectedRecord);
+    onMorphItemSelected?.(selectedMorphItem);
   };
 
   useListenClickOutside({
@@ -83,8 +83,8 @@ export const SingleRecordPicker = ({
             excludedRecordIds,
             onCancel: handleCancel,
             onCreate,
-            onRecordSelected: handleRecordSelected,
-            objectNameSingular,
+            onMorphItemSelected: handleMorphItemSelected,
+            objectNameSingulars,
             layoutDirection,
           }}
         />

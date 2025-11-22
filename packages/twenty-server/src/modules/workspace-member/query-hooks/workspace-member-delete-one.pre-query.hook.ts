@@ -1,54 +1,23 @@
-import { WorkspacePreQueryHookInstance } from 'src/engine/api/graphql/workspace-query-runner/workspace-query-hook/interfaces/workspace-query-hook.interface';
-import { DeleteOneResolverArgs } from 'src/engine/api/graphql/workspace-resolver-builder/interfaces/workspace-resolvers-builder.interface';
+import { type WorkspacePreQueryHookInstance } from 'src/engine/api/graphql/workspace-query-runner/workspace-query-hook/interfaces/workspace-query-hook.interface';
+import { type RestoreOneResolverArgs } from 'src/engine/api/graphql/workspace-resolver-builder/interfaces/workspace-resolvers-builder.interface';
 
+import {
+  CommonQueryRunnerException,
+  CommonQueryRunnerExceptionCode,
+} from 'src/engine/api/common/common-query-runners/errors/common-query-runner.exception';
 import { WorkspaceQueryHook } from 'src/engine/api/graphql/workspace-query-runner/workspace-query-hook/decorators/workspace-query-hook.decorator';
-import { AuthContext } from 'src/engine/core-modules/auth/types/auth-context.type';
-import { TwentyORMManager } from 'src/engine/twenty-orm/twenty-orm.manager';
-import { AttachmentWorkspaceEntity } from 'src/modules/attachment/standard-objects/attachment.workspace-entity';
-import { WorkspaceMemberPreQueryHookService } from 'src/modules/workspace-member/query-hooks/workspace-member-pre-query-hook.service';
-import { workspaceValidator } from 'src/engine/core-modules/workspace/workspace.validate';
+import { type AuthContext } from 'src/engine/core-modules/auth/types/auth-context.type';
 
 @WorkspaceQueryHook(`workspaceMember.deleteOne`)
 export class WorkspaceMemberDeleteOnePreQueryHook
   implements WorkspacePreQueryHookInstance
 {
-  constructor(
-    private readonly twentyORMManager: TwentyORMManager,
-    private readonly workspaceMemberPreQueryHookService: WorkspaceMemberPreQueryHookService,
-  ) {}
+  constructor() {}
 
-  async execute(
-    authContext: AuthContext,
-    objectName: string,
-    payload: DeleteOneResolverArgs,
-  ): Promise<DeleteOneResolverArgs> {
-    const targettedWorkspaceMemberId = payload.id;
-
-    const workspace = authContext.workspace;
-
-    workspaceValidator.assertIsDefinedOrThrow(workspace);
-
-    await this.workspaceMemberPreQueryHookService.validateWorkspaceMemberUpdatePermissionOrThrow(
-      {
-        userWorkspaceId: authContext.userWorkspaceId,
-        workspaceMemberId: authContext.workspaceMemberId,
-        targettedWorkspaceMemberId,
-        workspaceId: workspace.id,
-        apiKey: authContext.apiKey,
-      },
+  async execute(_authContext: AuthContext): Promise<RestoreOneResolverArgs> {
+    throw new CommonQueryRunnerException(
+      'Please use /deleteUserFromWorkspace to remove a workspace member.',
+      CommonQueryRunnerExceptionCode.BAD_REQUEST,
     );
-
-    const attachmentRepository =
-      await this.twentyORMManager.getRepository<AttachmentWorkspaceEntity>(
-        'attachment',
-      );
-
-    const authorId = targettedWorkspaceMemberId;
-
-    await attachmentRepository.delete({
-      authorId,
-    });
-
-    return payload;
   }
 }

@@ -1,42 +1,61 @@
-import { DateTime } from 'luxon';
+import { addDays } from 'date-fns';
 import { useState } from 'react';
 
-import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
-import { useCreateOneRecord } from '@/object-record/hooks/useCreateOneRecord';
 import { SaveAndCancelButtons } from '@/settings/components/SaveAndCancelButtons/SaveAndCancelButtons';
 import { SettingsPageContainer } from '@/settings/components/SettingsPageContainer';
+import { SettingsSkeletonLoader } from '@/settings/components/SettingsSkeletonLoader';
+import { SettingsDevelopersRoleSelector } from '@/settings/developers/components/SettingsDevelopersRoleSelector';
 import { EXPIRATION_DATES } from '@/settings/developers/constants/ExpirationDates';
 import { apiKeyTokenFamilyState } from '@/settings/developers/states/apiKeyTokenFamilyState';
-import { ApiKey } from '@/settings/developers/types/api-key/ApiKey';
-import { SettingsPath } from '@/types/SettingsPath';
 import { Select } from '@/ui/input/components/Select';
-import { TextInput } from '@/ui/input/components/TextInput';
+import { SettingsTextInput } from '@/ui/input/components/SettingsTextInput';
 import { SubMenuTopBarContainer } from '@/ui/layout/page/components/SubMenuTopBarContainer';
 import { useLingui } from '@lingui/react/macro';
 import { useRecoilCallback } from 'recoil';
 import { Key } from 'ts-key-enum';
-import { isDefined } from 'twenty-shared/utils';
+import { SettingsPath } from 'twenty-shared/types';
+import { getSettingsPath, isDefined } from 'twenty-shared/utils';
 import { H2Title } from 'twenty-ui/display';
 import { Section } from 'twenty-ui/layout';
-import { useGenerateApiKeyTokenMutation } from '~/generated-metadata/graphql';
+import {
+  useCreateApiKeyMutation,
+  useGenerateApiKeyTokenMutation,
+  useGetRolesQuery,
+} from '~/generated-metadata/graphql';
 import { useNavigateSettings } from '~/hooks/useNavigateSettings';
-import { getSettingsPath } from '~/utils/navigation/getSettingsPath';
 
 export const SettingsDevelopersApiKeysNew = () => {
   const { t } = useLingui();
   const [generateOneApiKeyToken] = useGenerateApiKeyTokenMutation();
   const navigateSettings = useNavigateSettings();
+  const { data: rolesData, loading: rolesLoading } = useGetRolesQuery({
+    onCompleted: (data) => {
+      if (isDefined(data?.getRoles)) {
+        const apiKeyAssignableRoles = data.getRoles.filter(
+          (role) => role.canBeAssignedToApiKeys,
+        );
+        if (!formValues.roleId && apiKeyAssignableRoles.length > 0) {
+          setFormValues((prev) => ({
+            ...prev,
+            roleId: apiKeyAssignableRoles[0].id,
+          }));
+        }
+      }
+    },
+  });
+  const roles = rolesData?.getRoles ?? [];
+
   const [formValues, setFormValues] = useState<{
     name: string;
     expirationDate: number | null;
+    roleId: string;
   }>({
     expirationDate: EXPIRATION_DATES[5].value,
     name: '',
+    roleId: '',
   });
 
-  const { createOneRecord: createOneApiKey } = useCreateOneRecord<ApiKey>({
-    objectNameSingular: CoreObjectNameSingular.ApiKey,
-  });
+  const [createApiKey] = useCreateApiKeyMutation();
 
   const setApiKeyTokenCallback = useRecoilCallback(
     ({ set }) =>
@@ -47,14 +66,28 @@ export const SettingsDevelopersApiKeysNew = () => {
   );
 
   const handleSave = async () => {
-    const expiresAt = DateTime.now()
-      .plus({ days: formValues.expirationDate ?? 30 })
-      .toString();
+    const expiresAt = addDays(
+      new Date(),
+      formValues.expirationDate ?? 30,
+    ).toISOString();
 
-    const newApiKey = await createOneApiKey?.({
-      name: formValues.name,
-      expiresAt,
+    const roleIdToUse = formValues.roleId;
+
+    if (!roleIdToUse) {
+      return;
+    }
+
+    const { data: newApiKeyData } = await createApiKey({
+      variables: {
+        input: {
+          name: formValues.name,
+          expiresAt,
+          roleId: roleIdToUse,
+        },
+      },
     });
+
+    const newApiKey = newApiKeyData?.createApiKey;
 
     if (!newApiKey) {
       return;
@@ -77,7 +110,13 @@ export const SettingsDevelopersApiKeysNew = () => {
       });
     }
   };
-  const canSave = !!formValues.name && createOneApiKey;
+
+  const canSave = !!formValues.name && !!formValues.roleId && createApiKey;
+
+  if (rolesLoading) {
+    return <SettingsSkeletonLoader />;
+  }
+
   return (
     <SubMenuTopBarContainer
       title={t`New key`}
@@ -87,8 +126,8 @@ export const SettingsDevelopersApiKeysNew = () => {
           href: getSettingsPath(SettingsPath.Workspace),
         },
         {
-          children: t`APIs`,
-          href: getSettingsPath(SettingsPath.APIs),
+          children: t`APIs & Webhooks`,
+          href: getSettingsPath(SettingsPath.ApiWebhooks),
         },
         { children: t`New Key` },
       ]}
@@ -96,7 +135,7 @@ export const SettingsDevelopersApiKeysNew = () => {
         <SaveAndCancelButtons
           isSaveDisabled={!canSave}
           onCancel={() => {
-            navigateSettings(SettingsPath.APIs);
+            navigateSettings(SettingsPath.ApiWebhooks);
           }}
           onSave={handleSave}
         />
@@ -105,7 +144,7 @@ export const SettingsDevelopersApiKeysNew = () => {
       <SettingsPageContainer>
         <Section>
           <H2Title title={t`Name`} description={t`Name of your API key`} />
-          <TextInput
+          <SettingsTextInput
             instanceId="api-key-new-name"
             placeholder={t`E.g. backoffice integration`}
             value={formValues.name}
@@ -121,6 +160,22 @@ export const SettingsDevelopersApiKeysNew = () => {
               }));
             }}
             fullWidth
+          />
+        </Section>
+        <Section>
+          <H2Title
+            title={t`Role`}
+            description={t`What this API can do: Select a user role to define its permissions.`}
+          />
+          <SettingsDevelopersRoleSelector
+            value={formValues.roleId}
+            onChange={(roleId) => {
+              setFormValues((prevState) => ({
+                ...prevState,
+                roleId,
+              }));
+            }}
+            roles={roles}
           />
         </Section>
         <Section>

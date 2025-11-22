@@ -3,14 +3,14 @@ import { Injectable } from '@nestjs/common';
 import { addMilliseconds } from 'date-fns';
 import ms from 'ms';
 
-import { AuthToken } from 'src/engine/core-modules/auth/dto/token.entity';
-import { JwtWrapperService } from 'src/engine/core-modules/jwt/services/jwt-wrapper.service';
-import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
+import { type AuthToken } from 'src/engine/core-modules/auth/dto/auth-token.dto';
 import {
-  LoginTokenJwtPayload,
+  type LoginTokenJwtPayload,
   JwtTokenTypeEnum,
 } from 'src/engine/core-modules/auth/types/auth-context.type';
-import { AuthProviderEnum } from 'src/engine/core-modules/workspace/types/workspace.type';
+import { JwtWrapperService } from 'src/engine/core-modules/jwt/services/jwt-wrapper.service';
+import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
+import { type AuthProviderEnum } from 'src/engine/core-modules/workspace/types/workspace.type';
 
 @Injectable()
 export class LoginTokenService {
@@ -22,13 +22,15 @@ export class LoginTokenService {
   async generateLoginToken(
     email: string,
     workspaceId: string,
-    authProvider?: AuthProviderEnum,
+    authProvider: AuthProviderEnum,
+    options?: { impersonatorUserWorkspaceId?: string },
   ): Promise<AuthToken> {
     const jwtPayload: LoginTokenJwtPayload = {
       type: JwtTokenTypeEnum.LOGIN,
       sub: email,
       workspaceId,
       authProvider,
+      impersonatorUserWorkspaceId: options?.impersonatorUserWorkspaceId,
     };
 
     const secret = this.jwtWrapperService.generateAppSecret(
@@ -49,11 +51,7 @@ export class LoginTokenService {
     };
   }
 
-  async verifyLoginToken(loginToken: string): Promise<{
-    sub: string;
-    workspaceId: string;
-    authProvider: AuthProviderEnum;
-  }> {
+  async verifyLoginToken(loginToken: string): Promise<LoginTokenJwtPayload> {
     await this.jwtWrapperService.verifyJwtToken(
       loginToken,
       JwtTokenTypeEnum.LOGIN,

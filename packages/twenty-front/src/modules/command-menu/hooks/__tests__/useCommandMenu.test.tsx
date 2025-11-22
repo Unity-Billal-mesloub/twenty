@@ -8,18 +8,8 @@ import { commandMenuNavigationStackState } from '@/command-menu/states/commandMe
 import { commandMenuPageInfoState } from '@/command-menu/states/commandMenuPageInfoState';
 import { commandMenuPageState } from '@/command-menu/states/commandMenuPageState';
 import { isCommandMenuOpenedState } from '@/command-menu/states/isCommandMenuOpenedState';
-import { CommandMenuHotkeyScope } from '@/command-menu/types/CommandMenuHotkeyScope';
-
-const mockGoBackToPreviousHotkeyScope = jest.fn();
-const mockSetHotkeyScopeAndMemorizePreviousScope = jest.fn();
-
-jest.mock('@/ui/utilities/hotkey/hooks/usePreviousHotkeyScope', () => ({
-  usePreviousHotkeyScope: () => ({
-    goBackToPreviousHotkeyScope: mockGoBackToPreviousHotkeyScope,
-    setHotkeyScopeAndMemorizePreviousScope:
-      mockSetHotkeyScopeAndMemorizePreviousScope,
-  }),
-}));
+import { CommandMenuPages } from '@/command-menu/types/CommandMenuPages';
+import { IconDotsVertical } from 'twenty-ui/display';
 
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
   <RecoilRoot>
@@ -71,13 +61,6 @@ describe('useCommandMenu', () => {
     });
 
     expect(result.current.isCommandMenuOpened).toBe(true);
-    expect(mockSetHotkeyScopeAndMemorizePreviousScope).toHaveBeenCalledWith({
-      scope: CommandMenuHotkeyScope.CommandMenuFocused,
-      memoizeKey: 'command-menu',
-      customScopes: {
-        commandMenuOpen: true,
-      },
-    });
 
     act(() => {
       result.current.commandMenu.closeCommandMenu();
@@ -96,13 +79,6 @@ describe('useCommandMenu', () => {
     });
 
     expect(result.current.isCommandMenuOpened).toBe(true);
-    expect(mockSetHotkeyScopeAndMemorizePreviousScope).toHaveBeenCalledWith({
-      scope: CommandMenuHotkeyScope.CommandMenuFocused,
-      memoizeKey: 'command-menu',
-      customScopes: {
-        commandMenuOpen: true,
-      },
-    });
 
     act(() => {
       result.current.commandMenu.toggleCommandMenu();
@@ -111,20 +87,44 @@ describe('useCommandMenu', () => {
     expect(result.current.isCommandMenuOpened).toBe(false);
   });
 
-  it('should call goBackToPreviousHotkeyScope when closing the command menu', () => {
+  it('should navigate command menu and reset navigation stack when resetNavigationStack is true', () => {
     const { result } = renderHooks();
 
     act(() => {
-      result.current.commandMenu.openCommandMenu();
+      result.current.commandMenu.navigateCommandMenu({
+        page: CommandMenuPages.Root,
+        pageTitle: 'First Page',
+        pageIcon: IconDotsVertical,
+        resetNavigationStack: false,
+      });
     });
 
-    expect(result.current.isCommandMenuOpened).toBe(true);
-    expect(mockGoBackToPreviousHotkeyScope).not.toHaveBeenCalled();
+    expect(result.current.commandMenuPage).toBe(CommandMenuPages.Root);
+    expect(result.current.commandMenuPageInfo.title).toBe('First Page');
+    expect(result.current.commandMenuNavigationStack).toHaveLength(1);
 
     act(() => {
-      result.current.commandMenu.closeCommandMenu();
+      result.current.commandMenu.navigateCommandMenu({
+        page: CommandMenuPages.SearchRecords,
+        pageTitle: 'Second Page',
+        pageIcon: IconDotsVertical,
+        resetNavigationStack: false,
+      });
     });
 
-    expect(mockGoBackToPreviousHotkeyScope).toHaveBeenCalledTimes(1);
+    expect(result.current.commandMenuNavigationStack).toHaveLength(2);
+
+    act(() => {
+      result.current.commandMenu.navigateCommandMenu({
+        page: CommandMenuPages.Root,
+        pageTitle: 'Reset Page',
+        pageIcon: IconDotsVertical,
+        resetNavigationStack: true,
+      });
+    });
+
+    expect(result.current.commandMenuPage).toBe(CommandMenuPages.Root);
+    expect(result.current.commandMenuPageInfo.title).toBe('Reset Page');
+    expect(result.current.commandMenuNavigationStack).toHaveLength(1);
   });
 });

@@ -52,13 +52,10 @@
     "typecheck": {},
     "lint": {
       "options": {
-        "maxWarnings": 0,
-        "reportUnusedDisableDirectives": "error"
+        "maxWarnings": 0
       },
       "configurations": {
-        "ci": {
-          "eslintConfig": "{projectRoot}/.eslintrc-ci.cjs"
-        },
+        "ci": {},
         "fix": {}
       }
     },
@@ -134,7 +131,7 @@
       "defaultConfiguration": "data",
       "options": {
         "cwd": "{projectRoot}",
-        "command": "dotenv cross-var graphql-codegen -- --config={args.config}"
+        "command": "dotenv graphql-codegen -- --config={args.config}"
       },
       "configurations": {
         "data": {
@@ -154,7 +151,7 @@
       "executor": "nx:run-commands",
       "options": {
         "cwd": "{projectRoot}",
-        "command": "lingui extract --overwrite"
+        "command": "lingui extract --overwrite --clean"
       }
     },
     "lingui:compile": {

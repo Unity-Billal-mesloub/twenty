@@ -1,51 +1,50 @@
-import { Meta, StoryObj } from '@storybook/react';
+import { type Meta, type StoryObj } from '@storybook/react';
 import { expect, userEvent, within } from '@storybook/test';
 
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
-import { ComponentWithRecoilScopeDecorator } from '~/testing/decorators/ComponentWithRecoilScopeDecorator';
 import { ObjectMetadataItemsDecorator } from '~/testing/decorators/ObjectMetadataItemsDecorator';
 import { SnackBarDecorator } from '~/testing/decorators/SnackBarDecorator';
 import { graphqlMocks } from '~/testing/graphqlMocks';
-import { allMockPersonRecords } from '~/testing/mock-data/people';
 import { sleep } from '~/utils/sleep';
 
 import { SingleRecordPicker } from '@/object-record/record-picker/single-record-picker/components/SingleRecordPicker';
-import { SingleRecordPickerRecord } from '@/object-record/record-picker/single-record-picker/types/SingleRecordPickerRecord';
-import { ComponentDecorator } from 'twenty-ui/testing';
 import { IconUserCircle } from 'twenty-ui/display';
+import { ComponentDecorator } from 'twenty-ui/testing';
+import { I18nFrontDecorator } from '~/testing/decorators/I18nFrontDecorator';
 
-const records = allMockPersonRecords.map<SingleRecordPickerRecord>(
-  (person) => ({
-    id: person.id,
-    name: person.name.firstName + ' ' + person.name.lastName,
-    avatarUrl: 'https://picsum.photos/200',
-    avatarType: 'rounded',
-    record: { ...person, __typename: 'Person' },
-  }),
-);
+// const records = allMockPersonRecords.map<SearchRecord>((person) => ({
+//   id: person.id,
+//   label: person.name.firstName + ' ' + person.name.lastName,
+//   imageUrl: 'https://picsum.photos/200',
+//   objectNameSingular: 'Person',
+//   recordId: person.id,
+//   tsRank: 0,
+//   tsRankCD: 0,
+// }));
+
+// const pickableMorphItems = records.map<RecordPickerPickableMorphItem>(
+//   (record) => ({
+//     recordId: record.recordId,
+//     objectMetadataId: record.objectNameSingular,
+//     isSelected: false,
+//     isMatchingSearchFilter: true,
+//   }),
+// );
 
 const meta: Meta<typeof SingleRecordPicker> = {
   title: 'UI/RecordPicker/SingleRecordPicker',
   component: SingleRecordPicker,
   decorators: [
     ComponentDecorator,
-    ComponentWithRecoilScopeDecorator,
     ObjectMetadataItemsDecorator,
     SnackBarDecorator,
+    I18nFrontDecorator,
   ],
   args: {
-    objectNameSingular: CoreObjectNameSingular.WorkspaceMember,
+    objectNameSingulars: [CoreObjectNameSingular.WorkspaceMember],
     componentInstanceId: 'single-record-picker',
   },
-  argTypes: {
-    selectedRecord: {
-      options: records.map(({ name }) => name),
-      mapping: records.reduce(
-        (result, entity) => ({ ...result, [entity.name]: entity }),
-        {},
-      ),
-    },
-  },
+  argTypes: {},
   parameters: {
     msw: graphqlMocks,
   },
@@ -56,9 +55,7 @@ type Story = StoryObj<typeof SingleRecordPicker>;
 
 export const Default: Story = {};
 
-export const WithSelectedRecord: Story = {
-  args: { selectedRecord: records[2] },
-};
+export const WithSelectedRecord: Story = {};
 
 export const WithEmptyOption: Story = {
   args: {

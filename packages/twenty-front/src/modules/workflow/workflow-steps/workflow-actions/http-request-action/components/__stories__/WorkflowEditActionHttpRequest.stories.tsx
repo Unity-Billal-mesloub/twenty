@@ -1,8 +1,9 @@
-import { WorkflowHttpRequestAction } from '@/workflow/types/Workflow';
-import { Meta, StoryObj } from '@storybook/react';
+import { type WorkflowHttpRequestAction } from '@/workflow/types/Workflow';
+import { type Meta, type StoryObj } from '@storybook/react';
 import { expect, fn, waitFor, within } from '@storybook/test';
-import { ComponentDecorator } from 'twenty-ui/testing';
+import { ComponentWithRouterDecorator } from '~/testing/decorators/ComponentWithRouterDecorator';
 import { I18nFrontDecorator } from '~/testing/decorators/I18nFrontDecorator';
+import { ObjectMetadataItemsDecorator } from '~/testing/decorators/ObjectMetadataItemsDecorator';
 import { SnackBarDecorator } from '~/testing/decorators/SnackBarDecorator';
 import { WorkflowStepActionDrawerDecorator } from '~/testing/decorators/WorkflowStepActionDrawerDecorator';
 import { WorkflowStepDecorator } from '~/testing/decorators/WorkflowStepDecorator';
@@ -48,7 +49,7 @@ const CONFIGURED_ACTION: WorkflowHttpRequestAction = {
       url: 'https://api.example.com/data',
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'content-type': 'application/json',
         Authorization: 'Bearer token123',
       },
       body: {
@@ -69,7 +70,7 @@ const CONFIGURED_ACTION: WorkflowHttpRequestAction = {
 };
 
 const meta: Meta<typeof WorkflowEditActionHttpRequest> = {
-  title: 'Modules/Workflow/WorkflowEditActionHttpRequest',
+  title: 'Modules/Workflow/Actions/HttpRequest/EditAction',
   component: WorkflowEditActionHttpRequest,
   parameters: {
     msw: graphqlMocks,
@@ -80,10 +81,11 @@ const meta: Meta<typeof WorkflowEditActionHttpRequest> = {
   decorators: [
     WorkflowStepActionDrawerDecorator,
     WorkflowStepDecorator,
-    ComponentDecorator,
+    ComponentWithRouterDecorator,
     SnackBarDecorator,
     WorkspaceDecorator,
     I18nFrontDecorator,
+    ObjectMetadataItemsDecorator,
   ],
 };
 
@@ -115,10 +117,6 @@ export const Configured: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-
-    const header = await canvas.findByTestId('workflow-step-header');
-    const headerCanvas = within(header);
-    expect(await headerCanvas.findByText('API Call')).toBeVisible();
 
     const urlLabel = await canvas.findByText('URL');
     const urlInputContainer = urlLabel.closest('div')?.nextElementSibling;
@@ -165,7 +163,7 @@ export const WithArrayStringBody: Story = {
           url: 'https://api.example.com/tags',
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
+            'content-type': 'application/x-www-form-urlencoded',
           },
           body: `[
   "frontend",
@@ -215,7 +213,7 @@ export const WithObjectStringBody: Story = {
           url: 'https://api.example.com/tags',
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
+            'content-type': 'application/x-www-form-urlencoded',
           },
           body: `{
   "hey": "frontend",
@@ -271,7 +269,7 @@ export const WithArrayContainingNonStringVariablesBody: Story = {
           url: 'https://api.example.com/tags',
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
+            'content-type': 'application/json',
           },
           body: `[
   "frontend",
@@ -321,7 +319,7 @@ export const WithObjectContainingNonStringVariablesBody: Story = {
           url: 'https://api.example.com/tags',
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
+            'content-type': 'application/json',
           },
           body: `{
   "speciality": "frontend",

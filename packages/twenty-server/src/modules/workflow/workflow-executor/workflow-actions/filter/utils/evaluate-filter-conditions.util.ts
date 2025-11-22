@@ -1,78 +1,84 @@
 import {
-  Filter,
-  FilterGroup,
-} from 'src/modules/workflow/workflow-executor/workflow-actions/filter/types/workflow-filter-action-settings.type';
+  isNonEmptyArray,
+  isNonEmptyString,
+  isObject,
+  isString,
+} from '@sniptt/guards';
+import {
+  type StepFilter,
+  type StepFilterGroup,
+  ViewFilterOperand,
+  type ViewFilterOperandDeprecated,
+} from 'twenty-shared/types';
+import { convertViewFilterOperandToCoreOperand as convertViewFilterOperandDeprecated } from 'twenty-shared/utils';
+import { parseBooleanFromStringValue } from 'twenty-shared/workflow';
 
-type ResolvedFilter = Omit<Filter, 'value' | 'stepOutputKey'> & {
+import { parseAndEvaluateRelativeDateFilter } from 'src/modules/workflow/workflow-executor/workflow-actions/filter/utils/parse-and-evaluate-relative-date-filter.util';
+
+type ResolvedFilterWithPotentiallyDeprecatedOperand = Omit<
+  StepFilter,
+  'value' | 'stepOutputKey' | 'operand'
+> & {
   rightOperand: unknown;
   leftOperand: unknown;
+  operand: ViewFilterOperand | ViewFilterOperandDeprecated;
 };
 
-function evaluateFilter(filter: ResolvedFilter): boolean {
-  const leftValue = filter.leftOperand;
-  const rightValue = filter.rightOperand;
+type ResolvedFilter = Omit<
+  StepFilter,
+  'value' | 'stepOutputKey' | 'operand'
+> & {
+  rightOperand: unknown;
+  leftOperand: unknown;
+  operand: ViewFilterOperand;
+};
 
-  switch (filter.operand) {
-    case 'eq':
-      return leftValue == rightValue;
+function evaluateFilter(
+  filter: ResolvedFilterWithPotentiallyDeprecatedOperand,
+): boolean {
+  const filterWithConvertedOperand = {
+    ...filter,
+    operand: convertViewFilterOperandDeprecated(filter.operand),
+  };
 
-    case 'ne':
-      return leftValue != rightValue;
-
-    case 'gt':
-      return Number(leftValue) > Number(rightValue);
-
-    case 'gte':
-      return Number(leftValue) >= Number(rightValue);
-
-    case 'lt':
-      return Number(leftValue) < Number(rightValue);
-
-    case 'lte':
-      return Number(leftValue) <= Number(rightValue);
-
-    case 'like':
-      return String(leftValue).includes(String(rightValue));
-
-    case 'ilike':
-      return String(leftValue)
-        .toLowerCase()
-        .includes(String(rightValue).toLowerCase());
-
-    case 'in':
-      try {
-        const values = JSON.parse(String(rightValue));
-
-        return Array.isArray(values) && values.includes(leftValue);
-      } catch {
-        const values = String(rightValue)
-          .split(',')
-          .map((v) => v.trim());
-
-        return values.includes(String(leftValue));
-      }
-
-    case 'is':
-      if (String(rightValue).toLowerCase() === 'null') {
-        return leftValue === null || leftValue === undefined;
-      }
-      if (String(rightValue).toLowerCase() === 'not null') {
-        return leftValue !== null && leftValue !== undefined;
-      }
-
-      return leftValue === rightValue;
-
+  switch (filter.type) {
+    case 'NUMBER':
+    case 'NUMERIC':
+    case 'number':
+      return evaluateNumberFilter(filterWithConvertedOperand);
+    case 'DATE':
+    case 'DATE_TIME':
+      return evaluateDateFilter(filterWithConvertedOperand);
+    case 'TEXT':
+    case 'MULTI_SELECT':
+    case 'FULL_NAME':
+    case 'EMAILS':
+    case 'PHONES':
+    case 'ADDRESS':
+    case 'LINKS':
+    case 'ARRAY':
+    case 'array':
+    case 'RAW_JSON':
+      return evaluateTextAndArrayFilter(filterWithConvertedOperand);
+    case 'SELECT':
+      return evaluateSelectFilter(filterWithConvertedOperand);
+    case 'BOOLEAN':
+    case 'boolean':
+      return evaluateBooleanFilter(filterWithConvertedOperand);
+    case 'UUID':
+      return evaluateUuidFilter(filterWithConvertedOperand);
+    case 'RELATION':
+      return evaluateRelationFilter(filterWithConvertedOperand);
+    case 'CURRENCY':
+      return evaluateCurrencyFilter(filterWithConvertedOperand);
     default:
-      throw new Error(`Unknown operand: ${filter.operand}`);
+      return evaluateDefaultFilter(filterWithConvertedOperand);
   }
 }
 
-/**
- * Recursively evaluates a filter group and its children
- */
 function evaluateFilterGroup(
   groupId: string,
-  filterGroups: FilterGroup[],
+  filterGroups: StepFilterGroup[],
   filters: ResolvedFilter[],
 ): boolean {
   const group = filterGroups.find((g) => g.id === groupId);
@@ -81,16 +87,14 @@ function evaluateFilterGroup(
     throw new Error(`Filter group with id ${groupId} not found`);
   }
 
-  // Get all direct child groups
   const childGroups = filterGroups
-    .filter((g) => g.parentRecordFilterGroupId === groupId)
+    .filter((g) => g.parentStepFilterGroupId === groupId)
     .sort(
       (a, b) =>
-        (a.positionInRecordFilterGroup || 0) -
-        (b.positionInRecordFilterGroup || 0),
+        (a.positionInStepFilterGroup || 0) - (b.positionInStepFilterGroup || 0),
     );
 
-  const groupFilters = filters.filter((f) => f.recordFilterGroupId === groupId);
+  const groupFilters = filters.filter((f) => f.stepFilterGroupId === groupId);
 
   const filterResults = groupFilters.map((filter) => evaluateFilter(filter));
 
@@ -116,11 +120,263 @@ function evaluateFilterGroup(
   }
 }
 
+function contains(leftValue: unknown, rightValue: unknown): boolean {
+  // if two arrays, check if any item is in the other array
+  if (Array.isArray(leftValue) && Array.isArray(rightValue)) {
+    return leftValue.some((item) => rightValue.includes(item));
+  }
+
+  if (
+    (Array.isArray(leftValue) || isString(leftValue)) &&
+    isString(rightValue)
+  ) {
+    try {
+      const parsedRightValue = JSON.parse(rightValue as string);
+
+      if (Array.isArray(parsedRightValue)) {
+        return parsedRightValue.some((item) => leftValue.includes(item));
+      } else {
+        return leftValue.includes(parsedRightValue);
+      }
+    } catch {
+      return leftValue.includes(rightValue);
+    }
+  }
+
+  return String(leftValue).includes(String(rightValue));
+}
+
+function evaluateTextAndArrayFilter(filter: ResolvedFilter): boolean {
+  switch (filter.operand) {
+    case ViewFilterOperand.CONTAINS:
+      return contains(filter.leftOperand, filter.rightOperand);
+    case ViewFilterOperand.DOES_NOT_CONTAIN:
+      return !contains(filter.leftOperand, filter.rightOperand);
+    case ViewFilterOperand.IS_EMPTY:
+      return !isNotEmptyTextOrArray(filter.leftOperand);
+
+    case ViewFilterOperand.IS_NOT_EMPTY:
+      return isNotEmptyTextOrArray(filter.leftOperand);
+
+    default:
+      throw new Error(
+        `Operand ${filter.operand} not supported for this filter type`,
+      );
+  }
+}
+
+function isNotEmptyTextOrArray(value: unknown): boolean {
+  return isNonEmptyString(value) || isNonEmptyArray(value);
+}
+
+function evaluateBooleanFilter(filter: ResolvedFilter): boolean {
+  switch (filter.operand) {
+    case ViewFilterOperand.IS:
+      return (
+        parseBooleanFromStringValue(filter.leftOperand) ===
+        parseBooleanFromStringValue(filter.rightOperand)
+      );
+    default:
+      throw new Error(
+        `Operand ${filter.operand} not supported for boolean filter`,
+      );
+  }
+}
+
+function evaluateDateFilter(filter: ResolvedFilter): boolean {
+  const dateLeftValue = new Date(String(filter.leftOperand));
+
+  switch (filter.operand) {
+    case ViewFilterOperand.IS:
+      return (
+        dateLeftValue.getDate() ===
+        new Date(String(filter.rightOperand)).getDate()
+      );
+    case ViewFilterOperand.IS_IN_PAST:
+      return dateLeftValue.getTime() < Date.now();
+
+    case ViewFilterOperand.IS_IN_FUTURE:
+      return dateLeftValue.getTime() > Date.now();
+
+    case ViewFilterOperand.IS_TODAY:
+      return dateLeftValue.toDateString() === new Date().toDateString();
+
+    case ViewFilterOperand.IS_BEFORE:
+      return (
+        dateLeftValue.getTime() <
+        new Date(String(filter.rightOperand)).getTime()
+      );
+
+    case ViewFilterOperand.IS_AFTER:
+      return (
+        dateLeftValue.getTime() >
+        new Date(String(filter.rightOperand)).getTime()
+      );
+
+    case ViewFilterOperand.IS_EMPTY:
+      return (
+        filter.leftOperand === null ||
+        filter.leftOperand === undefined ||
+        filter.leftOperand === ''
+      );
+
+    case ViewFilterOperand.IS_NOT_EMPTY:
+      return (
+        filter.leftOperand !== null &&
+        filter.leftOperand !== undefined &&
+        filter.leftOperand !== ''
+      );
+
+    case ViewFilterOperand.IS_RELATIVE:
+      return parseAndEvaluateRelativeDateFilter({
+        dateToCheck: dateLeftValue,
+        relativeDateString: String(filter.rightOperand),
+      });
+
+    default:
+      throw new Error(
+        `Operand ${filter.operand} not supported for date filter`,
+      );
+  }
+}
+
+function evaluateUuidFilter(filter: ResolvedFilter): boolean {
+  switch (filter.operand) {
+    case ViewFilterOperand.IS:
+      return filter.leftOperand === filter.rightOperand;
+    case ViewFilterOperand.IS_NOT:
+      return filter.leftOperand !== filter.rightOperand;
+    default:
+      throw new Error(
+        `Operand ${filter.operand} not supported for uuid filter`,
+      );
+  }
+}
+
+function evaluateRelationFilter(filter: ResolvedFilter): boolean {
+  // compare only the ids. If the left operand is the relation object, get the id
+  const leftValue =
+    isObject(filter.leftOperand) && 'id' in filter.leftOperand
+      ? filter.leftOperand.id
+      : filter.leftOperand;
+
+  const rightValue =
+    isObject(filter.rightOperand) && 'id' in filter.rightOperand
+      ? filter.rightOperand.id
+      : filter.rightOperand;
+
+  switch (filter.operand) {
+    case ViewFilterOperand.IS:
+      return leftValue === rightValue;
+    case ViewFilterOperand.IS_NOT:
+      return leftValue !== rightValue;
+    case ViewFilterOperand.IS_EMPTY:
+      return !isNonEmptyString(leftValue);
+    case ViewFilterOperand.IS_NOT_EMPTY:
+      return isNonEmptyString(leftValue);
+    default:
+      throw new Error(
+        `Operand ${filter.operand} not supported for relation filter`,
+      );
+  }
+}
+
+function evaluateCurrencyFilter(filter: ResolvedFilter): boolean {
+  if (filter.compositeFieldSubFieldName === 'currencyCode') {
+    switch (filter.operand) {
+      case ViewFilterOperand.IS:
+        return filter.leftOperand === filter.rightOperand;
+      case ViewFilterOperand.IS_NOT:
+        return filter.leftOperand !== filter.rightOperand;
+      case ViewFilterOperand.IS_EMPTY:
+        return !isNonEmptyString(filter.leftOperand);
+      case ViewFilterOperand.IS_NOT_EMPTY:
+        return isNonEmptyString(filter.leftOperand);
+      default:
+        throw new Error(
+          `Operand ${filter.operand} not supported for currency filter`,
+        );
+    }
+  } else {
+    return evaluateNumberFilter(filter);
+  }
+}
+
+function evaluateNumberFilter(filter: ResolvedFilter): boolean {
+  const leftValue = filter.leftOperand;
+  const rightValue = filter.rightOperand;
+
+  switch (filter.operand) {
+    case ViewFilterOperand.GREATER_THAN_OR_EQUAL:
+      return Number(leftValue) >= Number(rightValue);
+
+    case ViewFilterOperand.LESS_THAN_OR_EQUAL:
+      return Number(leftValue) <= Number(rightValue);
+
+    case ViewFilterOperand.IS_EMPTY:
+      return !isNonEmptyString(leftValue);
+
+    case ViewFilterOperand.IS_NOT_EMPTY:
+      return isNonEmptyString(leftValue);
+
+    default:
+      throw new Error(
+        `Operand ${filter.operand} not supported for number filter`,
+      );
+  }
+}
+
+function evaluateDefaultFilter(filter: ResolvedFilter): boolean {
+  const leftValue = filter.leftOperand;
+  const rightValue = filter.rightOperand;
+
+  switch (filter.operand) {
+    case ViewFilterOperand.IS:
+      return leftValue == rightValue;
+    case ViewFilterOperand.IS_NOT:
+      return leftValue != rightValue;
+    case ViewFilterOperand.IS_EMPTY:
+      return !isNotEmptyTextOrArray(leftValue);
+    case ViewFilterOperand.IS_NOT_EMPTY:
+      return isNotEmptyTextOrArray(leftValue);
+    case ViewFilterOperand.CONTAINS:
+      return contains(leftValue, rightValue);
+    case ViewFilterOperand.DOES_NOT_CONTAIN:
+      return !contains(leftValue, rightValue);
+    case ViewFilterOperand.GREATER_THAN_OR_EQUAL:
+      return Number(leftValue) >= Number(rightValue);
+    case ViewFilterOperand.LESS_THAN_OR_EQUAL:
+      return Number(leftValue) <= Number(rightValue);
+    default:
+      throw new Error(
+        `Operand ${filter.operand} not supported for ${filter.type} filter type`,
+      );
+  }
+}
+
+function evaluateSelectFilter(filter: ResolvedFilter): boolean {
+  switch (filter.operand) {
+    case ViewFilterOperand.IS:
+      return contains(filter.leftOperand, filter.rightOperand);
+    case ViewFilterOperand.IS_NOT:
+      return !contains(filter.leftOperand, filter.rightOperand);
+    case ViewFilterOperand.IS_EMPTY:
+      return !isNotEmptyTextOrArray(filter.leftOperand);
+
+    case ViewFilterOperand.IS_NOT_EMPTY:
+      return isNotEmptyTextOrArray(filter.leftOperand);
+    default:
+      throw new Error(
+        `Operand ${filter.operand} not supported for select filter`,
+      );
+  }
+}
+
 export function evaluateFilterConditions({
   filterGroups = [],
   filters = [],
 }: {
-  filterGroups?: FilterGroup[];
+  filterGroups?: StepFilterGroup[];
   filters?: ResolvedFilter[];
 }): boolean {
   if (filterGroups.length === 0 && filters.length === 0) {
@@ -131,15 +387,15 @@ export function evaluateFilterConditions({
     const groupIds = new Set(filterGroups.map((g) => g.id));
 
     for (const filter of filters) {
-      if (!groupIds.has(filter.recordFilterGroupId)) {
+      if (!groupIds.has(filter.stepFilterGroupId)) {
         throw new Error(
-          `Filter group with id ${filter.recordFilterGroupId} not found`,
+          `Filter group with id ${filter.stepFilterGroupId} not found`,
         );
       }
     }
   }
 
-  const rootGroups = filterGroups.filter((g) => !g.parentRecordFilterGroupId);
+  const rootGroups = filterGroups.filter((g) => !g.parentStepFilterGroupId);
 
   if (rootGroups.length === 0 && filters.length > 0) {
     const filterResults = filters.map((filter) => evaluateFilter(filter));

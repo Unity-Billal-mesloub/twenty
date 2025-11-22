@@ -1,6 +1,6 @@
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
-import { IconComponent } from '@ui/display/icon/types/IconComponent';
+import { type IconComponent } from '@ui/display/icon/types/IconComponent';
 
 const StyledIconButton = styled.div<{ isActive?: boolean }>`
   align-items: center;
@@ -35,7 +35,7 @@ export const NavigationBarItem = ({
 
   return (
     <StyledIconButton isActive={isActive} onClick={onClick}>
-      <Icon color={theme.color.gray50} size={theme.icon.size.lg} />
+      <Icon color={theme.color.gray10} size={theme.icon.size.lg} />
     </StyledIconButton>
   );
 };

@@ -12,6 +12,7 @@ import {
   useEventTracker,
 } from '@/analytics/hooks/useEventTracker';
 import { useExecuteTasksOnAnyLocationChange } from '@/app/hooks/useExecuteTasksOnAnyLocationChange';
+import { isAppEffectRedirectEnabledState } from '@/app/states/isAppEffectRedirectEnabledState';
 import { useRequestFreshCaptchaToken } from '@/captcha/hooks/useRequestFreshCaptchaToken';
 import { isCaptchaScriptLoadedState } from '@/captcha/states/isCaptchaScriptLoadedState';
 import { isCaptchaRequiredForPath } from '@/captcha/utils/isCaptchaRequiredForPath';
@@ -29,13 +30,11 @@ import { useResetTableRowSelection } from '@/object-record/record-table/hooks/in
 import { useActiveRecordTableRow } from '@/object-record/record-table/hooks/useActiveRecordTableRow';
 import { useFocusedRecordTableRow } from '@/object-record/record-table/hooks/useFocusedRecordTableRow';
 import { getRecordIndexIdFromObjectNamePluralAndViewId } from '@/object-record/utils/getRecordIndexIdFromObjectNamePluralAndViewId';
-import { AppBasePath } from '@/types/AppBasePath';
-import { AppPath } from '@/types/AppPath';
 import { PageFocusId } from '@/types/PageFocusId';
-import { PageHotkeyScope } from '@/types/PageHotkeyScope';
 import { useResetFocusStackToFocusItem } from '@/ui/utilities/focus/hooks/useResetFocusStackToFocusItem';
 import { FocusComponentType } from '@/ui/utilities/focus/types/FocusComponentType';
-import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
+import { AppBasePath, AppPath } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
 import { AnalyticsType } from '~/generated/graphql';
 import { usePageChangeEffectNavigateLocation } from '~/hooks/usePageChangeEffectNavigateLocation';
@@ -64,12 +63,12 @@ export const PageChangeEffect = () => {
   const objectNamePlural =
     useParams().objectNamePlural ?? CoreObjectNamePlural.Person;
 
-  const contextStoreCurrentViewId = useRecoilComponentValueV2(
+  const contextStoreCurrentViewId = useRecoilComponentValue(
     contextStoreCurrentViewIdComponentState,
     MAIN_CONTEXT_STORE_INSTANCE_ID,
   );
 
-  const contextStoreCurrentViewType = useRecoilComponentValueV2(
+  const contextStoreCurrentViewType = useRecoilComponentValue(
     contextStoreCurrentViewTypeComponentState,
     MAIN_CONTEXT_STORE_INSTANCE_ID,
   );
@@ -79,7 +78,7 @@ export const PageChangeEffect = () => {
     contextStoreCurrentViewId || '',
   );
 
-  const resetTableSelections = useResetTableRowSelection(recordIndexId);
+  const { resetTableRowSelection } = useResetTableRowSelection(recordIndexId);
   const { unfocusRecordTableRow } = useFocusedRecordTableRow(recordIndexId);
   const { deactivateRecordTableRow } = useActiveRecordTableRow(recordIndexId);
 
@@ -89,6 +88,10 @@ export const PageChangeEffect = () => {
 
   const { executeTasksOnAnyLocationChange } =
     useExecuteTasksOnAnyLocationChange();
+
+  const isAppEffectRedirectEnabled = useRecoilValue(
+    isAppEffectRedirectEnabledState,
+  );
 
   const { closeCommandMenu } = useCommandMenu();
 
@@ -112,10 +115,18 @@ export const PageChangeEffect = () => {
   useEffect(() => {
     initializeQueryParamState();
 
-    if (isDefined(pageChangeEffectNavigateLocation)) {
+    if (
+      isDefined(pageChangeEffectNavigateLocation) &&
+      isAppEffectRedirectEnabled
+    ) {
       navigate(pageChangeEffectNavigateLocation);
     }
-  }, [navigate, pageChangeEffectNavigateLocation, initializeQueryParamState]);
+  }, [
+    navigate,
+    pageChangeEffectNavigateLocation,
+    initializeQueryParamState,
+    isAppEffectRedirectEnabled,
+  ]);
 
   useEffect(() => {
     const isLeavingRecordIndexPage = !!matchPath(
@@ -125,7 +136,7 @@ export const PageChangeEffect = () => {
 
     if (isLeavingRecordIndexPage) {
       if (contextStoreCurrentViewType === ContextStoreViewType.Table) {
-        resetTableSelections();
+        resetTableRowSelection();
         unfocusRecordTableRow();
         deactivateRecordTableRow();
       }
@@ -153,15 +164,6 @@ export const PageChangeEffect = () => {
               enableGlobalHotkeysWithModifiers: true,
               enableGlobalHotkeysConflictingWithKeyboard: true,
             },
-            memoizeKey: 'global',
-          },
-          hotkeyScope: {
-            scope: PageHotkeyScope.RecordShowPage,
-            customScopes: {
-              goto: true,
-              keyboardShortcutMenu: true,
-              searchRecords: true,
-            },
           },
         });
         break;
@@ -178,10 +180,6 @@ export const PageChangeEffect = () => {
               enableGlobalHotkeysWithModifiers: false,
               enableGlobalHotkeysConflictingWithKeyboard: false,
             },
-            memoizeKey: 'global',
-          },
-          hotkeyScope: {
-            scope: PageHotkeyScope.SignInUp,
           },
         });
         break;
@@ -198,10 +196,6 @@ export const PageChangeEffect = () => {
               enableGlobalHotkeysWithModifiers: false,
               enableGlobalHotkeysConflictingWithKeyboard: false,
             },
-            memoizeKey: 'global',
-          },
-          hotkeyScope: {
-            scope: PageHotkeyScope.InviteTeam,
           },
         });
         break;
@@ -218,10 +212,6 @@ export const PageChangeEffect = () => {
               enableGlobalHotkeysWithModifiers: false,
               enableGlobalHotkeysConflictingWithKeyboard: false,
             },
-            memoizeKey: 'global',
-          },
-          hotkeyScope: {
-            scope: PageHotkeyScope.CreateProfile,
           },
         });
         break;
@@ -238,10 +228,6 @@ export const PageChangeEffect = () => {
               enableGlobalHotkeysWithModifiers: false,
               enableGlobalHotkeysConflictingWithKeyboard: false,
             },
-            memoizeKey: 'global',
-          },
-          hotkeyScope: {
-            scope: PageHotkeyScope.CreateWorkspace,
           },
         });
         break;
@@ -258,10 +244,6 @@ export const PageChangeEffect = () => {
               enableGlobalHotkeysWithModifiers: false,
               enableGlobalHotkeysConflictingWithKeyboard: false,
             },
-            memoizeKey: 'global',
-          },
-          hotkeyScope: {
-            scope: PageHotkeyScope.SyncEmail,
           },
         });
         break;
@@ -278,10 +260,6 @@ export const PageChangeEffect = () => {
               enableGlobalHotkeysWithModifiers: false,
               enableGlobalHotkeysConflictingWithKeyboard: false,
             },
-            memoizeKey: 'global',
-          },
-          hotkeyScope: {
-            scope: PageHotkeyScope.InviteTeam,
           },
         });
         break;
@@ -298,10 +276,6 @@ export const PageChangeEffect = () => {
               enableGlobalHotkeysWithModifiers: false,
               enableGlobalHotkeysConflictingWithKeyboard: false,
             },
-            memoizeKey: 'global',
-          },
-          hotkeyScope: {
-            scope: PageHotkeyScope.PlanRequired,
           },
         });
         break;
@@ -318,17 +292,6 @@ export const PageChangeEffect = () => {
               enableGlobalHotkeysWithModifiers: false,
               enableGlobalHotkeysConflictingWithKeyboard: false,
             },
-            memoizeKey: 'global',
-          },
-          hotkeyScope: {
-            scope: PageHotkeyScope.Settings,
-            customScopes: {
-              goto: false,
-              keyboardShortcutMenu: false,
-              commandMenu: false,
-              commandMenuOpen: false,
-              searchRecords: false,
-            },
           },
         });
         break;
@@ -338,7 +301,7 @@ export const PageChangeEffect = () => {
     location,
     previousLocation,
     contextStoreCurrentViewType,
-    resetTableSelections,
+    resetTableRowSelection,
     unfocusRecordTableRow,
     deactivateRecordTableRow,
     resetRecordSelection,

@@ -1,6 +1,6 @@
 import styled from '@emotion/styled';
 
-import { EmailThreadMessage } from '@/activities/emails/types/EmailThreadMessage';
+import { type EmailThreadMessage } from '@/activities/emails/types/EmailThreadMessage';
 import { EventCardMessageBodyNotShared } from '@/activities/timeline-activities/rows/message/components/EventCardMessageBodyNotShared';
 import { EventCardMessageForbidden } from '@/activities/timeline-activities/rows/message/components/EventCardMessageForbidden';
 import { useOpenEmailThreadInCommandMenu } from '@/command-menu/hooks/useOpenEmailThreadInCommandMenu';
@@ -59,7 +59,7 @@ export const EventCardMessage = ({
   messageId: string;
   authorFullName: string;
 }) => {
-  const { upsertRecords } = useUpsertRecordsInStore();
+  const { upsertRecordsInStore } = useUpsertRecordsInStore();
   const { openEmailThreadInCommandMenu } = useOpenEmailThreadInCommandMenu();
 
   const {
@@ -80,7 +80,7 @@ export const EventCardMessage = ({
       },
     },
     onCompleted: (data) => {
-      upsertRecords([data]);
+      upsertRecordsInStore([data]);
     },
   });
 

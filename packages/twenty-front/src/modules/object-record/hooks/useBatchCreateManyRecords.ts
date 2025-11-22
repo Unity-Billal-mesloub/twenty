@@ -1,23 +1,24 @@
+import { useNumberFormat } from '@/localization/hooks/useNumberFormat';
 import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
 import { DEFAULT_MUTATION_BATCH_SIZE } from '@/object-record/constants/DefaultMutationBatchSize';
 import {
   useCreateManyRecords,
-  useCreateManyRecordsProps,
+  type useCreateManyRecordsProps,
 } from '@/object-record/hooks/useCreateManyRecords';
 import { useRefetchAggregateQueries } from '@/object-record/hooks/useRefetchAggregateQueries';
-import { ObjectRecord } from '@/object-record/types/ObjectRecord';
+import { useRegisterObjectOperation } from '@/object-record/hooks/useRegisterObjectOperation';
+import { type ObjectRecord } from '@/object-record/types/ObjectRecord';
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
 import { ApolloError } from '@apollo/client';
 import { t } from '@lingui/core/macro';
-import { formatNumber } from '~/utils/format/number';
 
 export const useBatchCreateManyRecords = <
   CreatedObjectRecord extends ObjectRecord = ObjectRecord,
 >({
   objectNameSingular,
   recordGqlFields,
-  skipPostOptimisticEffect = false,
   shouldMatchRootQueryFilter,
+  skipPostOptimisticEffect = false,
   mutationBatchSize = DEFAULT_MUTATION_BATCH_SIZE,
   setBatchedRecordsCount,
   abortController,
@@ -26,10 +27,12 @@ export const useBatchCreateManyRecords = <
   setBatchedRecordsCount?: (count: number) => void;
   abortController?: AbortController;
 }) => {
+  const { registerObjectOperation } = useRegisterObjectOperation();
+
   const { createManyRecords } = useCreateManyRecords({
     objectNameSingular,
     recordGqlFields,
-    skipPostOptimisticEffect,
+    skipPostOptimisticEffect: skipPostOptimisticEffect,
     shouldMatchRootQueryFilter,
     shouldRefetchAggregateQueries: false,
   });
@@ -43,6 +46,7 @@ export const useBatchCreateManyRecords = <
   });
 
   const { enqueueWarningSnackBar } = useSnackBar();
+  const { formatNumber } = useNumberFormat();
 
   const batchCreateManyRecords = async ({
     recordsToCreate,
@@ -95,6 +99,9 @@ export const useBatchCreateManyRecords = <
     }
 
     await refetchAggregateQueries();
+
+    registerObjectOperation(objectNameSingular, { type: 'create-many' });
+
     return allCreatedRecords;
   };
 

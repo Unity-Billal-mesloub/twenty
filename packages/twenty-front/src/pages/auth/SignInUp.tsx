@@ -5,6 +5,7 @@ import {
   signInUpStepState,
 } from '@/auth/states/signInUpStepState';
 import { workspacePublicDataState } from '@/auth/states/workspacePublicDataState';
+import styled from '@emotion/styled';
 import { useRecoilValue, useSetRecoilState } from 'recoil';
 
 import { Logo } from '@/auth/components/Logo';
@@ -23,13 +24,26 @@ import { DEFAULT_WORKSPACE_NAME } from '@/ui/navigation/navigation-drawer/consta
 import { useMemo } from 'react';
 
 import { SignInUpGlobalScopeFormEffect } from '@/auth/sign-in-up/components/internal/SignInUpGlobalScopeFormEffect';
+import { SignInUpTwoFactorAuthenticationProvision } from '@/auth/sign-in-up/components/internal/SignInUpTwoFactorAuthenticationProvision';
+import { SignInUpTOTPVerification } from '@/auth/sign-in-up/components/internal/SignInUpTwoFactorAuthenticationVerification';
 import { useWorkspaceFromInviteHash } from '@/auth/sign-in-up/hooks/useWorkspaceFromInviteHash';
+import { clientConfigApiStatusState } from '@/client-config/states/clientConfigApiStatusState';
 import { Modal } from '@/ui/layout/modal/components/Modal';
 import { useLingui } from '@lingui/react/macro';
 import { useSearchParams } from 'react-router-dom';
 import { isDefined } from 'twenty-shared/utils';
+import { Loader } from 'twenty-ui/feedback';
 import { AnimatedEaseIn } from 'twenty-ui/utilities';
-import { PublicWorkspaceDataOutput } from '~/generated/graphql';
+import { type PublicWorkspaceDataOutput } from '~/generated/graphql';
+
+const StyledLoaderContainer = styled.div`
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  margin-top: ${({ theme }) => theme.spacing(8)};
+  width: 100%;
+  margin-bottom: ${({ theme }) => theme.spacing(8)};
+`;
 
 const StandardContent = ({
   workspacePublicData,
@@ -55,8 +69,12 @@ const StandardContent = ({
       </AnimatedEaseIn>
       <Title animate>{title}</Title>
       {signInUpForm}
-      {signInUpStep !== SignInUpStep.Password &&
-        signInUpStep !== SignInUpStep.WorkspaceSelection && <FooterNote />}
+      {![
+        SignInUpStep.Password,
+        SignInUpStep.TwoFactorAuthenticationProvision,
+        SignInUpStep.TwoFactorAuthenticationVerification,
+        SignInUpStep.WorkspaceSelection,
+      ].includes(signInUpStep) && <FooterNote />}
     </Modal.Content>
   );
 };
@@ -64,13 +82,15 @@ const StandardContent = ({
 export const SignInUp = () => {
   const { t } = useLingui();
   const setSignInUpStep = useSetRecoilState(signInUpStepState);
+  const clientConfigApiStatus = useRecoilValue(clientConfigApiStatusState);
 
   const { form } = useSignInUpForm();
   const { signInUpStep } = useSignInUp(form);
   const { isDefaultDomain } = useIsCurrentLocationOnDefaultDomain();
   const { isOnAWorkspace } = useIsCurrentLocationOnAWorkspace();
   const workspacePublicData = useRecoilValue(workspacePublicDataState);
-  const { loading } = useGetPublicWorkspaceDataByDomain();
+  const { loading: getPublicWorkspaceDataLoading } =
+    useGetPublicWorkspaceDataByDomain();
   const isMultiWorkspaceEnabled = useRecoilValue(isMultiWorkspaceEnabledState);
   const { workspaceInviteHash, workspace: workspaceFromInviteHash } =
     useWorkspaceFromInviteHash();
@@ -83,11 +103,20 @@ export const SignInUp = () => {
 
   const title = useMemo(() => {
     if (isDefined(workspaceInviteHash)) {
-      return `Join ${workspaceFromInviteHash?.displayName ?? ''} team`;
+      const workspaceName = workspaceFromInviteHash?.displayName ?? '';
+      return t`Join ${workspaceName} team`;
     }
 
     if (signInUpStep === SignInUpStep.WorkspaceSelection) {
       return t`Choose a Workspace`;
+    }
+
+    if (signInUpStep === SignInUpStep.TwoFactorAuthenticationProvision) {
+      return t`Setup your 2FA`;
+    }
+
+    if (signInUpStep === SignInUpStep.TwoFactorAuthenticationVerification) {
+      return t`Verify code from the app`;
     }
 
     const workspaceName = !isDefined(workspacePublicData?.displayName)
@@ -106,7 +135,13 @@ export const SignInUp = () => {
   ]);
 
   const signInUpForm = useMemo(() => {
-    if (loading) return null;
+    if (getPublicWorkspaceDataLoading || !clientConfigApiStatus.isLoadedOnce) {
+      return (
+        <StyledLoaderContainer>
+          <Loader color="gray" />
+        </StyledLoaderContainer>
+      );
+    }
 
     if (isDefaultDomain && isMultiWorkspaceEnabled) {
       return (
@@ -123,6 +158,15 @@ export const SignInUp = () => {
     ) {
       return <SignInUpSSOIdentityProviderSelection />;
     }
+
+    if (signInUpStep === SignInUpStep.TwoFactorAuthenticationProvision) {
+      return <SignInUpTwoFactorAuthenticationProvision />;
+    }
+
+    if (signInUpStep === SignInUpStep.TwoFactorAuthenticationVerification) {
+      return <SignInUpTOTPVerification />;
+    }
+
     if (isDefined(workspacePublicData) && isOnAWorkspace) {
       return (
         <>
@@ -139,10 +183,11 @@ export const SignInUp = () => {
       </>
     );
   }, [
+    clientConfigApiStatus.isLoadedOnce,
     isDefaultDomain,
     isMultiWorkspaceEnabled,
     isOnAWorkspace,
-    loading,
+    getPublicWorkspaceDataLoading,
     signInUpStep,
     workspacePublicData,
   ]);

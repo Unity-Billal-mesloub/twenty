@@ -1,11 +1,9 @@
-import {
-  ActorMetadata,
-  FieldActorSource,
-} from 'src/engine/metadata-modules/field-metadata/composite-types/actor.composite-type';
-import { ApiKeyWorkspaceEntity } from 'src/modules/api-key/standard-objects/api-key.workspace-entity';
+import { type ActorMetadata, FieldActorSource } from 'twenty-shared/types';
+
+import { type ApiKeyEntity } from 'src/engine/core-modules/api-key/api-key.entity';
 
 type BuildCreatedByFromApiKeyArgs = {
-  apiKey: ApiKeyWorkspaceEntity;
+  apiKey: ApiKeyEntity;
 };
 export const buildCreatedByFromApiKey = ({
   apiKey,

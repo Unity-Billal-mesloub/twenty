@@ -1,10 +1,26 @@
-import { cookieStorage } from '~/utils/cookie-storage';
 import { isDefined } from 'twenty-shared/utils';
-import { AuthTokenPair } from '~/generated/graphql';
+import { type AuthTokenPair } from '~/generated/graphql';
+import { cookieStorage } from '~/utils/cookie-storage';
+import { isValidAuthTokenPair } from './isValidAuthTokenPair';
 
-export const getTokenPair = () => {
+export const getTokenPair = (): AuthTokenPair | undefined => {
   const stringTokenPair = cookieStorage.getItem('tokenPair');
-  return isDefined(stringTokenPair)
-    ? (JSON.parse(stringTokenPair) as AuthTokenPair)
-    : undefined;
+
+  if (!isDefined(stringTokenPair)) {
+    return undefined;
+  }
+
+  try {
+    const parsedTokenPair = JSON.parse(stringTokenPair);
+
+    if (!isValidAuthTokenPair(parsedTokenPair)) {
+      cookieStorage.removeItem('tokenPair');
+      return undefined;
+    }
+
+    return parsedTokenPair;
+  } catch {
+    cookieStorage.removeItem('tokenPair');
+    return undefined;
+  }
 };

@@ -1,8 +1,8 @@
 import { useCallback } from 'react';
-import { ConnectedAccountProvider } from 'twenty-shared/types';
+import { ConnectedAccountProvider, SettingsPath } from 'twenty-shared/types';
+import { getSettingsPath } from 'twenty-shared/utils';
 
 import { useTriggerApisOAuth } from '@/settings/accounts/hooks/useTriggerApiOAuth';
-import { SettingsPath } from '@/types/SettingsPath';
 import { useNavigateSettings } from '~/hooks/useNavigateSettings';
 
 export const useTriggerProviderReconnect = () => {
@@ -17,17 +17,20 @@ export const useTriggerProviderReconnect = () => {
     ) => {
       if (provider === ConnectedAccountProvider.IMAP_SMTP_CALDAV) {
         if (!accountId) {
-          navigate(SettingsPath.NewImapConnection);
+          navigate(SettingsPath.NewImapSmtpCaldavConnection);
           return;
         }
 
-        navigate(SettingsPath.EditImapConnection, {
+        navigate(SettingsPath.EditImapSmtpCaldavConnection, {
           connectedAccountId: accountId,
         });
         return;
       }
 
-      await triggerApisOAuth(provider, options);
+      await triggerApisOAuth(provider, {
+        ...options,
+        redirectLocation: getSettingsPath(SettingsPath.Accounts),
+      });
     },
     [triggerApisOAuth, navigate],
   );

@@ -9,6 +9,22 @@ export const PERSON_GQL_FIELDS = `
       firstName
       lastName
     }   
+    emails {
+      primaryEmail
+      additionalEmails
+    }
+    phones {
+      primaryPhoneNumber
+      primaryPhoneCountryCode
+      primaryPhoneCallingCode
+      additionalPhones
+    }
+    whatsapp {
+      primaryPhoneNumber
+      primaryPhoneCountryCode
+      primaryPhoneCallingCode
+      additionalPhones
+    }
     createdAt
     deletedAt
 `;

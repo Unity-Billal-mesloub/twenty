@@ -1,13 +1,15 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 import { DiscoveryService, ModuleRef, createContextId } from '@nestjs/core';
 import { Injector } from '@nestjs/core/injector/injector';
-import { Module } from '@nestjs/core/injector/module';
+import { type Module } from '@nestjs/core/injector/module';
 
-import { ObjectRecord } from 'src/engine/api/graphql/workspace-query-builder/interfaces/object-record.interface';
-import { QueryResultFieldValue } from 'src/engine/api/graphql/workspace-query-runner/factories/query-result-getters/interfaces/query-result-field-value';
+import { type ObjectRecord } from 'twenty-shared/types';
+import { assertIsDefinedOrThrow } from 'twenty-shared/utils';
+
+import { type QueryResultFieldValue } from 'src/engine/api/graphql/workspace-query-runner/factories/query-result-getters/interfaces/query-result-field-value';
 import {
-  WorkspacePostQueryHookInstance,
-  WorkspacePreQueryHookInstance,
+  type WorkspacePostQueryHookInstance,
+  type WorkspacePreQueryHookInstance,
 } from 'src/engine/api/graphql/workspace-query-runner/workspace-query-hook/interfaces/workspace-query-hook.interface';
 
 import {
@@ -18,11 +20,11 @@ import { isQueryResultFieldValueAConnection } from 'src/engine/api/graphql/works
 import { isQueryResultFieldValueANestedRecordArray } from 'src/engine/api/graphql/workspace-query-runner/factories/query-result-getters/guards/is-query-result-field-value-a-nested-record-array.guard';
 import { isQueryResultFieldValueARecordArray } from 'src/engine/api/graphql/workspace-query-runner/factories/query-result-getters/guards/is-query-result-field-value-a-record-array.guard';
 import { isQueryResultFieldValueARecord } from 'src/engine/api/graphql/workspace-query-runner/factories/query-result-getters/guards/is-query-result-field-value-a-record.guard';
-import { WorkspaceQueryHookKey } from 'src/engine/api/graphql/workspace-query-runner/workspace-query-hook/decorators/workspace-query-hook.decorator';
+import { type WorkspaceQueryHookKey } from 'src/engine/api/graphql/workspace-query-runner/workspace-query-hook/decorators/workspace-query-hook.decorator';
 import { WorkspaceQueryHookStorage } from 'src/engine/api/graphql/workspace-query-runner/workspace-query-hook/storage/workspace-query-hook.storage';
 import { WorkspaceQueryHookType } from 'src/engine/api/graphql/workspace-query-runner/workspace-query-hook/types/workspace-query-hook.type';
 import { WorkspaceQueryHookMetadataAccessor } from 'src/engine/api/graphql/workspace-query-runner/workspace-query-hook/workspace-query-hook-metadata.accessor';
-import { workspaceValidator } from 'src/engine/core-modules/workspace/workspace.validate';
+import { WorkspaceNotFoundDefaultError } from 'src/engine/core-modules/workspace/workspace.exception';
 
 @Injectable()
 export class WorkspaceQueryHookExplorer implements OnModuleInit {
@@ -92,7 +94,7 @@ export class WorkspaceQueryHookExplorer implements OnModuleInit {
 
     const workspace = executeParams?.[0].workspace;
 
-    workspaceValidator.assertIsDefinedOrThrow(workspace);
+    assertIsDefinedOrThrow(workspace, WorkspaceNotFoundDefaultError);
 
     if (isRequestScoped) {
       const contextId = createContextId();
@@ -159,7 +161,7 @@ export class WorkspaceQueryHookExplorer implements OnModuleInit {
 
     const workspace = executeParams?.[0].workspace;
 
-    workspaceValidator.assertIsDefinedOrThrow(workspace);
+    assertIsDefinedOrThrow(workspace, WorkspaceNotFoundDefaultError);
 
     const transformedPayload = this.transformPayload(executeParams[2]);
 

@@ -1,12 +1,10 @@
-import { FieldContext } from '@/object-record/record-field/contexts/FieldContext';
-import { useFullNameFieldDisplay } from '@/object-record/record-field/meta-types/hooks/useFullNameFieldDisplay';
-import { INLINE_CELL_HOTKEY_SCOPE_MEMOIZE_KEY } from '@/object-record/record-inline-cell/constants/InlineCellHotkeyScopeMemoizeKey';
-import { useInlineCell } from '@/object-record/record-inline-cell/hooks/useInlineCell';
+import { FieldContext } from '@/object-record/record-field/ui/contexts/FieldContext';
+import { useFullNameFieldDisplay } from '@/object-record/record-field/ui/meta-types/hooks/useFullNameFieldDisplay';
+import { useRecordTitleCell } from '@/object-record/record-title-cell/hooks/useRecordTitleCell';
 import { getRecordFieldInputInstanceId } from '@/object-record/utils/getRecordFieldInputId';
-import { TitleInputHotkeyScope } from '@/ui/input/types/TitleInputHotkeyScope';
 import { usePushFocusItemToFocusStack } from '@/ui/utilities/focus/hooks/usePushFocusItemToFocusStack';
 import { FocusComponentType } from '@/ui/utilities/focus/types/FocusComponentType';
-import { Theme, withTheme } from '@emotion/react';
+import { withTheme, type Theme } from '@emotion/react';
 import styled from '@emotion/styled';
 import { isNonEmptyString } from '@sniptt/guards';
 import { useContext } from 'react';
@@ -42,7 +40,7 @@ export const RecordTitleFullNameFieldDisplay = ({
 }) => {
   const { recordId, fieldDefinition } = useContext(FieldContext);
 
-  const { openInlineCell } = useInlineCell();
+  const { openRecordTitleCell } = useRecordTitleCell();
 
   const { fieldValue } = useFullNameFieldDisplay();
 
@@ -68,13 +66,20 @@ export const RecordTitleFullNameFieldDisplay = ({
             type: FocusComponentType.OPENED_FIELD_INPUT,
             instanceId: recordTitleCellId,
           },
-          hotkeyScope: {
-            scope: TitleInputHotkeyScope.TitleInput,
+          globalHotkeysConfig: {
+            enableGlobalHotkeysConflictingWithKeyboard: false,
           },
-          memoizeKey: INLINE_CELL_HOTKEY_SCOPE_MEMOIZE_KEY,
         });
 
-        openInlineCell();
+        openRecordTitleCell({
+          recordId,
+          fieldName: fieldDefinition.metadata.fieldName,
+          instanceId: getRecordFieldInputInstanceId({
+            recordId,
+            fieldName: fieldDefinition.metadata.fieldName,
+            prefix: containerType,
+          }),
+        });
       }}
     >
       {!content ? (

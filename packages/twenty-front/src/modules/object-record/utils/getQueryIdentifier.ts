@@ -1,4 +1,4 @@
-import { RecordGqlOperationVariables } from '@/object-record/graphql/types/RecordGqlOperationVariables';
+import { type RecordGqlOperationVariables } from '@/object-record/graphql/types/RecordGqlOperationVariables';
 
 export const getQueryIdentifier = ({
   objectNameSingular,
@@ -6,11 +6,14 @@ export const getQueryIdentifier = ({
   orderBy,
   limit,
   cursorFilter,
+  groupBy,
 }: RecordGqlOperationVariables & {
   objectNameSingular: string;
+  groupBy?: Record<string, any>[];
 }) =>
   objectNameSingular +
   JSON.stringify(filter) +
   JSON.stringify(orderBy) +
   limit +
-  (cursorFilter ? JSON.stringify(cursorFilter) : undefined);
+  (cursorFilter ? JSON.stringify(cursorFilter) : undefined) +
+  (groupBy ? JSON.stringify(groupBy) : '');

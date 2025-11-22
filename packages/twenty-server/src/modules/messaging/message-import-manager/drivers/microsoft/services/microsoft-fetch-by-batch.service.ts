@@ -1,28 +1,20 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
-import { ConnectedAccountWorkspaceEntity } from 'src/modules/connected-account/standard-objects/connected-account.workspace-entity';
-import {
-  MessageImportDriverException,
-  MessageImportDriverExceptionCode,
-} from 'src/modules/messaging/message-import-manager/drivers/exceptions/message-import-driver.exception';
-import { MicrosoftClientProvider } from 'src/modules/messaging/message-import-manager/drivers/microsoft/providers/microsoft-client.provider';
-import { MicrosoftGraphBatchResponse } from 'src/modules/messaging/message-import-manager/drivers/microsoft/services/microsoft-get-messages.interface';
-import { MicrosoftHandleErrorService } from 'src/modules/messaging/message-import-manager/drivers/microsoft/services/microsoft-handle-error.service';
-import { isAccessTokenRefreshingError } from 'src/modules/messaging/message-import-manager/drivers/microsoft/utils/is-access-token-refreshing-error.utils';
+import { OAuth2ClientManagerService } from 'src/modules/connected-account/oauth2-client-manager/services/oauth2-client-manager.service';
+import { type ConnectedAccountWorkspaceEntity } from 'src/modules/connected-account/standard-objects/connected-account.workspace-entity';
+import { type MicrosoftGraphBatchResponse } from 'src/modules/messaging/message-import-manager/drivers/microsoft/services/microsoft-get-messages.interface';
 
 @Injectable()
 export class MicrosoftFetchByBatchService {
-  private readonly logger = new Logger(MicrosoftFetchByBatchService.name);
   constructor(
-    private readonly microsoftClientProvider: MicrosoftClientProvider,
-    private readonly microsoftHandleErrorService: MicrosoftHandleErrorService,
+    private readonly oAuth2ClientManagerService: OAuth2ClientManagerService,
   ) {}
 
   async fetchAllByBatches(
     messageIds: string[],
     connectedAccount: Pick<
       ConnectedAccountWorkspaceEntity,
-      'refreshToken' | 'id'
+      'accessToken' | 'refreshToken' | 'id' | 'provider'
     >,
   ): Promise<{
     messageIdsByBatch: string[][];
@@ -33,7 +25,9 @@ export class MicrosoftFetchByBatchService {
     const messageIdsByBatch: string[][] = [];
 
     const client =
-      await this.microsoftClientProvider.getMicrosoftClient(connectedAccount);
+      await this.oAuth2ClientManagerService.getMicrosoftOAuth2Client(
+        connectedAccount,
+      );
 
     for (let i = 0; i < messageIds.length; i += batchLimit) {
       const batchMessageIds = messageIds.slice(i, i + batchLimit);
@@ -50,46 +44,16 @@ export class MicrosoftFetchByBatchService {
         },
       }));
 
-      try {
-        const batchResponse = await client
-          .api('/$batch')
-          .post({ requests: batchRequests });
+      const batchResponse = await client
+        .api('/$batch')
+        .post({ requests: batchRequests });
 
-        batchResponses.push(batchResponse);
-      } catch (error) {
-        if (isAccessTokenRefreshingError(error?.body)) {
-          throw new MessageImportDriverException(
-            error.message,
-            MessageImportDriverExceptionCode.CLIENT_NOT_AVAILABLE,
-          );
-        }
-        this.microsoftHandleErrorService.handleMicrosoftMessageFetchByBatchError(
-          error,
-        );
-      }
+      batchResponses.push(batchResponse);
     }
 
     return {
       messageIdsByBatch,
       batchResponses,
     };
-  }
-
-  /**
-   * Microsoft client.api.post sometimes throws (hard to catch) temporary errors like this one:
-   *
-   * {
-   *   statusCode: 200,
-   *   code: "SyntaxError",
-   *   requestId: null,
-   *   date: "2025-05-14T11:43:02.024Z",
-   *   body: "SyntaxError: Unexpected token < in JSON at position 19341",
-   *   headers: {
-   *   },
-   * }
-   */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private isTemporaryError(error: any): boolean {
-    return error?.body?.includes('Unexpected token < in JSON at position');
   }
 }

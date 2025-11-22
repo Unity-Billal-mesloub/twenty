@@ -1,5 +1,5 @@
-import { FilterableFieldType } from '@/object-record/record-filter/types/FilterableFieldType';
-import { CompositeFieldType } from '@/settings/data-model/types/CompositeFieldType';
+import { type CompositeFieldType } from '@/settings/data-model/types/CompositeFieldType';
+import { type FilterableFieldType } from 'twenty-shared/types';
 
 export type CompositeFilterableFieldType = FilterableFieldType &
   CompositeFieldType;

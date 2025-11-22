@@ -4,12 +4,12 @@ import { isDefined } from 'class-validator';
 import { FieldMetadataType } from 'twenty-shared/types';
 
 import { RelationType } from 'src/engine/metadata-modules/field-metadata/interfaces/relation-type.interface';
-import { WorkspaceRelationMetadataArgs } from 'src/engine/twenty-orm/interfaces/workspace-relation-metadata-args.interface';
-import { WorkspaceSyncContext } from 'src/engine/workspace-manager/workspace-sync-metadata/interfaces/workspace-sync-context.interface';
+import { type WorkspaceRelationMetadataArgs } from 'src/engine/twenty-orm/interfaces/workspace-relation-metadata-args.interface';
+import { type WorkspaceSyncContext } from 'src/engine/workspace-manager/workspace-sync-metadata/interfaces/workspace-sync-context.interface';
 
-import { FieldMetadataEntity } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
-import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
-import { BaseWorkspaceEntity } from 'src/engine/twenty-orm/base.workspace-entity';
+import { type FieldMetadataEntity } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
+import { type ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
+import { type BaseWorkspaceEntity } from 'src/engine/twenty-orm/base.workspace-entity';
 import { CustomWorkspaceEntity } from 'src/engine/twenty-orm/custom.workspace-entity';
 import { metadataArgsStorage } from 'src/engine/twenty-orm/storage/metadata-args.storage';
 import { getJoinColumn } from 'src/engine/twenty-orm/utils/get-join-column.util';
@@ -21,7 +21,9 @@ export class StandardFieldRelationFactory {
   computeRelationFieldsForCustomObject(
     customObjectMetadata: ObjectMetadataEntity,
     originalObjectMetadataMap: Record<string, ObjectMetadataEntity>,
-  ): FieldMetadataEntity<FieldMetadataType.RELATION>[] {
+  ): FieldMetadataEntity<
+    FieldMetadataType.RELATION | FieldMetadataType.MORPH_RELATION
+  >[] {
     const workspaceRelationMetadataArgsCollection =
       metadataArgsStorage.filterRelations(CustomWorkspaceEntity);
 
@@ -111,7 +113,9 @@ export class StandardFieldRelationFactory {
     standardObjectMetadataWorkspaceEntity: typeof BaseWorkspaceEntity,
     context: WorkspaceSyncContext,
     originalObjectMetadataMap: Record<string, ObjectMetadataEntity>,
-  ): FieldMetadataEntity<FieldMetadataType.RELATION>[] {
+  ): FieldMetadataEntity<
+    FieldMetadataType.RELATION | FieldMetadataType.MORPH_RELATION
+  >[] {
     const workspaceEntityMetadataArgs = metadataArgsStorage.filterEntities(
       standardObjectMetadataWorkspaceEntity,
     );
@@ -282,9 +286,13 @@ export class StandardFieldRelationFactory {
           );
         }
 
+        const type = workspaceRelationMetadataArgs.isMorphRelation
+          ? FieldMetadataType.MORPH_RELATION
+          : FieldMetadataType.RELATION;
+
         return {
           ...sourceFieldMetadata,
-          type: FieldMetadataType.RELATION,
+          type,
           settings: {
             relationType: workspaceRelationMetadataArgs.type,
             onDelete:
@@ -293,9 +301,10 @@ export class StandardFieldRelationFactory {
                 : undefined,
             joinColumnName,
           },
+          morphId: workspaceRelationMetadataArgs.morphId ?? null,
           relationTargetObjectMetadataId: targetObjectMetadata.id,
           relationTargetFieldMetadataId: targetFieldMetadata.id,
-        } satisfies FieldMetadataEntity<FieldMetadataType.RELATION>;
+        } satisfies FieldMetadataEntity<typeof type>;
       });
 
     return [...staticRelations, ...relationsFromDynamicRelations];

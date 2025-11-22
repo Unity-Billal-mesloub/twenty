@@ -12,9 +12,14 @@ export { AnimatedContainer } from './animation/components/AnimatedContainer';
 export { AnimatedEaseIn } from './animation/components/AnimatedEaseIn';
 export { AnimatedEaseInOut } from './animation/components/AnimatedEaseInOut';
 export { AnimatedFadeOut } from './animation/components/AnimatedFadeOut';
+export { AnimatedRotate } from './animation/components/AnimatedRotate';
 export { AnimatedTextWord } from './animation/components/AnimatedTextWord';
 export { AnimatedTranslation } from './animation/components/AnimatedTranslation';
-export { stringToHslColor } from './color/utils/stringToHslColor';
+export { getMainColorNameFromPaletteColorName } from './color/utils/getMainColorNameFromPaletteColorName';
+export {
+  stringToThemeColor,
+  stringToThemeColorP3String,
+} from './color/utils/stringToThemeColorP3String';
 export { REACT_APP_SERVER_BASE_URL } from './config';
 export { getOsControlSymbol } from './device/getOsControlSymbol';
 export { getOsShortcutSeparator } from './device/getOsShortcutSeparator';

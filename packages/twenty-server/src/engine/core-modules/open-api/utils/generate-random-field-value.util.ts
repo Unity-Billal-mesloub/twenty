@@ -3,9 +3,9 @@ import { FieldMetadataType } from 'twenty-shared/types';
 import { assertUnreachable, isDefined } from 'twenty-shared/utils';
 import { v4 } from 'uuid';
 
-import { FieldMetadataDefaultValue } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata-default-value.interface';
+import { type FieldMetadataDefaultValue } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata-default-value.interface';
 
-import { FieldMetadataEntity } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
+import { type FieldMetadataEntity } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
 
 export const generateRandomFieldValue = ({
   field,
@@ -58,7 +58,7 @@ export const generateRandomFieldValue = ({
       return {
         primaryLinkLabel: '',
         primaryLinkUrl: faker.internet.url(),
-        additionalLinks: [],
+        secondaryLinks: [],
       };
     }
 
@@ -81,11 +81,19 @@ export const generateRandomFieldValue = ({
     }
 
     case FieldMetadataType.SELECT: {
-      return isDefined(field.options[0].value) ? field.options[0].value : [];
+      if (!isDefined(field.options) || !isDefined(field.options[0].value)) {
+        return null;
+      }
+
+      return field.options[0].value;
     }
 
     case FieldMetadataType.MULTI_SELECT: {
-      return isDefined(field.options[0].value) ? [field.options[0].value] : [];
+      if (!isDefined(field.options) || !isDefined(field.options[0].value)) {
+        return [];
+      }
+
+      return [field.options[0].value];
     }
 
     case FieldMetadataType.RELATION:

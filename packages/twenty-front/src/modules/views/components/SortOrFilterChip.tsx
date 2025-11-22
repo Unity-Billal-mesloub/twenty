@@ -1,6 +1,6 @@
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
-import { IconComponent, IconX } from 'twenty-ui/display';
+import { type IconComponent, IconX } from 'twenty-ui/display';
 
 const StyledChip = styled.div<{ variant: SortOrFilterChipVariant }>`
   align-items: center;
@@ -73,7 +73,7 @@ const StyledDelete = styled.button<{ variant: SortOrFilterChipVariant }>`
     background-color: ${({ theme, variant }) => {
       switch (variant) {
         case 'danger':
-          return theme.color.red20;
+          return theme.color.red5;
         case 'default':
         default:
           return theme.accent.secondary;
@@ -93,6 +93,10 @@ const StyledFilterValue = styled.span`
 
 const StyledSortValue = styled.span`
   font-weight: ${({ theme }) => theme.font.weight.medium};
+`;
+
+const StyledKeyLabelContainer = styled.div`
+  display: flex;
 `;
 
 export type SortOrFilterChipVariant = 'default' | 'danger';
@@ -134,12 +138,14 @@ export const SortOrFilterChip = ({
           <Icon size={theme.icon.size.sm} />
         </StyledIcon>
       )}
-      {labelKey && <StyledLabelKey>{labelKey}</StyledLabelKey>}
-      {type === 'sort' ? (
-        <StyledSortValue>{labelValue}</StyledSortValue>
-      ) : (
-        <StyledFilterValue>{labelValue}</StyledFilterValue>
-      )}
+      <StyledKeyLabelContainer>
+        {labelKey && <StyledLabelKey>{labelKey}</StyledLabelKey>}
+        {type === 'sort' ? (
+          <StyledSortValue>{labelValue}</StyledSortValue>
+        ) : (
+          <StyledFilterValue>{labelValue}</StyledFilterValue>
+        )}
+      </StyledKeyLabelContainer>
       <StyledDelete
         variant={variant}
         onClick={handleDeleteClick}

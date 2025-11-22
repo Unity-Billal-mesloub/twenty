@@ -6,7 +6,8 @@ import { useFeatureFlagState } from '@/settings/admin-panel/hooks/useFeatureFlag
 import { useImpersonationAuth } from '@/settings/admin-panel/hooks/useImpersonationAuth';
 import { useImpersonationRedirect } from '@/settings/admin-panel/hooks/useImpersonationRedirect';
 import { userLookupResultState } from '@/settings/admin-panel/states/userLookupResultState';
-import { WorkspaceInfo } from '@/settings/admin-panel/types/WorkspaceInfo';
+import { type WorkspaceInfo } from '@/settings/admin-panel/types/WorkspaceInfo';
+import { getWorkspaceSchemaName } from '@/settings/admin-panel/utils/get-workspace-schema-name.util';
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
 import { Table } from '@/ui/layout/table/components/Table';
 import { TableBody } from '@/ui/layout/table/components/TableBody';
@@ -20,19 +21,20 @@ import { isNonEmptyString } from '@sniptt/guards';
 import { useState } from 'react';
 import { useRecoilState, useRecoilValue } from 'recoil';
 import { getImageAbsoluteURI, isDefined } from 'twenty-shared/utils';
-import { AvatarChip } from 'twenty-ui/components';
+import { AvatarChip, Chip } from 'twenty-ui/components';
 import {
   H2Title,
   IconEyeShare,
   IconHome,
   IconId,
+  IconLink,
   IconUser,
 } from 'twenty-ui/display';
 import { Button, Toggle } from 'twenty-ui/input';
 import { Section } from 'twenty-ui/layout';
 import { REACT_APP_SERVER_BASE_URL } from '~/config';
 import {
-  FeatureFlagKey,
+  type FeatureFlagKey,
   useImpersonateMutation,
   useUpdateWorkspaceFeatureFlagMutation,
 } from '~/generated-metadata/graphql';
@@ -92,6 +94,7 @@ export const SettingsAdminWorkspaceContent = ({
         return executeImpersonationRedirect(
           workspace.workspaceUrls,
           loginToken.token,
+          '_blank',
         );
       },
       onError: (error) => {
@@ -132,20 +135,28 @@ export const SettingsAdminWorkspaceContent = ({
     });
   };
 
+  const getWorkspaceUrl = (workspaceUrls: WorkspaceInfo['workspaceUrls']) => {
+    return workspaceUrls.customUrl ?? workspaceUrls.subdomainUrl;
+  };
+
   const workspaceInfoItems = [
     {
       Icon: IconHome,
       label: t`Name`,
       value: (
-        <AvatarChip
-          name={activeWorkspace?.name ?? ''}
-          avatarUrl={
-            getImageAbsoluteURI({
-              imageUrl: isNonEmptyString(activeWorkspace?.logo)
-                ? activeWorkspace?.logo
-                : DEFAULT_WORKSPACE_LOGO,
-              baseUrl: REACT_APP_SERVER_BASE_URL,
-            }) ?? ''
+        <Chip
+          label={activeWorkspace?.name ?? ''}
+          leftComponent={
+            <AvatarChip
+              avatarUrl={
+                getImageAbsoluteURI({
+                  imageUrl: isNonEmptyString(activeWorkspace?.logo)
+                    ? activeWorkspace?.logo
+                    : DEFAULT_WORKSPACE_LOGO,
+                  baseUrl: REACT_APP_SERVER_BASE_URL,
+                }) ?? ''
+              }
+            />
           }
         />
       ),
@@ -154,6 +165,20 @@ export const SettingsAdminWorkspaceContent = ({
       Icon: IconId,
       label: t`ID`,
       value: activeWorkspace?.id,
+    },
+    {
+      Icon: IconId,
+      label: t`Schema name`,
+      value: isDefined(activeWorkspace?.id)
+        ? getWorkspaceSchemaName(activeWorkspace.id)
+        : '',
+    },
+    {
+      Icon: IconLink,
+      label: t`URL`,
+      value: activeWorkspace?.workspaceUrls
+        ? getWorkspaceUrl(activeWorkspace.workspaceUrls)
+        : '',
     },
     {
       Icon: IconUser,
@@ -181,7 +206,11 @@ export const SettingsAdminWorkspaceContent = ({
               Icon={IconEyeShare}
               variant="primary"
               accent="default"
-              title={t`Impersonate`}
+              title={
+                activeWorkspace.allowImpersonation === false
+                  ? t`Impersonation is disabled for this workspace`
+                  : t`Impersonate`
+              }
               onClick={() => handleImpersonate(activeWorkspace.id)}
               disabled={
                 isImpersonateLoading ||

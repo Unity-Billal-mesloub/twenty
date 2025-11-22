@@ -1,7 +1,7 @@
-import { VariableDateViewFilterValueDirection } from '@/views/view-filter-value/utils/resolveDateViewFilterValue';
+import { type RelativeDateFilterDirection } from 'twenty-shared/utils';
 
 type RelativeDateDirectionOption = {
-  value: VariableDateViewFilterValueDirection;
+  value: RelativeDateFilterDirection;
   label: string;
 };
 

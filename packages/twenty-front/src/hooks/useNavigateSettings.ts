@@ -1,6 +1,6 @@
-import { SettingsPath } from '@/types/SettingsPath';
 import { useNavigate } from 'react-router-dom';
-import { getSettingsPath } from '~/utils/navigation/getSettingsPath';
+import { type SettingsPath } from 'twenty-shared/types';
+import { getSettingsPath } from 'twenty-shared/utils';
 
 export const useNavigateSettings = () => {
   const navigate = useNavigate();

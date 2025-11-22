@@ -57,9 +57,9 @@ export const MESSAGE_CHANNEL_DATA_SEEDS: MessageChannelDataSeed[] = [
     type: 'email',
     connectedAccountId: CONNECTED_ACCOUNT_DATA_SEED_IDS.TIM,
     handle: 'tim@apple.dev',
-    isSyncEnabled: false,
+    isSyncEnabled: true,
     visibility: MessageChannelVisibility.SHARE_EVERYTHING,
-    syncStage: MessageChannelSyncStage.FULL_MESSAGE_LIST_FETCH_PENDING,
+    syncStage: MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING,
   },
   {
     id: MESSAGE_CHANNEL_DATA_SEED_IDS.JONY,
@@ -70,9 +70,9 @@ export const MESSAGE_CHANNEL_DATA_SEEDS: MessageChannelDataSeed[] = [
     type: 'email',
     connectedAccountId: CONNECTED_ACCOUNT_DATA_SEED_IDS.JONY,
     handle: 'jony.ive@apple.dev',
-    isSyncEnabled: false,
+    isSyncEnabled: true,
     visibility: MessageChannelVisibility.SHARE_EVERYTHING,
-    syncStage: MessageChannelSyncStage.FULL_MESSAGE_LIST_FETCH_PENDING,
+    syncStage: MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING,
   },
   {
     id: MESSAGE_CHANNEL_DATA_SEED_IDS.PHIL,
@@ -83,9 +83,9 @@ export const MESSAGE_CHANNEL_DATA_SEEDS: MessageChannelDataSeed[] = [
     type: 'email',
     connectedAccountId: CONNECTED_ACCOUNT_DATA_SEED_IDS.PHIL,
     handle: 'phil.schiler@apple.dev',
-    isSyncEnabled: false,
+    isSyncEnabled: true,
     visibility: MessageChannelVisibility.SHARE_EVERYTHING,
-    syncStage: MessageChannelSyncStage.FULL_MESSAGE_LIST_FETCH_PENDING,
+    syncStage: MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING,
   },
   {
     id: MESSAGE_CHANNEL_DATA_SEED_IDS.SUPPORT,
@@ -96,9 +96,9 @@ export const MESSAGE_CHANNEL_DATA_SEEDS: MessageChannelDataSeed[] = [
     type: 'email',
     connectedAccountId: CONNECTED_ACCOUNT_DATA_SEED_IDS.TIM, // Use TIM's connected account for shared inbox
     handle: 'support@apple.dev',
-    isSyncEnabled: false,
+    isSyncEnabled: true,
     visibility: MessageChannelVisibility.SHARE_EVERYTHING,
-    syncStage: MessageChannelSyncStage.FULL_MESSAGE_LIST_FETCH_PENDING,
+    syncStage: MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING,
   },
   {
     id: MESSAGE_CHANNEL_DATA_SEED_IDS.SALES,
@@ -109,8 +109,8 @@ export const MESSAGE_CHANNEL_DATA_SEEDS: MessageChannelDataSeed[] = [
     type: 'email',
     connectedAccountId: CONNECTED_ACCOUNT_DATA_SEED_IDS.TIM, // Use TIM's connected account for shared inbox
     handle: 'sales@apple.dev',
-    isSyncEnabled: false,
+    isSyncEnabled: true,
     visibility: MessageChannelVisibility.SHARE_EVERYTHING,
-    syncStage: MessageChannelSyncStage.FULL_MESSAGE_LIST_FETCH_PENDING,
+    syncStage: MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING,
   },
 ];

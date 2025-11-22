@@ -1,23 +1,20 @@
-import { FormFieldInputContainer } from '@/object-record/record-field/form-types/components/FormFieldInputContainer';
-import { FormFieldInputInnerContainer } from '@/object-record/record-field/form-types/components/FormFieldInputInnerContainer';
-import { FormFieldInputRowContainer } from '@/object-record/record-field/form-types/components/FormFieldInputRowContainer';
-import { FormFieldPlaceholder } from '@/object-record/record-field/form-types/components/FormFieldPlaceholder';
+import { FormFieldInputContainer } from '@/object-record/record-field/ui/form-types/components/FormFieldInputContainer';
+import { FormFieldInputInnerContainer } from '@/object-record/record-field/ui/form-types/components/FormFieldInputInnerContainer';
+import { FormFieldInputRowContainer } from '@/object-record/record-field/ui/form-types/components/FormFieldInputRowContainer';
+import { FormFieldPlaceholder } from '@/object-record/record-field/ui/form-types/components/FormFieldPlaceholder';
 import { InputLabel } from '@/ui/input/components/InputLabel';
 import { DraggableItem } from '@/ui/layout/draggable-list/components/DraggableItem';
 import { DraggableList } from '@/ui/layout/draggable-list/components/DraggableList';
-import { WorkflowFormAction } from '@/workflow/types/Workflow';
+import { type WorkflowFormAction } from '@/workflow/types/Workflow';
 import { WorkflowStepBody } from '@/workflow/workflow-steps/components/WorkflowStepBody';
-import { WorkflowStepHeader } from '@/workflow/workflow-steps/components/WorkflowStepHeader';
+import { WorkflowStepFooter } from '@/workflow/workflow-steps/components/WorkflowStepFooter';
 import { WorkflowEditActionFormFieldSettings } from '@/workflow/workflow-steps/workflow-actions/form-action/components/WorkflowEditActionFormFieldSettings';
 import { WorkflowFormEmptyMessage } from '@/workflow/workflow-steps/workflow-actions/form-action/components/WorkflowFormEmptyMessage';
-import { WorkflowFormActionField } from '@/workflow/workflow-steps/workflow-actions/form-action/types/WorkflowFormActionField';
+import { type WorkflowFormActionField } from '@/workflow/workflow-steps/workflow-actions/form-action/types/WorkflowFormActionField';
 import { getDefaultFormFieldSettings } from '@/workflow/workflow-steps/workflow-actions/form-action/utils/getDefaultFormFieldSettings';
-import { useActionHeaderTypeOrThrow } from '@/workflow/workflow-steps/workflow-actions/hooks/useActionHeaderTypeOrThrow';
-import { useActionIconColorOrThrow } from '@/workflow/workflow-steps/workflow-actions/hooks/useActionIconColorOrThrow';
-import { getActionIcon } from '@/workflow/workflow-steps/workflow-actions/utils/getActionIcon';
 import { css, useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
-import { OnDragEndResponder } from '@hello-pangea/dnd';
+import { type OnDragEndResponder } from '@hello-pangea/dnd';
 import { useLingui } from '@lingui/react/macro';
 import { isNonEmptyString } from '@sniptt/guards';
 import { useEffect, useState } from 'react';
@@ -28,7 +25,6 @@ import {
   IconGripVertical,
   IconPlus,
   IconTrash,
-  useIcons,
 } from 'twenty-ui/display';
 import { LightIconButton } from 'twenty-ui/input';
 import { useDebouncedCallback } from 'use-debounce';
@@ -136,15 +132,9 @@ export const WorkflowEditActionFormBuilder = ({
   actionOptions,
 }: WorkflowEditActionFormBuilderProps) => {
   const theme = useTheme();
-  const { getIcon } = useIcons();
   const { t } = useLingui();
 
   const [formData, setFormData] = useState<FormData>(action.settings.input);
-
-  const headerTitle = isDefined(action.name) ? action.name : `Form`;
-  const headerIcon = getActionIcon(action.type);
-  const headerIconColor = useActionIconColorOrThrow(action.type);
-  const headerType = useActionHeaderTypeOrThrow(action.type);
 
   const [selectedField, setSelectedField] = useState<string | null>(null);
   const [hoveredField, setHoveredField] = useState<string | null>(null);
@@ -222,23 +212,6 @@ export const WorkflowEditActionFormBuilder = ({
 
   return (
     <>
-      <WorkflowStepHeader
-        onTitleChange={(newName: string) => {
-          if (actionOptions.readonly === true) {
-            return;
-          }
-
-          actionOptions.onActionUpdate({
-            ...action,
-            name: newName,
-          });
-        }}
-        Icon={getIcon(headerIcon)}
-        iconColor={headerIconColor}
-        initialTitle={headerTitle}
-        headerType={headerType}
-        disabled={actionOptions.readonly}
-      />
       <StyledWorkflowStepBody>
         {formData.length === 0 && (
           <WorkflowFormEmptyMessage data-testid="empty-form-message" />
@@ -398,6 +371,7 @@ export const WorkflowEditActionFormBuilder = ({
           </StyledAddFieldButtonContainer>
         )}
       </StyledWorkflowStepBody>
+      {!actionOptions.readonly && <WorkflowStepFooter stepId={action.id} />}
     </>
   );
 };

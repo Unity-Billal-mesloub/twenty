@@ -1,12 +1,13 @@
 import { createReactBlockSpec } from '@blocknote/react';
 import styled from '@emotion/styled';
 import { isNonEmptyString } from '@sniptt/guards';
-import { ChangeEvent, useRef } from 'react';
+import { type ChangeEvent, useRef } from 'react';
 import { isUndefinedOrNull } from '~/utils/isUndefinedOrNull';
 
-import { AttachmentIcon } from '../../files/components/AttachmentIcon';
-import { AttachmentType } from '../../files/types/Attachment';
-import { getFileType } from '../../files/utils/getFileType';
+import { type AttachmentFileCategory } from '@/activities/files/types/AttachmentFileCategory';
+import { getFileType } from '@/activities/files/utils/getFileType';
+import { FileIcon } from '@/file/components/FileIcon';
+import { t } from '@lingui/core/macro';
 import { isDefined } from 'twenty-shared/utils';
 import { Button } from 'twenty-ui/input';
 
@@ -46,8 +47,8 @@ export const FileBlock = createReactBlockSpec(
       name: {
         default: '' as string,
       },
-      fileType: {
-        default: 'Other' as AttachmentType,
+      fileCategory: {
+        default: 'OTHER' as AttachmentFileCategory,
       },
     },
     content: 'none',
@@ -72,7 +73,7 @@ export const FileBlock = createReactBlockSpec(
             ...block.props,
             ...{
               url: fileUrl,
-              fileType: getFileType(file.name),
+              fileCategory: getFileType(file.name),
               name: file.name,
             },
           },
@@ -89,9 +90,9 @@ export const FileBlock = createReactBlockSpec(
       if (isNonEmptyString(block.props.url)) {
         return (
           <StyledFileLine>
-            <AttachmentIcon
-              attachmentType={block.props.fileType as AttachmentType}
-            ></AttachmentIcon>
+            <FileIcon
+              fileCategory={block.props.fileCategory as AttachmentFileCategory}
+            />
             <StyledLink href={block.props.url} target="__blank">
               {block.props.name}
             </StyledLink>
@@ -106,7 +107,10 @@ export const FileBlock = createReactBlockSpec(
             onChange={handleFileChange}
             type="file"
           />
-          <Button onClick={handleUploadFileClick} title="Upload File"></Button>
+          <Button
+            onClick={handleUploadFileClick}
+            title={t`Upload File`}
+          ></Button>
         </StyledUploadFileContainer>
       );
     },

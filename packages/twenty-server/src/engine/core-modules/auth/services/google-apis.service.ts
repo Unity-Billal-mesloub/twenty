@@ -18,25 +18,27 @@ import { InjectMessageQueue } from 'src/engine/core-modules/message-queue/decora
 import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
 import { MessageQueueService } from 'src/engine/core-modules/message-queue/services/message-queue.service';
 import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
-import { WorkspaceEntityManager } from 'src/engine/twenty-orm/entity-manager/workspace-entity-manager';
+import { type WorkspaceEntityManager } from 'src/engine/twenty-orm/entity-manager/workspace-entity-manager';
 import { TwentyORMGlobalManager } from 'src/engine/twenty-orm/twenty-orm-global.manager';
 import {
   CalendarEventListFetchJob,
-  CalendarEventListFetchJobData,
+  type CalendarEventListFetchJobData,
 } from 'src/modules/calendar/calendar-event-import-manager/jobs/calendar-event-list-fetch.job';
 import {
-  CalendarChannelVisibility,
-  CalendarChannelWorkspaceEntity,
+  CalendarChannelSyncStage,
+  type CalendarChannelVisibility,
+  type CalendarChannelWorkspaceEntity,
 } from 'src/modules/calendar/common/standard-objects/calendar-channel.workspace-entity';
 import { AccountsToReconnectService } from 'src/modules/connected-account/services/accounts-to-reconnect.service';
-import { ConnectedAccountWorkspaceEntity } from 'src/modules/connected-account/standard-objects/connected-account.workspace-entity';
+import { type ConnectedAccountWorkspaceEntity } from 'src/modules/connected-account/standard-objects/connected-account.workspace-entity';
 import {
-  MessageChannelVisibility,
-  MessageChannelWorkspaceEntity,
+  MessageChannelSyncStage,
+  type MessageChannelVisibility,
+  type MessageChannelWorkspaceEntity,
 } from 'src/modules/messaging/common/standard-objects/message-channel.workspace-entity';
 import {
   MessagingMessageListFetchJob,
-  MessagingMessageListFetchJobData,
+  type MessagingMessageListFetchJobData,
 } from 'src/modules/messaging/message-import-manager/jobs/messaging-message-list-fetch.job';
 import { WorkspaceMemberWorkspaceEntity } from 'src/modules/workspace-member/standard-objects/workspace-member.workspace-entity';
 
@@ -67,7 +69,7 @@ export class GoogleAPIsService {
     refreshToken: string;
     calendarVisibility: CalendarChannelVisibility | undefined;
     messageVisibility: MessageChannelVisibility | undefined;
-  }) {
+  }): Promise<string> {
     const {
       handle,
       workspaceId,
@@ -171,6 +173,7 @@ export class GoogleAPIsService {
             await this.twentyORMGlobalManager.getRepositoryForWorkspace<WorkspaceMemberWorkspaceEntity>(
               workspaceId,
               'workspaceMember',
+              { shouldBypassPermissionChecks: true },
             );
 
           const workspaceMember = await workspaceMemberRepository.findOneOrFail(
@@ -210,13 +213,18 @@ export class GoogleAPIsService {
       });
 
       for (const messageChannel of messageChannels) {
-        await this.messageQueueService.add<MessagingMessageListFetchJobData>(
-          MessagingMessageListFetchJob.name,
-          {
-            workspaceId,
-            messageChannelId: messageChannel.id,
-          },
-        );
+        if (
+          messageChannel.syncStage !==
+          MessageChannelSyncStage.PENDING_CONFIGURATION
+        ) {
+          await this.messageQueueService.add<MessagingMessageListFetchJobData>(
+            MessagingMessageListFetchJob.name,
+            {
+              workspaceId,
+              messageChannelId: messageChannel.id,
+            },
+          );
+        }
       }
     }
 
@@ -228,14 +236,21 @@ export class GoogleAPIsService {
       });
 
       for (const calendarChannel of calendarChannels) {
-        await this.calendarQueueService.add<CalendarEventListFetchJobData>(
-          CalendarEventListFetchJob.name,
-          {
-            calendarChannelId: calendarChannel.id,
-            workspaceId,
-          },
-        );
+        if (
+          calendarChannel.syncStage !==
+          CalendarChannelSyncStage.PENDING_CONFIGURATION
+        ) {
+          await this.calendarQueueService.add<CalendarEventListFetchJobData>(
+            CalendarEventListFetchJob.name,
+            {
+              calendarChannelId: calendarChannel.id,
+              workspaceId,
+            },
+          );
+        }
       }
     }
+
+    return newOrExistingConnectedAccountId;
   }
 }

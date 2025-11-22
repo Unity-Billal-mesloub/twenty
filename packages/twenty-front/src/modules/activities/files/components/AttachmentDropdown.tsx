@@ -16,16 +16,18 @@ type AttachmentDropdownProps = {
   onDownload: () => void;
   onDelete: () => void;
   onRename: () => void;
-  scopeKey: string;
+  attachmentId: string;
+  hasDownloadPermission: boolean;
 };
 
 export const AttachmentDropdown = ({
   onDownload,
   onDelete,
   onRename,
-  scopeKey,
+  attachmentId,
+  hasDownloadPermission,
 }: AttachmentDropdownProps) => {
-  const dropdownId = `${scopeKey}-settings-field-active-action-dropdown`;
+  const dropdownId = `${attachmentId}-attachment-dropdown`;
 
   const { closeDropdown } = useCloseDropdown();
 
@@ -53,11 +55,13 @@ export const AttachmentDropdown = ({
       dropdownComponents={
         <DropdownContent widthInPixels={GenericDropdownContentWidth.Narrow}>
           <DropdownMenuItemsContainer>
-            <MenuItem
-              text="Download"
-              LeftIcon={IconDownload}
-              onClick={handleDownload}
-            />
+            {hasDownloadPermission && (
+              <MenuItem
+                text="Download"
+                LeftIcon={IconDownload}
+                onClick={handleDownload}
+              />
+            )}
             <MenuItem
               text="Rename"
               LeftIcon={IconPencil}

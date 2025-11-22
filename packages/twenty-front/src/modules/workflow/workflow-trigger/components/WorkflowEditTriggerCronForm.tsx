@@ -1,21 +1,23 @@
-import { FormNumberFieldInput } from '@/object-record/record-field/form-types/components/FormNumberFieldInput';
-import { FormTextFieldInput } from '@/object-record/record-field/form-types/components/FormTextFieldInput';
-import { Select } from '@/ui/input/components/Select';
-import { WorkflowCronTrigger } from '@/workflow/types/Workflow';
+import { FormNumberFieldInput } from '@/object-record/record-field/ui/form-types/components/FormNumberFieldInput';
+import { FormSelectFieldInput } from '@/object-record/record-field/ui/form-types/components/FormSelectFieldInput';
+import { FormTextFieldInput } from '@/object-record/record-field/ui/form-types/components/FormTextFieldInput';
+import { type WorkflowCronTrigger } from '@/workflow/types/Workflow';
 import { WorkflowStepBody } from '@/workflow/workflow-steps/components/WorkflowStepBody';
-import { WorkflowStepHeader } from '@/workflow/workflow-steps/components/WorkflowStepHeader';
-import { CRON_TRIGGER_INTERVAL_OPTIONS } from '@/workflow/workflow-trigger/constants/CronTriggerIntervalOptions';
+import { WorkflowStepFooter } from '@/workflow/workflow-steps/components/WorkflowStepFooter';
+import { CronExpressionHelperLazy } from '@/workflow/workflow-trigger/components/CronExpressionHelperLazy';
+import {
+  CRON_TRIGGER_INTERVAL_OPTIONS,
+  type CronTriggerInterval,
+} from '@/workflow/workflow-trigger/constants/CronTriggerIntervalOptions';
 import { getCronTriggerDefaultSettings } from '@/workflow/workflow-trigger/utils/getCronTriggerDefaultSettings';
-import { getTriggerHeaderType } from '@/workflow/workflow-trigger/utils/getTriggerHeaderType';
-import { getTriggerIcon } from '@/workflow/workflow-trigger/utils/getTriggerIcon';
-import { getTriggerDefaultLabel } from '@/workflow/workflow-trigger/utils/getTriggerLabel';
-import { useTheme } from '@emotion/react';
+import { getTriggerScheduleDescription } from '@/workflow/workflow-trigger/utils/getTriggerScheduleDescription';
+import { t } from '@lingui/core/macro';
 import { isNumber } from '@sniptt/guards';
-import cron from 'cron-validate';
 import { useState } from 'react';
+import { useRecoilValue } from 'recoil';
 import { isDefined } from 'twenty-shared/utils';
-import { useIcons } from 'twenty-ui/display';
-import { GenericDropdownContentWidth } from '@/ui/layout/dropdown/constants/GenericDropdownContentWidth';
+import { TRIGGER_STEP_ID } from 'twenty-shared/workflow';
+import { dateLocaleState } from '~/localization/states/dateLocaleState';
 
 type WorkflowEditTriggerCronFormProps = {
   trigger: WorkflowCronTrigger;
@@ -44,17 +46,14 @@ export const WorkflowEditTriggerCronForm = ({
   trigger,
   triggerOptions,
 }: WorkflowEditTriggerCronFormProps) => {
-  const theme = useTheme();
   const [errorMessages, setErrorMessages] = useState<FormErrorMessages>({});
   const [errorMessagesVisible, setErrorMessagesVisible] = useState(false);
+  const dateLocale = useRecoilValue(dateLocaleState);
 
-  const { getIcon } = useIcons();
-
-  const headerIcon = getTriggerIcon(trigger);
-
-  const defaultLabel = getTriggerDefaultLabel(trigger);
-  const headerTitle = trigger.name ?? defaultLabel;
-  const headerType = getTriggerHeaderType(trigger);
+  const customDescription = getTriggerScheduleDescription(
+    trigger,
+    dateLocale.localeCatalog,
+  );
 
   const onBlur = () => {
     setErrorMessagesVisible(true);
@@ -62,94 +61,84 @@ export const WorkflowEditTriggerCronForm = ({
 
   return (
     <>
-      <WorkflowStepHeader
-        onTitleChange={(newName: string) => {
-          if (triggerOptions.readonly === true) {
-            return;
-          }
-
-          triggerOptions.onTriggerUpdate({
-            ...trigger,
-            name: newName,
-          });
-        }}
-        Icon={getIcon(headerIcon)}
-        iconColor={theme.font.color.tertiary}
-        initialTitle={headerTitle}
-        headerType={headerType}
-        disabled={triggerOptions.readonly}
-      />
       <WorkflowStepBody>
-        <Select
-          dropdownId="workflow-edit-cron-trigger-interval"
-          label="Trigger interval"
-          fullWidth
-          disabled={triggerOptions.readonly}
-          value={trigger.settings.type}
+        <FormSelectFieldInput
+          label={t`Trigger interval`}
+          hint={t`Cron will be triggered at UTC time`}
+          defaultValue={trigger.settings.type}
           options={CRON_TRIGGER_INTERVAL_OPTIONS}
+          readonly={triggerOptions.readonly}
           onChange={(newTriggerType) => {
             if (triggerOptions.readonly === true) {
               return;
             }
-
+            if (!newTriggerType) {
+              return;
+            }
             setErrorMessages({});
 
             setErrorMessagesVisible(false);
 
             triggerOptions.onTriggerUpdate({
               ...trigger,
-              settings: getCronTriggerDefaultSettings(newTriggerType),
+              settings: getCronTriggerDefaultSettings(
+                newTriggerType as CronTriggerInterval,
+              ),
             });
           }}
-          withSearchInput
-          dropdownOffset={{ y: parseInt(theme.spacing(1), 10) }}
-          dropdownWidth={GenericDropdownContentWidth.ExtraLarge}
         />
         {trigger.settings.type === 'CUSTOM' && (
-          <FormTextFieldInput
-            label="Expression"
-            placeholder="0 */1 * * *"
-            error={errorMessagesVisible ? errorMessages.CUSTOM : undefined}
-            onBlur={onBlur}
-            hint="Format: [Minute] [Hour] [Day of Month] [Month] [Day of Week]"
-            readonly={triggerOptions.readonly}
-            defaultValue={trigger.settings.pattern}
-            onChange={(newPattern: string) => {
-              if (triggerOptions.readonly === true) {
-                return;
-              }
+          <>
+            <FormTextFieldInput
+              label={t`Expression`}
+              placeholder="0 */1 * * *"
+              error={errorMessagesVisible ? errorMessages.CUSTOM : undefined}
+              onBlur={onBlur}
+              hint={customDescription ?? ''}
+              readonly={triggerOptions.readonly}
+              defaultValue={trigger.settings.pattern}
+              onChange={async (newPattern: string) => {
+                if (triggerOptions.readonly === true) {
+                  return;
+                }
 
-              const cronValidator = cron(newPattern);
+                const { CronExpressionParser } = await import('cron-parser');
 
-              if (cronValidator.isError() === true) {
-                setErrorMessages({
-                  CUSTOM: `Invalid cron pattern, ${cronValidator
-                    .getError()[0]
-                    .replace(/\. \(Input cron:.*$/, '')}`,
+                try {
+                  CronExpressionParser.parse(newPattern);
+                } catch (error) {
+                  setErrorMessages({
+                    CUSTOM: `Invalid cron pattern: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                  });
+                  return;
+                }
+
+                setErrorMessages((prev) => ({
+                  ...prev,
+                  CUSTOM: undefined,
+                }));
+
+                triggerOptions.onTriggerUpdate({
+                  ...trigger,
+                  settings: {
+                    ...trigger.settings,
+                    type: 'CUSTOM',
+                    pattern: newPattern,
+                  },
                 });
-                return;
-              }
-
-              setErrorMessages((prev) => ({
-                ...prev,
-                CUSTOM: undefined,
-              }));
-
-              triggerOptions.onTriggerUpdate({
-                ...trigger,
-                settings: {
-                  ...trigger.settings,
-                  type: 'CUSTOM',
-                  pattern: newPattern,
-                },
-              });
-            }}
-          />
+              }}
+            />
+            <CronExpressionHelperLazy
+              trigger={trigger}
+              isVisible={!!trigger.settings.pattern && !errorMessages.CUSTOM}
+              isScheduleVisible={false}
+            />
+          </>
         )}
         {trigger.settings.type === 'DAYS' && (
           <>
             <FormNumberFieldInput
-              label="Days Between Triggers"
+              label={t`Days between triggers`}
               error={errorMessagesVisible ? errorMessages.DAYS_day : undefined}
               onBlur={onBlur}
               defaultValue={trigger.settings.schedule.day}
@@ -194,11 +183,11 @@ export const WorkflowEditTriggerCronForm = ({
                   },
                 });
               }}
-              placeholder="Enter number greater than 1"
+              placeholder={t`Enter number greater than 1`}
               readonly={triggerOptions.readonly}
             />
             <FormNumberFieldInput
-              label="Trigger at Hour"
+              label={t`Trigger at hour (UTC)`}
               error={errorMessagesVisible ? errorMessages.DAYS_hour : undefined}
               onBlur={onBlur}
               defaultValue={trigger.settings.schedule.hour}
@@ -214,7 +203,7 @@ export const WorkflowEditTriggerCronForm = ({
                 if (!isNumber(newHour) || newHour < 0 || newHour > 23) {
                   setErrorMessages((prev) => ({
                     ...prev,
-                    DAYS_hour: `Invalid hour value '${newHour}'. Should be integer between 0 and 23`,
+                    DAYS_hour: t`Invalid hour value '${newHour}'. Should be integer between 0 and 23`,
                   }));
                   return;
                 }
@@ -243,11 +232,11 @@ export const WorkflowEditTriggerCronForm = ({
                   },
                 });
               }}
-              placeholder="Enter number between 0 and 23"
+              placeholder={t`Enter number between 0 and 23`}
               readonly={triggerOptions.readonly}
             />
             <FormNumberFieldInput
-              label="Trigger at Minute"
+              label={t`Trigger at minute (UTC)`}
               error={
                 errorMessagesVisible ? errorMessages.DAYS_minute : undefined
               }
@@ -265,7 +254,7 @@ export const WorkflowEditTriggerCronForm = ({
                 if (!isNumber(newMinute) || newMinute < 0 || newMinute > 59) {
                   setErrorMessages((prev) => ({
                     ...prev,
-                    DAYS_minute: `Invalid minute value '${newMinute}'. Should be integer between 0 and 59`,
+                    DAYS_minute: t`Invalid minute value '${newMinute}'. Should be integer between 0 and 59`,
                   }));
                   return;
                 }
@@ -294,15 +283,23 @@ export const WorkflowEditTriggerCronForm = ({
                   },
                 });
               }}
-              placeholder="Enter number between 0 and 59"
+              placeholder={t`Enter number between 0 and 59`}
               readonly={triggerOptions.readonly}
+            />
+            <CronExpressionHelperLazy
+              trigger={trigger}
+              isVisible={
+                !errorMessages.DAYS_day &&
+                !errorMessages.DAYS_hour &&
+                !errorMessages.DAYS_minute
+              }
             />
           </>
         )}
         {trigger.settings.type === 'HOURS' && (
           <>
             <FormNumberFieldInput
-              label="Hours Between Triggers"
+              label={t`Hours between triggers`}
               error={
                 errorMessagesVisible ? errorMessages.HOURS_hour : undefined
               }
@@ -320,7 +317,7 @@ export const WorkflowEditTriggerCronForm = ({
                 if (!isNumber(newHour) || newHour <= 0) {
                   setErrorMessages((prev) => ({
                     ...prev,
-                    HOURS_hour: `Invalid hour value '${newHour}'. Should be integer greater than 1`,
+                    HOURS_hour: t`Invalid hour value '${newHour}'. Should be integer greater than 1`,
                   }));
                   return;
                 }
@@ -345,11 +342,11 @@ export const WorkflowEditTriggerCronForm = ({
                   },
                 });
               }}
-              placeholder="Enter number greater than 1"
+              placeholder={t`Enter number greater than 1`}
               readonly={triggerOptions.readonly}
             />
             <FormNumberFieldInput
-              label="Trigger at Minute"
+              label={t`Trigger at minute (UTC)`}
               error={
                 errorMessagesVisible ? errorMessages.HOURS_minute : undefined
               }
@@ -367,7 +364,7 @@ export const WorkflowEditTriggerCronForm = ({
                 if (!isNumber(newMinute) || newMinute < 0 || newMinute > 59) {
                   setErrorMessages((prev) => ({
                     ...prev,
-                    HOURS_minute: `Invalid minute value '${newMinute}'. Should be integer between 0 and 59`,
+                    HOURS_minute: t`Invalid minute value '${newMinute}'. Should be integer between 0 and 59`,
                   }));
                   return;
                 }
@@ -392,54 +389,69 @@ export const WorkflowEditTriggerCronForm = ({
                   },
                 });
               }}
-              placeholder="Enter number between 0 and 59"
+              placeholder={t`Enter number between 0 and 59`}
               readonly={triggerOptions.readonly}
+            />
+            <CronExpressionHelperLazy
+              trigger={trigger}
+              isVisible={
+                !errorMessages.HOURS_hour && !errorMessages.HOURS_minute
+              }
             />
           </>
         )}
         {trigger.settings.type === 'MINUTES' && (
-          <FormNumberFieldInput
-            label="Minutes Between Triggers"
-            error={errorMessagesVisible ? errorMessages.MINUTES : undefined}
-            onBlur={onBlur}
-            defaultValue={trigger.settings.schedule.minute}
-            onChange={(newMinute) => {
-              if (triggerOptions.readonly === true) {
-                return;
-              }
+          <>
+            <FormNumberFieldInput
+              label={t`Minutes between triggers`}
+              error={errorMessagesVisible ? errorMessages.MINUTES : undefined}
+              onBlur={onBlur}
+              defaultValue={trigger.settings.schedule.minute}
+              onChange={(newMinute) => {
+                if (triggerOptions.readonly === true) {
+                  return;
+                }
 
-              if (!isDefined(newMinute)) {
-                return;
-              }
+                if (!isDefined(newMinute)) {
+                  return;
+                }
 
-              if (!isNumber(newMinute) || newMinute <= 0) {
-                setErrorMessages({
-                  MINUTES: `Invalid minute value '${newMinute}'. Should be integer greater than 1`,
-                });
-                return;
-              }
+                if (!isNumber(newMinute) || newMinute <= 0) {
+                  setErrorMessages({
+                    MINUTES: t`Invalid minute value '${newMinute}'. Should be integer greater than 1`,
+                  });
+                  return;
+                }
 
-              setErrorMessages((prev) => ({
-                ...prev,
-                MINUTES: undefined,
-              }));
+                setErrorMessages((prev) => ({
+                  ...prev,
+                  MINUTES: undefined,
+                }));
 
-              triggerOptions.onTriggerUpdate({
-                ...trigger,
-                settings: {
-                  ...trigger.settings,
-                  type: 'MINUTES',
-                  schedule: {
-                    minute: newMinute,
+                triggerOptions.onTriggerUpdate({
+                  ...trigger,
+                  settings: {
+                    ...trigger.settings,
+                    type: 'MINUTES',
+                    schedule: {
+                      minute: newMinute,
+                    },
                   },
-                },
-              });
-            }}
-            placeholder="Enter number greater than 1"
-            readonly={triggerOptions.readonly}
-          />
+                });
+              }}
+              placeholder={t`Enter number greater than 1`}
+              readonly={triggerOptions.readonly}
+            />
+            <CronExpressionHelperLazy
+              trigger={trigger}
+              isVisible={!errorMessages.MINUTES}
+            />
+          </>
         )}
       </WorkflowStepBody>
+      {!triggerOptions.readonly && (
+        <WorkflowStepFooter stepId={TRIGGER_STEP_ID} />
+      )}
     </>
   );
 };

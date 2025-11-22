@@ -53,6 +53,7 @@ describe('Core REST API Find Many endpoint', () => {
           companyId: TEST_COMPANY_1_ID,
         },
       });
+
       index++;
     }
   });
@@ -61,7 +62,9 @@ describe('Core REST API Find Many endpoint', () => {
     const response = await makeRestAPIRequest({
       method: 'get',
       path: '/people',
-    }).expect(200);
+    });
+
+    expect(response.status).toBe(200);
 
     const people = response.body.data.people;
     const pageInfo = response.body.pageInfo;
@@ -208,22 +211,24 @@ describe('Core REST API Find Many endpoint', () => {
     expect(filteredPeople.length).toBeGreaterThan(0);
   });
 
-  it('should fail to filter on a relation field name', async () => {
-    const response = await makeRestAPIRequest({
-      method: 'get',
-      path: `/people?filter=company[in]:["${TEST_COMPANY_1_ID}"]`,
-    });
+  // TODO: Refacto-common - Uncomment this after https://github.com/twentyhq/core-team-issues/issues/1627
 
-    expect(response.body).toMatchInlineSnapshot(`
-{
-  "error": "BadRequestException",
-  "messages": [
-    "field 'company' does not exist in 'person' object",
-  ],
-  "statusCode": 400,
-}
-`);
-  });
+  //   it('should fail to filter on a relation field name', async () => {
+  //     const response = await makeRestAPIRequest({
+  //       method: 'get',
+  //       path: `/people?filter=company[in]:["${TEST_COMPANY_1_ID}"]`,
+  //     });
+
+  //     expect(response.body).toMatchInlineSnapshot(`
+  // {
+  //   "error": "BadRequestException",
+  //   "messages": [
+  //     "field 'company' does not exist in 'person' object",
+  //   ],
+  //   "statusCode": 400,
+  // }
+  // `);
+  //   });
 
   it('should support ordering Desc of results', async () => {
     const descResponse = await makeRestAPIRequest({
@@ -265,15 +270,13 @@ describe('Core REST API Find Many endpoint', () => {
   });
 
   it('should handle invalid cursor gracefully', async () => {
-    await makeRestAPIRequest({
+    const response = await makeRestAPIRequest({
       method: 'get',
       path: '/people?starting_after=invalid-cursor',
-    })
-      .expect(400)
-      .expect((res) => {
-        expect(res.body.error).toBe('BadRequestException');
-        expect(res.body.messages[0]).toContain('Invalid cursor');
-      });
+    });
+
+    expect(response.body.error).toBe('BadRequestException');
+    expect(response.body.messages[0]).toContain('Invalid cursor');
   });
 
   it('should combine filtering, ordering, and pagination', async () => {
@@ -490,21 +493,10 @@ describe('Core REST API Find Many endpoint', () => {
     expect(person.company.people).not.toBeDefined();
   });
 
-  it('should support depth 2 parameter', async () => {
-    const response = await makeRestAPIRequest({
+  it('should not support depth 2 parameter', async () => {
+    await makeRestAPIRequest({
       method: 'get',
       path: '/people?depth=2',
-    }).expect(200);
-
-    const people = response.body.data.people;
-
-    const person = people[0];
-
-    expect(person.company.people).toBeDefined();
-
-    // @ts-expect-error legacy noImplicitAny
-    const depth2Person = person.company.people.find((p) => p.id === person.id);
-
-    expect(depth2Person).toBeDefined();
+    }).expect(400);
   });
 });

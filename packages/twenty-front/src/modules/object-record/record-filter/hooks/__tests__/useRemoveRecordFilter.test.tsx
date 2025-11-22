@@ -1,10 +1,10 @@
 import { renderHook } from '@testing-library/react';
 
 import { currentRecordFiltersComponentState } from '@/object-record/record-filter/states/currentRecordFiltersComponentState';
-import { RecordFilter } from '@/object-record/record-filter/types/RecordFilter';
-import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
-import { ViewFilterOperand } from '@/views/types/ViewFilterOperand';
+import { type RecordFilter } from '@/object-record/record-filter/types/RecordFilter';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
 import { act } from 'react';
+import { ViewFilterOperand } from 'twenty-shared/types';
 import { FieldMetadataType } from '~/generated-metadata/graphql';
 import { getJestMetadataAndApolloMocksWrapper } from '~/testing/jest/getJestMetadataAndApolloMocksWrapper';
 import { useRemoveRecordFilter } from '../useRemoveRecordFilter';
@@ -18,7 +18,7 @@ describe('useRemoveRecordFilter', () => {
   it('should remove an existing record filter', () => {
     const { result } = renderHook(
       () => {
-        const currentRecordFilters = useRecoilComponentValueV2(
+        const currentRecordFilters = useRecoilComponentValue(
           currentRecordFiltersComponentState,
         );
 
@@ -40,7 +40,7 @@ describe('useRemoveRecordFilter', () => {
       id: 'filter-1',
       fieldMetadataId: 'field-1',
       value: 'test-value',
-      operand: ViewFilterOperand.Contains,
+      operand: ViewFilterOperand.CONTAINS,
       displayValue: 'test-value',
       label: 'Test Field',
       type: FieldMetadataType.TEXT,
@@ -65,7 +65,7 @@ describe('useRemoveRecordFilter', () => {
   it('should not modify filters when trying to remove a non-existent filter', () => {
     const { result } = renderHook(
       () => {
-        const currentRecordFilters = useRecoilComponentValueV2(
+        const currentRecordFilters = useRecoilComponentValue(
           currentRecordFiltersComponentState,
         );
         const { upsertRecordFilter } = useUpsertRecordFilter();
@@ -85,7 +85,7 @@ describe('useRemoveRecordFilter', () => {
       id: 'filter-1',
       fieldMetadataId: 'field-1',
       value: 'test-value',
-      operand: ViewFilterOperand.Contains,
+      operand: ViewFilterOperand.CONTAINS,
       displayValue: 'test-value',
       label: 'Test Field',
       type: FieldMetadataType.TEXT,

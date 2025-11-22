@@ -13,7 +13,7 @@ import {
 } from 'twenty-ui/display';
 import { LightIconButton } from 'twenty-ui/input';
 import { MenuItem } from 'twenty-ui/navigation';
-import { FieldMetadataType } from '~/generated-metadata/graphql';
+import { type FieldMetadataType } from '~/generated-metadata/graphql';
 
 type SettingsObjectFieldInactiveActionDropdownProps = {
   isCustomField?: boolean;
@@ -21,17 +21,19 @@ type SettingsObjectFieldInactiveActionDropdownProps = {
   onActivate: () => void;
   onEdit: () => void;
   onDelete: () => void;
-  scopeKey: string;
+  fieldMetadataItemId: string;
+  readonly?: boolean;
 };
 
 export const SettingsObjectFieldInactiveActionDropdown = ({
   onActivate,
-  scopeKey,
+  readonly = false,
+  fieldMetadataItemId,
   onDelete,
   onEdit,
   isCustomField,
 }: SettingsObjectFieldInactiveActionDropdownProps) => {
-  const dropdownId = `${scopeKey}-settings-field-disabled-action-dropdown`;
+  const dropdownId = `${fieldMetadataItemId}-settings-field-disabled-action-dropdown`;
 
   const { closeDropdown } = useCloseDropdown();
 
@@ -66,16 +68,18 @@ export const SettingsObjectFieldInactiveActionDropdown = ({
         <DropdownContent widthInPixels={GenericDropdownContentWidth.Narrow}>
           <DropdownMenuItemsContainer>
             <MenuItem
-              text={isCustomField ? t`Edit` : t`View`}
+              text={isCustomField && !readonly ? t`Edit` : t`View`}
               LeftIcon={isCustomField ? IconPencil : IconEye}
               onClick={handleEdit}
             />
-            <MenuItem
-              text={t`Activate`}
-              LeftIcon={IconArchiveOff}
-              onClick={handleActivate}
-            />
-            {isDeletable && (
+            {!readonly && (
+              <MenuItem
+                text={t`Activate`}
+                LeftIcon={IconArchiveOff}
+                onClick={handleActivate}
+              />
+            )}
+            {isDeletable && !readonly && (
               <MenuItem
                 text={t`Delete`}
                 accent="danger"

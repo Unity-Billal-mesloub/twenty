@@ -1,35 +1,31 @@
-import { PermissionsOnAllObjectRecords } from 'twenty-shared/constants';
-
-import { SettingPermissionType } from 'src/engine/metadata-modules/permissions/constants/setting-permission-type.constants';
-import { UserWorkspacePermissions } from 'src/engine/metadata-modules/permissions/types/user-workspace-permissions';
-import { UserWorkspacePermissionsDto } from 'src/engine/metadata-modules/role/dtos/user-workspace-permissions.dto';
+import { type PermissionFlagType } from 'src/engine/metadata-modules/permissions/constants/permission-flag-type.constants';
+import { type UserWorkspacePermissions } from 'src/engine/metadata-modules/permissions/types/user-workspace-permissions';
+import { type UserWorkspacePermissionsDto } from 'src/engine/metadata-modules/role/dtos/user-workspace-permissions.dto';
 
 export const fromUserWorkspacePermissionsToUserWorkspacePermissionsDto = ({
-  objectPermissions: rawObjectPermissions,
-  objectRecordsPermissions: rawObjectRecordsPermissions,
-  settingsPermissions: rawSettingsPermissions,
+  objectsPermissions: rawObjectsPermissions,
+  permissionFlags: rawSettingsPermissions,
 }: UserWorkspacePermissions): UserWorkspacePermissionsDto => {
-  const objectPermissions = Object.entries(rawObjectPermissions).map(
+  const objectPermissions = Object.entries(rawObjectsPermissions).map(
     ([objectMetadataId, permissions]) => ({
       objectMetadataId,
-      canReadObjectRecords: permissions.canRead,
-      canUpdateObjectRecords: permissions.canUpdate,
-      canSoftDeleteObjectRecords: permissions.canSoftDelete,
-      canDestroyObjectRecords: permissions.canDestroy,
+      canReadObjectRecords: permissions.canReadObjectRecords,
+      canUpdateObjectRecords: permissions.canUpdateObjectRecords,
+      canSoftDeleteObjectRecords: permissions.canSoftDeleteObjectRecords,
+      canDestroyObjectRecords: permissions.canDestroyObjectRecords,
+      restrictedFields: permissions.restrictedFields,
     }),
   );
 
-  const settingsPermissions = (
-    Object.keys(rawSettingsPermissions) as SettingPermissionType[]
-  ).filter((feature) => rawSettingsPermissions[feature] === true);
+  const objectsPermissions = objectPermissions;
 
-  const objectRecordsPermissions = (
-    Object.keys(rawObjectRecordsPermissions) as PermissionsOnAllObjectRecords[]
-  ).filter((feature) => rawObjectRecordsPermissions[feature] === true);
+  const permissionFlags = (
+    Object.keys(rawSettingsPermissions) as PermissionFlagType[]
+  ).filter((feature) => rawSettingsPermissions[feature] === true);
 
   return {
     objectPermissions,
-    objectRecordsPermissions,
-    settingsPermissions,
+    objectsPermissions,
+    permissionFlags,
   };
 };

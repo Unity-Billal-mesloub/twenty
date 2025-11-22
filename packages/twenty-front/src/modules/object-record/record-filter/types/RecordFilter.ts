@@ -1,12 +1,15 @@
-import { FilterableAndTSVectorFieldType } from '@/object-record/record-filter/types/FilterableFieldType';
-import { FILTER_OPERANDS_MAP } from '@/object-record/record-filter/utils/getRecordFilterOperands';
-import { CompositeFieldSubFieldName } from '@/settings/data-model/types/CompositeFieldSubFieldName';
-import { ViewFilterOperand } from '@/views/types/ViewFilterOperand';
+import { type FILTER_OPERANDS_MAP } from '@/object-record/record-filter/utils/getRecordFilterOperands';
+import { type CompositeFieldSubFieldName } from '@/settings/data-model/types/CompositeFieldSubFieldName';
+import {
+  type FilterableAndTSVectorFieldType,
+  type ViewFilterOperand,
+} from 'twenty-shared/types';
 
 export type RecordFilter = {
   id: string;
   fieldMetadataId: string;
   value: string;
+  /** @deprecated We shouldn't implement new features with this field and instead try to create utils to obtain the displayValue of a filter type at runtime */
   displayValue: string;
   type: FilterableAndTSVectorFieldType;
   recordFilterGroupId?: string;

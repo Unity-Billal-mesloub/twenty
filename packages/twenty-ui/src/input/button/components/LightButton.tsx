@@ -1,7 +1,7 @@
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
-import { IconComponent } from '@ui/display';
-import { MouseEvent } from 'react';
+import { type IconComponent } from '@ui/display';
+import { type MouseEvent } from 'react';
 
 export type LightButtonAccent = 'secondary' | 'tertiary';
 
@@ -27,7 +27,7 @@ const StyledButton = styled.button<
 
   border-radius: ${({ theme }) => theme.border.radius.sm};
   box-shadow: ${({ theme, focus }) =>
-    focus ? `0 0 0 3px  ${theme.color.blue10}` : 'none'};
+    focus ? `0 0 0 3px  ${theme.color.blue3}` : 'none'};
   color: ${({ theme, accent, active, disabled, focus }) => {
     switch (accent) {
       case 'secondary':

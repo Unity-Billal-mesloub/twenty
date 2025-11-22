@@ -1,14 +1,12 @@
 import isEmpty from 'lodash.isempty';
+import { type ObjectRecord } from 'twenty-shared/types';
 
-import {
-  ObjectRecord,
-  ObjectRecordFilter,
-} from 'src/engine/api/graphql/workspace-query-builder/interfaces/object-record.interface';
+import { type ObjectRecordFilter } from 'src/engine/api/graphql/workspace-query-builder/interfaces/object-record.interface';
 
 import { settings } from 'src/engine/constants/settings';
-import { ObjectMetadataItemWithFieldMaps } from 'src/engine/metadata-modules/types/object-metadata-item-with-field-maps';
-import { getCompositeFieldMetadataMap } from 'src/engine/twenty-orm/utils/format-result.util';
+import { type ObjectMetadataItemWithFieldMaps } from 'src/engine/metadata-modules/types/object-metadata-item-with-field-maps';
 import { formatData } from 'src/engine/twenty-orm/utils/format-data.util';
+import { getCompositeFieldMetadataMap } from 'src/engine/twenty-orm/utils/format-result.util';
 
 export const buildDuplicateConditions = (
   objectMetadataItemWithFieldMaps: ObjectMetadataItemWithFieldMaps,

@@ -1,52 +1,72 @@
-import { Entity } from '@microsoft/microsoft-graph-types';
-import { ObjectRecordsPermissions } from 'twenty-shared/types';
+import isEmpty from 'lodash.isempty';
+import {
+  type ObjectsPermissions,
+  type ObjectsPermissionsByRoleId,
+} from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
 import {
-  DeleteResult,
+  type DeleteResult,
   EntityManager,
-  EntityTarget,
-  FindManyOptions,
-  FindOneOptions,
-  FindOptionsWhere,
-  InsertResult,
-  ObjectId,
-  ObjectLiteral,
-  QueryRunner,
-  RemoveOptions,
-  Repository,
-  SaveOptions,
-  SelectQueryBuilder,
+  type EntityTarget,
+  type FindManyOptions,
+  type FindOneOptions,
+  type FindOptionsWhere,
+  In,
+  type InsertResult,
+  type ObjectId,
+  type ObjectLiteral,
+  type QueryRunner,
+  type RemoveOptions,
+  type Repository,
+  type SaveOptions,
+  type SelectQueryBuilder,
   TypeORMError,
-  UpdateResult,
+  type UpdateResult,
 } from 'typeorm';
-import { DeepPartial } from 'typeorm/common/DeepPartial';
-import { PickKeysByType } from 'typeorm/common/PickKeysByType';
+import { type DeepPartial } from 'typeorm/common/DeepPartial';
+import { type PickKeysByType } from 'typeorm/common/PickKeysByType';
 import { EntityNotFoundError } from 'typeorm/error/EntityNotFoundError';
 import { FindOptionsUtils } from 'typeorm/find-options/FindOptionsUtils';
 import { EntityPersistExecutor } from 'typeorm/persistence/EntityPersistExecutor';
-import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
+import { type QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { PlainObjectToDatabaseEntityTransformer } from 'typeorm/query-builder/transformer/PlainObjectToDatabaseEntityTransformer';
-import { UpsertOptions } from 'typeorm/repository/UpsertOptions';
+import { type UpsertOptions } from 'typeorm/repository/UpsertOptions';
 import { InstanceChecker } from 'typeorm/util/InstanceChecker';
 
-import { FeatureFlagMap } from 'src/engine/core-modules/feature-flag/interfaces/feature-flag-map.interface';
-import { WorkspaceInternalContext } from 'src/engine/twenty-orm/interfaces/workspace-internal-context.interface';
+import { type FeatureFlagMap } from 'src/engine/core-modules/feature-flag/interfaces/feature-flag-map.interface';
+import { type WorkspaceInternalContext } from 'src/engine/twenty-orm/interfaces/workspace-internal-context.interface';
 
+import { DatabaseEventAction } from 'src/engine/api/graphql/graphql-query-runner/enums/database-event-action';
+import { type AuthContext } from 'src/engine/core-modules/auth/types/auth-context.type';
+import { InternalServerError } from 'src/engine/core-modules/graphql/utils/graphql-errors.util';
 import {
   PermissionsException,
   PermissionsExceptionCode,
 } from 'src/engine/metadata-modules/permissions/permissions.exception';
-import { WorkspaceDataSource } from 'src/engine/twenty-orm/datasource/workspace.datasource';
+import { type ObjectMetadataItemWithFieldMaps } from 'src/engine/metadata-modules/types/object-metadata-item-with-field-maps';
+import { type WorkspaceDataSource } from 'src/engine/twenty-orm/datasource/workspace.datasource';
+import { type DeepPartialWithNestedRelationFields } from 'src/engine/twenty-orm/entity-manager/types/deep-partial-entity-with-nested-relation-fields.type';
+import { type QueryDeepPartialEntityWithNestedRelationFields } from 'src/engine/twenty-orm/entity-manager/types/query-deep-partial-entity-with-nested-relation-fields.type';
+import { getEntityTarget } from 'src/engine/twenty-orm/entity-manager/utils/get-entity-target';
+import { computeTwentyORMException } from 'src/engine/twenty-orm/error-handling/compute-twenty-orm-exception';
+import { type GlobalWorkspaceDataSource } from 'src/engine/twenty-orm/global-workspace-datasource/global-workspace-datasource';
+import { RelationNestedQueries } from 'src/engine/twenty-orm/relation-nested-queries/relation-nested-queries';
 import {
-  OperationType,
+  type OperationType,
   validateOperationIsPermittedOrThrow,
 } from 'src/engine/twenty-orm/repository/permissions.utils';
 import { WorkspaceSelectQueryBuilder } from 'src/engine/twenty-orm/repository/workspace-select-query-builder';
 import { WorkspaceRepository } from 'src/engine/twenty-orm/repository/workspace.repository';
+import { type RolePermissionConfig } from 'src/engine/twenty-orm/types/role-permission-config';
+import { computePermissionIntersection } from 'src/engine/twenty-orm/utils/compute-permission-intersection.util';
+import { formatData } from 'src/engine/twenty-orm/utils/format-data.util';
+import { formatResult } from 'src/engine/twenty-orm/utils/format-result.util';
+import { formatTwentyOrmEventToDatabaseBatchEvent } from 'src/engine/twenty-orm/utils/format-twenty-orm-event-to-database-batch-event.util';
+import { getObjectMetadataFromEntityTarget } from 'src/engine/twenty-orm/utils/get-object-metadata-from-entity-target.util';
 
 type PermissionOptions = {
   shouldBypassPermissionChecks?: boolean;
-  objectRecordsPermissions?: ObjectRecordsPermissions;
+  objectRecordsPermissions?: ObjectsPermissions;
 };
 
 export class WorkspaceEntityManager extends EntityManager {
@@ -57,7 +77,7 @@ export class WorkspaceEntityManager extends EntityManager {
 
   constructor(
     internalContext: WorkspaceInternalContext,
-    connection: WorkspaceDataSource,
+    connection: WorkspaceDataSource | GlobalWorkspaceDataSource,
     queryRunner?: QueryRunner,
   ) {
     super(connection, queryRunner);
@@ -69,45 +89,60 @@ export class WorkspaceEntityManager extends EntityManager {
     return this.connection.featureFlagMap;
   }
 
+  private getPermissionsForRole(
+    roleId: string,
+    permissionsPerRoleId: ObjectsPermissionsByRoleId,
+  ): ObjectsPermissions {
+    if (!isDefined(permissionsPerRoleId?.[roleId])) {
+      throw new PermissionsException(
+        `No permissions found for role in datasource (roleId: ${roleId})`,
+        PermissionsExceptionCode.NO_PERMISSIONS_FOUND_IN_DATASOURCE,
+      );
+    }
+
+    return permissionsPerRoleId[roleId];
+  }
+
   override getRepository<Entity extends ObjectLiteral>(
     target: EntityTarget<Entity>,
-    permissionOptions?: {
-      shouldBypassPermissionChecks?: boolean;
-      roleId?: string;
-    },
+    rolePermissionConfig?: RolePermissionConfig,
+    authContext?: AuthContext,
   ): WorkspaceRepository<Entity> {
     const dataSource = this.connection;
 
-    const repositoryKey = this.getRepositoryKey({
-      target,
-      dataSource,
-      roleId: permissionOptions?.roleId,
-      shouldBypassPermissionChecks:
-        permissionOptions?.shouldBypassPermissionChecks ?? false,
-    });
-    const repoFromMap = this.repositories.get(repositoryKey);
+    let objectPermissions = {};
+    let shouldBypassPermissionChecks = false;
+    const objectPermissionsByRoleId = dataSource.permissionsPerRoleId;
 
-    if (repoFromMap) {
-      return repoFromMap as WorkspaceRepository<Entity>;
+    if (
+      rolePermissionConfig &&
+      'shouldBypassPermissionChecks' in rolePermissionConfig
+    ) {
+      shouldBypassPermissionChecks =
+        rolePermissionConfig.shouldBypassPermissionChecks;
     }
 
-    let objectPermissions = {};
-
-    if (permissionOptions?.roleId) {
-      const objectPermissionsByRoleId = dataSource.permissionsPerRoleId;
-
-      if (!isDefined(objectPermissionsByRoleId?.[permissionOptions.roleId])) {
-        throw new PermissionsException(
-          `No permissions found for role in datasource (missing ${
-            !isDefined(objectPermissionsByRoleId)
-              ? 'objectPermissionsByRoleId object'
-              : `roleId in objectPermissionsByRoleId object (${permissionOptions.roleId})`
-          })`,
-          PermissionsExceptionCode.NO_PERMISSIONS_FOUND_IN_DATASOURCE,
+    if (rolePermissionConfig && 'unionOf' in rolePermissionConfig) {
+      if (rolePermissionConfig.unionOf.length === 1) {
+        objectPermissions = this.getPermissionsForRole(
+          rolePermissionConfig.unionOf[0],
+          objectPermissionsByRoleId,
         );
       } else {
-        objectPermissions = objectPermissionsByRoleId[permissionOptions.roleId];
+        // TODO: Implement union logic for combining permissions across multiple roles
+        throw new Error(
+          'Union permission logic for multiple roles not yet implemented',
+        );
       }
+    }
+
+    if (rolePermissionConfig && 'intersectionOf' in rolePermissionConfig) {
+      const allRolePermissions = rolePermissionConfig.intersectionOf.map(
+        (roleId: string) =>
+          this.getPermissionsForRole(roleId, objectPermissionsByRoleId),
+      );
+
+      objectPermissions = computePermissionIntersection(allRolePermissions);
     }
 
     const newRepository = new WorkspaceRepository<Entity>(
@@ -117,10 +152,9 @@ export class WorkspaceEntityManager extends EntityManager {
       dataSource.featureFlagMap,
       this.queryRunner,
       objectPermissions,
-      permissionOptions?.shouldBypassPermissionChecks,
+      shouldBypassPermissionChecks,
+      authContext,
     );
-
-    this.repositories.set(repositoryKey, newRepository);
 
     return newRepository;
   }
@@ -131,12 +165,12 @@ export class WorkspaceEntityManager extends EntityManager {
     queryRunner?: QueryRunner,
     options: {
       shouldBypassPermissionChecks?: boolean;
-      objectRecordsPermissions?: ObjectRecordsPermissions;
+      objectRecordsPermissions?: ObjectsPermissions;
     } = {
       shouldBypassPermissionChecks: false,
       objectRecordsPermissions: {},
     },
-  ): SelectQueryBuilder<Entity> | WorkspaceSelectQueryBuilder<Entity> {
+  ): WorkspaceSelectQueryBuilder<Entity> {
     let queryBuilder: SelectQueryBuilder<Entity>;
 
     if (alias) {
@@ -162,36 +196,46 @@ export class WorkspaceEntityManager extends EntityManager {
       options?.objectRecordsPermissions ?? {},
       this.internalContext,
       options?.shouldBypassPermissionChecks ?? false,
+      undefined,
+      this.getFeatureFlagMap(),
     );
   }
 
-  override insert<Entity extends ObjectLiteral>(
+  override async insert<Entity extends ObjectLiteral>(
     target: EntityTarget<Entity>,
-    entity: QueryDeepPartialEntity<Entity> | QueryDeepPartialEntity<Entity>[],
+    entity:
+      | QueryDeepPartialEntityWithNestedRelationFields<Entity>
+      | QueryDeepPartialEntityWithNestedRelationFields<Entity>[],
+    selectedColumns: string[] | '*' = '*',
     permissionOptions?: PermissionOptions,
+    authContext?: AuthContext,
   ): Promise<InsertResult> {
+    const metadata = this.connection.getMetadata(target);
+
     return this.createQueryBuilder(
-      undefined,
-      undefined,
+      target,
+      metadata.name,
       undefined,
       permissionOptions,
     )
       .insert()
-      .into(target)
+      .setAuthContext(authContext ?? {})
       .values(entity)
+      .returning(selectedColumns)
       .execute();
   }
 
   override upsert<Entity extends ObjectLiteral>(
     target: EntityTarget<Entity>,
     entityOrEntities:
-      | QueryDeepPartialEntity<Entity>
-      | QueryDeepPartialEntity<Entity>[],
+      | QueryDeepPartialEntityWithNestedRelationFields<Entity>
+      | QueryDeepPartialEntityWithNestedRelationFields<Entity>[],
     conflictPathsOrOptions: string[] | UpsertOptions<Entity>,
     permissionOptions?: {
       shouldBypassPermissionChecks?: boolean;
-      objectRecordsPermissions?: ObjectRecordsPermissions;
+      objectRecordsPermissions?: ObjectsPermissions;
     },
+    selectedColumns: string[] | '*' = '*',
   ): Promise<InsertResult> {
     const metadata = this.connection.getMetadata(target);
     let options;
@@ -203,7 +247,7 @@ export class WorkspaceEntityManager extends EntityManager {
     } else {
       options = conflictPathsOrOptions;
     }
-    let entities: QueryDeepPartialEntity<Entity>[];
+    let entities: QueryDeepPartialEntityWithNestedRelationFields<Entity>[];
 
     if (!Array.isArray(entityOrEntities)) {
       entities = [entityOrEntities];
@@ -223,7 +267,20 @@ export class WorkspaceEntityManager extends EntityManager {
         ),
     );
 
-    return this.createQueryBuilder(
+    const overwrites = [...conflictColumns, ...overwriteColumns].map(
+      (col) => col.databaseName,
+    );
+
+    const conflictTargets = conflictColumns.map((col) => col.databaseName);
+
+    const upsertOptions = {
+      skipUpdateIfNoValuesChanged: options.skipUpdateIfNoValuesChanged,
+      indexPredicate: options.indexPredicate,
+      upsertType:
+        options.upsertType || this.connection.driver.supportedUpsertTypes[0],
+    };
+
+    const queryBuilder = this.createQueryBuilder(
       undefined,
       undefined,
       undefined,
@@ -232,20 +289,10 @@ export class WorkspaceEntityManager extends EntityManager {
       .insert()
       .into(target)
       .values(entities)
-      .orUpdate(
-        [...conflictColumns, ...overwriteColumns].map(
-          (col) => col.databaseName,
-        ),
-        conflictColumns.map((col) => col.databaseName),
-        {
-          skipUpdateIfNoValuesChanged: options.skipUpdateIfNoValuesChanged,
-          indexPredicate: options.indexPredicate,
-          upsertType:
-            options.upsertType ||
-            this.connection.driver.supportedUpsertTypes[0],
-        },
-      )
-      .execute();
+      .orUpdate(overwrites, conflictTargets, upsertOptions)
+      .returning(selectedColumns);
+
+    return queryBuilder.execute();
   }
 
   override update<Entity extends ObjectLiteral>(
@@ -262,7 +309,10 @@ export class WorkspaceEntityManager extends EntityManager {
       | unknown,
     partialEntity: QueryDeepPartialEntity<Entity>,
     permissionOptions?: PermissionOptions,
+    selectedColumns: string[] | '*' = '*',
   ): Promise<UpdateResult> {
+    const metadata = this.connection.getMetadata(target);
+
     if (
       criteria === undefined ||
       criteria === null ||
@@ -282,27 +332,52 @@ export class WorkspaceEntityManager extends EntityManager {
       Array.isArray(criteria)
     ) {
       return this.createQueryBuilder(
-        undefined,
-        undefined,
+        target,
+        metadata.name,
         undefined,
         permissionOptions,
       )
-        .update(target)
+        .update()
         .set(partialEntity)
         .whereInIds(criteria)
+        .returning(selectedColumns)
         .execute();
     } else {
       return this.createQueryBuilder(
-        undefined,
-        undefined,
+        target,
+        metadata.name,
         undefined,
         permissionOptions,
       )
-        .update(target)
+        .update()
         .set(partialEntity)
         .where(criteria)
+        .returning(selectedColumns)
         .execute();
     }
+  }
+
+  public updateMany<Entity extends ObjectLiteral>(
+    target: EntityTarget<Entity>,
+    inputs: {
+      criteria: string;
+      partialEntity: QueryDeepPartialEntity<Entity>;
+    }[],
+    permissionOptions?: PermissionOptions,
+    selectedColumns: string[] | '*' = '*',
+  ): Promise<UpdateResult> {
+    const metadata = this.connection.getMetadata(target);
+
+    return this.createQueryBuilder(
+      target,
+      metadata.name,
+      undefined,
+      permissionOptions,
+    )
+      .update()
+      .setManyInputs(inputs)
+      .returning(selectedColumns ?? [])
+      .execute();
   }
 
   override increment<Entity extends ObjectLiteral>(
@@ -311,6 +386,7 @@ export class WorkspaceEntityManager extends EntityManager {
     propertyPath: string,
     value: number | string,
     permissionOptions?: PermissionOptions,
+    selectedColumns: string[] | '*' = '*',
   ): Promise<UpdateResult> {
     const metadata = this.connection.getMetadata(target);
     const column = metadata.findColumnWithPropertyPath(propertyPath);
@@ -328,52 +404,31 @@ export class WorkspaceEntityManager extends EntityManager {
       () => this.connection.driver.escape(column.databaseName) + ' + ' + value,
     );
 
-    return this.createQueryBuilder(
+    return this.update(
       target,
-      'entity',
-      undefined,
+      criteria,
+      values,
       permissionOptions,
-    )
-      .update(target as QueryDeepPartialEntity<Entity>)
-      .set(values)
-      .where(criteria)
-      .execute();
+      selectedColumns,
+    );
   }
 
-  private getRepositoryKey({
+  validatePermissions<Entity extends ObjectLiteral>({
     target,
-    dataSource,
-    roleId,
-    shouldBypassPermissionChecks,
+    operationType,
+    permissionOptions,
+    selectedColumns,
+    updatedColumns = [],
   }: {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    target: EntityTarget<unknown>;
-    dataSource: WorkspaceDataSource;
-    shouldBypassPermissionChecks: boolean;
-    roleId?: string;
-  }) {
-    const repositoryPrefix = dataSource.getMetadata(target).name;
-    const roleIdSuffix = roleId ? `_${roleId}` : '';
-    const rolesPermissionsVersionSuffix = dataSource.rolesPermissionsVersion
-      ? `_${dataSource.rolesPermissionsVersion}`
-      : '';
-    const featureFlagMapVersionSuffix = dataSource.featureFlagMapVersion
-      ? `_${dataSource.featureFlagMapVersion}`
-      : '';
-
-    return shouldBypassPermissionChecks
-      ? `${repositoryPrefix}_bypass${featureFlagMapVersionSuffix}`
-      : `${repositoryPrefix}${roleIdSuffix}${rolesPermissionsVersionSuffix}${featureFlagMapVersionSuffix}`;
-  }
-
-  validatePermissions<Entity extends ObjectLiteral>(
-    target: EntityTarget<Entity> | Entity,
-    operationType: OperationType,
+    target: EntityTarget<Entity> | Entity;
+    operationType: OperationType;
     permissionOptions?: {
       shouldBypassPermissionChecks?: boolean;
-      objectRecordsPermissions?: ObjectRecordsPermissions;
-    },
-  ): void {
+      objectRecordsPermissions?: ObjectsPermissions;
+    };
+    selectedColumns: string[];
+    updatedColumns?: string[];
+  }): void {
     if (permissionOptions?.shouldBypassPermissionChecks === true) {
       return;
     }
@@ -386,9 +441,11 @@ export class WorkspaceEntityManager extends EntityManager {
     validateOperationIsPermittedOrThrow({
       entityName,
       operationType,
-      objectRecordsPermissions:
-        permissionOptions?.objectRecordsPermissions ?? {},
+      objectsPermissions: permissionOptions?.objectRecordsPermissions ?? {},
       objectMetadataMaps: this.internalContext.objectMetadataMaps,
+      selectedColumns,
+      allFieldsSelected: false,
+      updatedColumns,
     });
   }
 
@@ -560,6 +617,7 @@ export class WorkspaceEntityManager extends EntityManager {
     targetOrEntity: EntityTarget<Entity>,
     criteria: unknown,
     permissionOptions?: PermissionOptions,
+    selectedColumns: string[] | '*' = '*',
   ): Promise<DeleteResult> {
     if (
       criteria === undefined ||
@@ -588,6 +646,7 @@ export class WorkspaceEntityManager extends EntityManager {
         .delete()
         .from(targetOrEntity)
         .whereInIds(criteria)
+        .returning(selectedColumns)
         .execute();
     } else {
       return this.createQueryBuilder(
@@ -599,6 +658,7 @@ export class WorkspaceEntityManager extends EntityManager {
         .delete()
         .from(targetOrEntity)
         .where(criteria)
+        .returning(selectedColumns)
         .execute();
     }
   }
@@ -607,6 +667,7 @@ export class WorkspaceEntityManager extends EntityManager {
     targetOrEntity: EntityTarget<Entity>,
     criteria: unknown,
     permissionOptions?: PermissionOptions,
+    selectedColumns: string[] | '*' = '*',
   ): Promise<UpdateResult> {
     // if user passed empty criteria or empty list of criterias, then throw an error
     if (
@@ -636,6 +697,7 @@ export class WorkspaceEntityManager extends EntityManager {
         .softDelete()
         .from(targetOrEntity)
         .whereInIds(criteria)
+        .returning(selectedColumns)
         .execute();
     } else {
       return this.createQueryBuilder(
@@ -647,6 +709,7 @@ export class WorkspaceEntityManager extends EntityManager {
         .softDelete()
         .from(targetOrEntity)
         .where(criteria)
+        .returning(selectedColumns)
         .execute();
     }
   }
@@ -655,6 +718,7 @@ export class WorkspaceEntityManager extends EntityManager {
     targetOrEntity: EntityTarget<Entity>,
     criteria: unknown,
     permissionOptions?: PermissionOptions,
+    selectedColumns: string[] | '*' = '*',
   ): Promise<UpdateResult> {
     // if user passed empty criteria or empty list of criterias, then throw an error
     if (
@@ -684,6 +748,7 @@ export class WorkspaceEntityManager extends EntityManager {
         .restore()
         .from(targetOrEntity)
         .whereInIds(criteria)
+        .returning(selectedColumns)
         .execute();
     } else {
       return this.createQueryBuilder(
@@ -695,6 +760,7 @@ export class WorkspaceEntityManager extends EntityManager {
         .restore()
         .from(targetOrEntity)
         .where(criteria)
+        .returning(selectedColumns)
         .execute();
     }
   }
@@ -713,7 +779,7 @@ export class WorkspaceEntityManager extends EntityManager {
       permissionOptions,
     )
       .setFindOptions(options || {})
-      .select('1')
+      .select('id')
       .limit(1)
       .getRawOne()
       .then((result) => isDefined(result));
@@ -733,7 +799,7 @@ export class WorkspaceEntityManager extends EntityManager {
       permissionOptions,
     )
       .setFindOptions({ where })
-      .select('1')
+      .select('id')
       .limit(1)
       .getRawOne()
       .then((result) => isDefined(result));
@@ -773,7 +839,7 @@ export class WorkspaceEntityManager extends EntityManager {
       .getCount();
   }
 
-  async callAggregateFunCustom(
+  async callAggregateFunCustom<Entity extends ObjectLiteral>(
     entityClass: EntityTarget<Entity>,
     fnName: string,
     columnName: string,
@@ -870,7 +936,12 @@ export class WorkspaceEntityManager extends EntityManager {
     entityClass: EntityTarget<Entity>,
     permissionOptions?: PermissionOptions,
   ): Promise<void> {
-    this.validatePermissions(entityClass, 'delete', permissionOptions);
+    this.validatePermissions({
+      target: entityClass,
+      operationType: 'delete',
+      permissionOptions,
+      selectedColumns: [], // TODO
+    });
 
     return super.clear(entityClass);
   }
@@ -880,6 +951,13 @@ export class WorkspaceEntityManager extends EntityManager {
     entityLike: DeepPartial<Entity>,
     permissionOptions?: PermissionOptions,
   ): Promise<Entity | undefined> {
+    const objectMetadataItem = getObjectMetadataFromEntityTarget(
+      entityClass,
+      this.internalContext,
+    );
+
+    const formattedEntityLike = formatData(entityLike, objectMetadataItem);
+
     const managerWithPermissionOptions = Object.assign(
       Object.create(Object.getPrototypeOf(this)),
       this,
@@ -895,12 +973,16 @@ export class WorkspaceEntityManager extends EntityManager {
       new PlainObjectToDatabaseEntityTransformer(managerWithPermissionOptions);
     const transformedEntity =
       await plainObjectToDatabaseEntityTransformer.transform(
-        entityLike,
+        formattedEntityLike,
         metadata,
       );
 
     if (transformedEntity)
-      return this.merge(entityClass, transformedEntity, entityLike) as Entity;
+      return this.merge(
+        entityClass,
+        transformedEntity,
+        formattedEntityLike,
+      ) as Entity;
 
     return undefined;
   }
@@ -911,6 +993,7 @@ export class WorkspaceEntityManager extends EntityManager {
     propertyPath: string,
     value: number | string,
     permissionOptions?: PermissionOptions,
+    selectedColumns: string[] | '*' = '*',
   ): Promise<UpdateResult> {
     const metadata = this.connection.getMetadata(target);
     const column = metadata.findColumnWithPropertyPath(propertyPath);
@@ -927,16 +1010,13 @@ export class WorkspaceEntityManager extends EntityManager {
       () => this.connection.driver.escape(column.databaseName) + ' - ' + value,
     );
 
-    return this.createQueryBuilder(
+    return this.update(
       target,
-      'entity',
-      undefined,
+      criteria,
+      values,
       permissionOptions,
-    )
-      .update(target as QueryDeepPartialEntity<Entity>)
-      .set(values)
-      .where(criteria)
-      .execute();
+      selectedColumns,
+    );
   }
 
   override async findByIds<Entity extends ObjectLiteral>(
@@ -975,7 +1055,7 @@ export class WorkspaceEntityManager extends EntityManager {
     permissionOptions?: PermissionOptions,
   ): Promise<Entity>;
 
-  override save<Entity, T extends DeepPartial<Entity>>(
+  override save<Entity, T extends DeepPartialWithNestedRelationFields<Entity>>(
     targetOrEntity: EntityTarget<Entity>,
     entities: T[],
     options: SaveOptions & {
@@ -984,14 +1064,14 @@ export class WorkspaceEntityManager extends EntityManager {
     permissionOptions?: PermissionOptions,
   ): Promise<T[]>;
 
-  override save<Entity, T extends DeepPartial<Entity>>(
+  override save<Entity, T extends DeepPartialWithNestedRelationFields<Entity>>(
     targetOrEntity: EntityTarget<Entity>,
     entities: T[],
     options?: SaveOptions,
     permissionOptions?: PermissionOptions,
   ): Promise<(T & Entity)[]>;
 
-  override save<Entity, T extends DeepPartial<Entity>>(
+  override save<Entity, T extends DeepPartialWithNestedRelationFields<Entity>>(
     targetOrEntity: EntityTarget<Entity>,
     entity: T,
     options: SaveOptions & {
@@ -1000,7 +1080,7 @@ export class WorkspaceEntityManager extends EntityManager {
     permissionOptions?: PermissionOptions,
   ): Promise<T>;
 
-  override save<Entity, T extends DeepPartial<Entity>>(
+  override save<Entity, T extends DeepPartialWithNestedRelationFields<Entity>>(
     targetOrEntity: EntityTarget<Entity>,
     entity: T,
     options?: SaveOptions,
@@ -1009,7 +1089,7 @@ export class WorkspaceEntityManager extends EntityManager {
 
   override async save<
     Entity extends ObjectLiteral,
-    T extends DeepPartial<Entity>,
+    T extends DeepPartialWithNestedRelationFields<Entity>,
   >(
     targetOrEntity: EntityTarget<Entity> | Entity | Entity[],
     entityOrMaybeOptions:
@@ -1023,49 +1103,235 @@ export class WorkspaceEntityManager extends EntityManager {
       | (SaveOptions & { reload: false }),
     permissionOptions?: PermissionOptions,
   ): Promise<(T & Entity) | (T & Entity)[] | Entity | Entity[]> {
-    const permissionOptionsFromArgs =
-      maybeOptionsOrMaybePermissionOptions &&
-      ('shouldBypassPermissionChecks' in maybeOptionsOrMaybePermissionOptions ||
-        'objectRecordsPermissions' in maybeOptionsOrMaybePermissionOptions)
-        ? maybeOptionsOrMaybePermissionOptions
-        : permissionOptions;
+    try {
+      const permissionOptionsFromArgs =
+        maybeOptionsOrMaybePermissionOptions &&
+        ('shouldBypassPermissionChecks' in
+          maybeOptionsOrMaybePermissionOptions ||
+          'objectRecordsPermissions' in maybeOptionsOrMaybePermissionOptions)
+          ? maybeOptionsOrMaybePermissionOptions
+          : permissionOptions;
 
-    this.validatePermissions(
-      targetOrEntity,
-      'update',
-      permissionOptionsFromArgs,
+      let target =
+        arguments.length > 1 &&
+        (typeof targetOrEntity === 'function' ||
+          InstanceChecker.isEntitySchema(targetOrEntity) ||
+          typeof targetOrEntity === 'string')
+          ? targetOrEntity
+          : undefined;
+
+      const entity = target ? entityOrMaybeOptions : targetOrEntity;
+
+      const options = target
+        ? maybeOptionsOrMaybePermissionOptions
+        : entityOrMaybeOptions;
+
+      if (InstanceChecker.isEntitySchema(target)) target = target.options.name;
+      if (Array.isArray(entity) && entity.length === 0)
+        return Promise.resolve(entity as Entity[]);
+
+      const queryRunnerForEntityPersistExecutor =
+        this.connection.createQueryRunnerForEntityPersistExecutor();
+
+      const isEntityArray = Array.isArray(entity);
+      const entityTarget =
+        target ?? (isEntityArray ? entity[0]?.constructor : entity.constructor);
+
+      const entityArray = isEntityArray ? entity : [entity];
+
+      const relationNestedQueries = new RelationNestedQueries(
+        this.internalContext,
+      );
+
+      const relationNestedConfig =
+        relationNestedQueries.prepareNestedRelationQueries(
+          entityArray,
+          entityTarget,
+        );
+
+      const entityWithConnectedRelations = isDefined(relationNestedConfig)
+        ? await relationNestedQueries.processRelationNestedQueries({
+            entities: entityArray,
+            relationNestedConfig,
+            queryBuilder: this.createQueryBuilder(
+              undefined,
+              undefined,
+              undefined,
+              permissionOptions,
+            ),
+          })
+        : entityArray;
+
+      const entityIds = entityArray
+        .map((entity) => (entity as { id: string }).id)
+        .filter(isDefined);
+      const beforeUpdate = await this.find(
+        entityTarget,
+        {
+          where: { id: In(entityIds) },
+        },
+        { shouldBypassPermissionChecks: true }, // Bypass as this is for event emission
+      );
+
+      const beforeUpdateMapById = beforeUpdate.reduce(
+        (acc, e: ObjectLiteral) => {
+          acc[e.id] = e;
+
+          return acc;
+        },
+        {} as Record<string, ObjectLiteral>,
+      );
+
+      const objectMetadataItem = getObjectMetadataFromEntityTarget(
+        entityTarget,
+        this.internalContext,
+      );
+
+      const formattedEntityOrEntities = formatData(
+        entityWithConnectedRelations,
+        objectMetadataItem,
+      );
+
+      const updatedColumns = formattedEntityOrEntities
+        .map((e) => Object.keys(e))
+        .flat();
+
+      this.validatePermissions({
+        target: targetOrEntity,
+        operationType: 'update',
+        permissionOptions: permissionOptionsFromArgs,
+        selectedColumns: [],
+        updatedColumns,
+      });
+
+      const result = await new EntityPersistExecutor(
+        this.connection,
+        queryRunnerForEntityPersistExecutor,
+        'save',
+        target,
+        formattedEntityOrEntities as ObjectLiteral[],
+        options as SaveOptions | (SaveOptions & { reload: false }),
+      )
+        .execute()
+        .then(() => formattedEntityOrEntities as Entity[])
+        .finally(() => queryRunnerForEntityPersistExecutor.release());
+
+      const resultArray = Array.isArray(result) ? result : [result];
+
+      let formattedResult = formatResult<Entity[]>(
+        resultArray,
+        objectMetadataItem,
+        this.internalContext.objectMetadataMaps,
+      );
+
+      const updatedEntities = formattedResult.filter(
+        (entity) => beforeUpdateMapById[entity.id],
+      );
+      const createdEntities = formattedResult.filter(
+        (entity) => !beforeUpdateMapById[entity.id],
+      );
+
+      this.internalContext.eventEmitterService.emitDatabaseBatchEvent(
+        formatTwentyOrmEventToDatabaseBatchEvent({
+          action: DatabaseEventAction.UPDATED,
+          objectMetadataItem,
+          workspaceId: this.internalContext.workspaceId,
+          entities: updatedEntities,
+          beforeEntities: updatedEntities.map(
+            (entity) => beforeUpdateMapById[entity.id],
+          ),
+        }),
+      );
+
+      this.internalContext.eventEmitterService.emitDatabaseBatchEvent(
+        formatTwentyOrmEventToDatabaseBatchEvent({
+          action: DatabaseEventAction.CREATED,
+          objectMetadataItem,
+          workspaceId: this.internalContext.workspaceId,
+          entities: createdEntities,
+        }),
+      );
+
+      const permissionCheckApplies =
+        permissionOptionsFromArgs?.shouldBypassPermissionChecks !== true &&
+        objectMetadataItem.isSystem !== true;
+
+      if (permissionCheckApplies) {
+        formattedResult = this.getFormattedResultWithoutNonReadableFields({
+          formattedResult,
+          objectMetadataItem,
+          permissionOptionsFromArgs,
+        });
+      }
+
+      return isEntityArray ? formattedResult : formattedResult[0];
+    } catch (error) {
+      const objectMetadataItem = getObjectMetadataFromEntityTarget(
+        getEntityTarget(targetOrEntity, entityOrMaybeOptions),
+        this.internalContext,
+      );
+
+      throw computeTwentyORMException(error, objectMetadataItem);
+    }
+  }
+
+  private getFormattedResultWithoutNonReadableFields<
+    Entity extends ObjectLiteral,
+  >({
+    formattedResult,
+    objectMetadataItem,
+    permissionOptionsFromArgs,
+  }: {
+    formattedResult: Entity[];
+    objectMetadataItem: ObjectMetadataItemWithFieldMaps;
+    permissionOptionsFromArgs: PermissionOptions | undefined;
+  }): Entity[] {
+    if (permissionOptionsFromArgs?.shouldBypassPermissionChecks === true) {
+      return formattedResult;
+    }
+
+    const restrictedFields =
+      permissionOptionsFromArgs?.objectRecordsPermissions?.[
+        objectMetadataItem.id
+      ].restrictedFields;
+
+    if (!restrictedFields) {
+      throw new InternalServerError('Restricted fields not found');
+    }
+
+    if (isEmpty(restrictedFields)) {
+      return formattedResult;
+    }
+
+    const objectMetadataItemWithFieldMaps =
+      this.internalContext.objectMetadataMaps.byId[objectMetadataItem.id];
+
+    const restrictedFieldNames = new Set(
+      Object.entries(restrictedFields)
+        .filter(([_, fieldPermissions]) => fieldPermissions.canRead === false)
+        .map(([fieldMetadataId]) => {
+          const fieldMetadata =
+            objectMetadataItemWithFieldMaps?.fieldsById[fieldMetadataId];
+
+          if (!isDefined(fieldMetadata)) {
+            throw new InternalServerError(
+              `Field metadata not found for field ${fieldMetadataId}`,
+            );
+          }
+
+          return fieldMetadata.name;
+        }),
     );
 
-    let target =
-      arguments.length > 1 &&
-      (typeof targetOrEntity === 'function' ||
-        InstanceChecker.isEntitySchema(targetOrEntity) ||
-        typeof targetOrEntity === 'string')
-        ? targetOrEntity
-        : undefined;
-    const entity = target ? entityOrMaybeOptions : targetOrEntity;
-    const options = target
-      ? maybeOptionsOrMaybePermissionOptions
-      : entityOrMaybeOptions;
+    const filteredResult = formattedResult.map((individualFormattedResult) => {
+      return Object.fromEntries(
+        Object.entries(individualFormattedResult).filter(
+          ([key]) => !restrictedFieldNames.has(key),
+        ),
+      );
+    });
 
-    if (InstanceChecker.isEntitySchema(target)) target = target.options.name;
-    if (Array.isArray(entity) && entity.length === 0)
-      return Promise.resolve(entity as Entity[]);
-
-    const queryRunnerForEntityPersistExecutor =
-      this.connection.createQueryRunnerForEntityPersistExecutor();
-
-    return new EntityPersistExecutor(
-      this.connection,
-      queryRunnerForEntityPersistExecutor,
-      'save',
-      target,
-      entity as ObjectLiteral,
-      options as SaveOptions | (SaveOptions & { reload: false }),
-    )
-      .execute()
-      .then(() => entity as Entity)
-      .finally(() => queryRunnerForEntityPersistExecutor.release());
+    return filteredResult as Entity[];
   }
 
   override remove<Entity>(
@@ -1107,11 +1373,12 @@ export class WorkspaceEntityManager extends EntityManager {
         ? (maybeOptionsOrMaybePermissionOptions as PermissionOptions)
         : permissionOptions;
 
-    this.validatePermissions(
-      targetOrEntity,
-      'delete',
-      permissionOptionsFromArgs,
-    );
+    this.validatePermissions({
+      target: targetOrEntity,
+      operationType: 'delete',
+      permissionOptions: permissionOptionsFromArgs,
+      selectedColumns: [], // TODO
+    });
 
     const target =
       arguments.length > 1 &&
@@ -1125,23 +1392,51 @@ export class WorkspaceEntityManager extends EntityManager {
       ? maybeOptionsOrMaybePermissionOptions
       : entityOrMaybeOptions;
 
-    if (Array.isArray(entity) && entity.length === 0)
-      return Promise.resolve(entity);
+    const isEntityArray = Array.isArray(entity);
+
+    if (isEntityArray && entity.length === 0) return Promise.resolve(entity);
 
     const queryRunnerForEntityPersistExecutor =
       this.connection.createQueryRunnerForEntityPersistExecutor();
 
-    return new EntityPersistExecutor(
+    const entityTarget =
+      target ?? (isEntityArray ? entity[0]?.constructor : entity.constructor);
+
+    const objectMetadataItem = getObjectMetadataFromEntityTarget(
+      entityTarget,
+      this.internalContext,
+    );
+
+    const formattedEntity = formatData(entity, objectMetadataItem);
+
+    const result = new EntityPersistExecutor(
       this.connection,
       queryRunnerForEntityPersistExecutor,
       'remove',
       target as string | undefined,
-      entity as ObjectLiteral,
+      formattedEntity as ObjectLiteral,
       options as RemoveOptions,
     )
       .execute()
-      .then(() => entity as Entity | Entity[])
+      .then(() => formattedEntity as Entity | Entity[])
       .finally(() => queryRunnerForEntityPersistExecutor.release());
+
+    const formattedResult = formatResult<Entity[]>(
+      result,
+      objectMetadataItem,
+      this.internalContext.objectMetadataMaps,
+    );
+
+    this.internalContext.eventEmitterService.emitDatabaseBatchEvent(
+      formatTwentyOrmEventToDatabaseBatchEvent({
+        action: DatabaseEventAction.DESTROYED,
+        objectMetadataItem,
+        workspaceId: this.internalContext.workspaceId,
+        entities: formattedResult,
+      }),
+    );
+
+    return isEntityArray ? formattedResult : formattedResult[0];
   }
 
   override softRemove<Entity extends ObjectLiteral>(
@@ -1192,11 +1487,12 @@ export class WorkspaceEntityManager extends EntityManager {
         ? (maybeOptionsOrMaybePermissionOptions as PermissionOptions)
         : permissionOptions;
 
-    this.validatePermissions(
-      targetOrEntityOrEntities,
-      'soft-delete',
-      permissionOptionsFromArgs,
-    );
+    this.validatePermissions({
+      target: targetOrEntityOrEntities,
+      operationType: 'soft-delete',
+      permissionOptions: permissionOptionsFromArgs,
+      selectedColumns: [], // TODO
+    });
 
     let target =
       arguments.length > 1 &&
@@ -1217,17 +1513,45 @@ export class WorkspaceEntityManager extends EntityManager {
     const queryRunnerForEntityPersistExecutor =
       this.connection.createQueryRunnerForEntityPersistExecutor();
 
-    return new EntityPersistExecutor(
+    const isEntityArray = Array.isArray(entity);
+    const entityTarget =
+      target ?? (isEntityArray ? entity[0]?.constructor : entity.constructor);
+
+    const objectMetadataItem = getObjectMetadataFromEntityTarget(
+      entityTarget,
+      this.internalContext,
+    );
+
+    const formattedEntity = formatData(entity, objectMetadataItem);
+
+    const result = new EntityPersistExecutor(
       this.connection,
       queryRunnerForEntityPersistExecutor,
       'soft-remove',
       target,
-      entity as ObjectLiteral,
+      formattedEntity as ObjectLiteral,
       options as SaveOptions,
     )
       .execute()
-      .then(() => entity as Entity)
+      .then(() => formattedEntity as Entity)
       .finally(() => queryRunnerForEntityPersistExecutor.release());
+
+    const formattedResult = formatResult<Entity[]>(
+      result,
+      objectMetadataItem,
+      this.internalContext.objectMetadataMaps,
+    );
+
+    this.internalContext.eventEmitterService.emitDatabaseBatchEvent(
+      formatTwentyOrmEventToDatabaseBatchEvent({
+        action: DatabaseEventAction.DELETED,
+        objectMetadataItem,
+        workspaceId: this.internalContext.workspaceId,
+        entities: formattedResult,
+      }),
+    );
+
+    return isEntityArray ? formattedResult : formattedResult[0];
   }
 
   override recover<Entity>(
@@ -1272,11 +1596,12 @@ export class WorkspaceEntityManager extends EntityManager {
         ? (maybeOptionsOrMaybePermissionOptions as PermissionOptions)
         : permissionOptions;
 
-    this.validatePermissions(
-      targetOrEntityOrEntities,
-      'restore',
-      permissionOptionsFromArgs,
-    );
+    this.validatePermissions({
+      target: targetOrEntityOrEntities,
+      operationType: 'restore',
+      permissionOptions: permissionOptionsFromArgs,
+      selectedColumns: [], // TODO
+    });
 
     let target =
       arguments.length > 1 &&
@@ -1293,23 +1618,51 @@ export class WorkspaceEntityManager extends EntityManager {
       : entityOrEntitiesOrMaybeOptions;
 
     if (InstanceChecker.isEntitySchema(target)) target = target.options.name;
-    if (Array.isArray(entity) && entity.length === 0)
-      return Promise.resolve(entity);
+    const isEntityArray = Array.isArray(entity);
+
+    if (isEntityArray && entity.length === 0) return Promise.resolve(entity);
 
     const queryRunnerForEntityPersistExecutor =
       this.connection.createQueryRunnerForEntityPersistExecutor();
 
-    return new EntityPersistExecutor(
+    const entityTarget =
+      target ?? (isEntityArray ? entity[0]?.constructor : entity.constructor);
+
+    const objectMetadataItem = getObjectMetadataFromEntityTarget(
+      entityTarget,
+      this.internalContext,
+    );
+
+    const formattedEntity = formatData(entity, objectMetadataItem);
+
+    const result = new EntityPersistExecutor(
       this.connection,
       queryRunnerForEntityPersistExecutor,
       'recover',
       target,
-      entity as ObjectLiteral,
+      formattedEntity as ObjectLiteral,
       options as SaveOptions,
     )
       .execute()
-      .then(() => entity as Entity)
+      .then(() => formattedEntity as Entity)
       .finally(() => queryRunnerForEntityPersistExecutor.release());
+
+    const formattedResult = formatResult<Entity[]>(
+      result,
+      objectMetadataItem,
+      this.internalContext.objectMetadataMaps,
+    );
+
+    this.internalContext.eventEmitterService.emitDatabaseBatchEvent(
+      formatTwentyOrmEventToDatabaseBatchEvent({
+        action: DatabaseEventAction.RESTORED,
+        objectMetadataItem,
+        workspaceId: this.internalContext.workspaceId,
+        entities: formattedResult,
+      }),
+    );
+
+    return isEntityArray ? formattedResult : formattedResult[0];
   }
 
   // Forbidden methods

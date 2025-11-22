@@ -1,16 +1,39 @@
 import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 
-import { DatabaseEventAction } from 'src/engine/api/graphql/graphql-query-runner/enums/database-event-action';
+import { isString } from '@sniptt/guards';
+import { isDefined, isValidVariable } from 'twenty-shared/utils';
+import {
+  BaseOutputSchemaV2,
+  BulkRecordsAvailability,
+  extractRawVariableNamePart,
+  GlobalAvailability,
+  navigateOutputSchemaProperty,
+  SingleRecordAvailability,
+  TRIGGER_STEP_ID,
+} from 'twenty-shared/workflow';
+import { Repository } from 'typeorm';
+
+import { type DatabaseEventAction } from 'src/engine/api/graphql/graphql-query-runner/enums/database-event-action';
 import { checkStringIsDatabaseEventAction } from 'src/engine/api/graphql/graphql-query-runner/utils/check-string-is-database-event-action';
+import { AgentEntity } from 'src/engine/metadata-modules/agent/agent.entity';
 import { generateFakeValue } from 'src/engine/utils/generate-fake-value';
 import { WorkflowCommonWorkspaceService } from 'src/modules/workflow/common/workspace-services/workflow-common.workspace-service';
-import { OutputSchema } from 'src/modules/workflow/workflow-builder/workflow-schema/types/output-schema.type';
+import { DEFAULT_ITERATOR_CURRENT_ITEM } from 'src/modules/workflow/workflow-builder/workflow-schema/constants/default-iterator-current-item.const';
+import {
+  Leaf,
+  Node,
+  type OutputSchema,
+} from 'src/modules/workflow/workflow-builder/workflow-schema/types/output-schema.type';
+import { extractPropertyPathFromVariable } from 'src/modules/workflow/workflow-builder/workflow-schema/utils/extract-property-path-from-variable';
+import { generateFakeArrayItem } from 'src/modules/workflow/workflow-builder/workflow-schema/utils/generate-fake-array-item';
 import { generateFakeFormResponse } from 'src/modules/workflow/workflow-builder/workflow-schema/utils/generate-fake-form-response';
 import { generateFakeObjectRecord } from 'src/modules/workflow/workflow-builder/workflow-schema/utils/generate-fake-object-record';
 import { generateFakeObjectRecordEvent } from 'src/modules/workflow/workflow-builder/workflow-schema/utils/generate-fake-object-record-event';
-import { FormFieldMetadata } from 'src/modules/workflow/workflow-executor/workflow-actions/form/types/workflow-form-action-settings.type';
+import { inferArrayItemSchema } from 'src/modules/workflow/workflow-builder/workflow-schema/utils/infer-array-item-schema';
+import { type FormFieldMetadata } from 'src/modules/workflow/workflow-executor/workflow-actions/form/types/workflow-form-action-settings.type';
 import {
-  WorkflowAction,
+  type WorkflowAction,
   WorkflowActionType,
 } from 'src/modules/workflow/workflow-executor/workflow-actions/types/workflow-action.type';
 import {
@@ -22,14 +45,18 @@ import {
 export class WorkflowSchemaWorkspaceService {
   constructor(
     private readonly workflowCommonWorkspaceService: WorkflowCommonWorkspaceService,
+    @InjectRepository(AgentEntity)
+    private readonly agentRepository: Repository<AgentEntity>,
   ) {}
 
   async computeStepOutputSchema({
     step,
     workspaceId,
+    workflowVersionId,
   }: {
     step: WorkflowTrigger | WorkflowAction;
     workspaceId: string;
+    workflowVersionId?: string;
   }): Promise<OutputSchema> {
     const stepType = step.type;
 
@@ -41,16 +68,16 @@ export class WorkflowSchemaWorkspaceService {
         });
       }
       case WorkflowTriggerType.MANUAL: {
-        const { objectType } = step.settings;
+        const { availability } = step.settings;
 
-        if (!objectType) {
-          return {};
+        if (isDefined(availability)) {
+          return this.computeTriggerOutputSchemaFromAvailability({
+            availability,
+            workspaceId,
+          });
         }
 
-        return this.computeRecordOutputSchema({
-          objectType,
-          workspaceId,
-        });
+        return {};
       }
       case WorkflowTriggerType.WEBHOOK:
       case WorkflowTriggerType.CRON: {
@@ -62,6 +89,7 @@ export class WorkflowSchemaWorkspaceService {
       case WorkflowActionType.CREATE_RECORD:
       case WorkflowActionType.UPDATE_RECORD:
       case WorkflowActionType.DELETE_RECORD:
+      case WorkflowActionType.UPSERT_RECORD:
         return this.computeRecordOutputSchema({
           objectType: step.settings.input.objectName,
           workspaceId,
@@ -73,13 +101,105 @@ export class WorkflowSchemaWorkspaceService {
         });
       case WorkflowActionType.FORM:
         return this.computeFormActionOutputSchema({
-          formMetadata: step.settings.input,
+          formFieldMetadataItems: step.settings.input,
           workspaceId,
         });
+      case WorkflowActionType.ITERATOR: {
+        const items = step.settings.input.items;
+
+        return {
+          currentItem: await this.computeLoopCurrentItemOutputSchema({
+            items,
+            workspaceId,
+            workflowVersionId,
+          }),
+          currentItemIndex: {
+            label: 'Current Item Index',
+            isLeaf: true,
+            type: 'number',
+            value: generateFakeValue('number'),
+          },
+          hasProcessedAllItems: {
+            label: 'Has Processed All Items',
+            isLeaf: true,
+            type: 'boolean',
+            value: false,
+          },
+        };
+      }
+      case WorkflowActionType.AI_AGENT: {
+        const agentId = step.settings.input.agentId;
+
+        if (!isDefined(agentId) || agentId === '') {
+          return {};
+        }
+
+        const agent = await this.agentRepository.findOne({
+          where: { id: agentId, workspaceId },
+        });
+
+        if (
+          !isDefined(agent) ||
+          agent.responseFormat?.type !== 'json' ||
+          !isDefined(agent.responseFormat.schema)
+        ) {
+          return {};
+        }
+
+        return Object.fromEntries(
+          Object.entries(agent.responseFormat.schema.properties).map(
+            ([key, field]) => [
+              key,
+              {
+                isLeaf: true,
+                type: field.type,
+                label: field.description || key,
+                value: null,
+              },
+            ],
+          ),
+        ) as OutputSchema;
+      }
       case WorkflowActionType.CODE: // StepOutput schema is computed on serverlessFunction draft execution
       default:
         return {};
     }
+  }
+
+  async enrichOutputSchema({
+    step,
+    workspaceId,
+    workflowVersionId,
+  }: {
+    step: WorkflowAction;
+    workspaceId: string;
+    workflowVersionId: string;
+  }): Promise<WorkflowAction> {
+    // We don't enrich on the fly for code and HTTP request workflow actions.
+    // For code actions, OutputSchema is computed and updated when testing the serverless function.
+    // For HTTP requests, OutputSchema is determined by the example response input
+    // AI agent OutputSchema is enriched from agent's responseFormat
+    if (
+      [WorkflowActionType.CODE, WorkflowActionType.HTTP_REQUEST].includes(
+        step.type,
+      )
+    ) {
+      return step;
+    }
+
+    const result = { ...step };
+    const outputSchema = await this.computeStepOutputSchema({
+      step,
+      workspaceId,
+      workflowVersionId,
+    });
+
+    result.settings = {
+      ...result.settings,
+      outputSchema: outputSchema || {},
+    };
+
+    return result;
   }
 
   private async computeDatabaseEventTriggerOutputSchema({
@@ -117,30 +237,50 @@ export class WorkflowSchemaWorkspaceService {
     const recordOutputSchema = await this.computeRecordOutputSchema({
       objectType,
       workspaceId,
+      maxDepth: 0,
     });
 
-    return {
-      first: {
-        isLeaf: false,
-        icon: 'IconAlpha',
-        value: recordOutputSchema,
-      },
-      last: { isLeaf: false, icon: 'IconOmega', value: recordOutputSchema },
-      totalCount: {
-        isLeaf: true,
-        icon: 'IconSum',
-        type: 'number',
-        value: generateFakeValue('number'),
-      },
+    const objectMetadataInfo =
+      await this.workflowCommonWorkspaceService.getObjectMetadataItemWithFieldsMaps(
+        objectType,
+        workspaceId,
+      );
+
+    const first: Node = {
+      isLeaf: false,
+      label: `First ${objectMetadataInfo.objectMetadataItemWithFieldsMaps.labelSingular ?? 'Record'}`,
+      icon: 'IconAlpha',
+      type: 'object',
+      value: recordOutputSchema,
     };
+
+    const all: Leaf = {
+      isLeaf: true,
+      label: `All ${objectMetadataInfo.objectMetadataItemWithFieldsMaps.labelPlural ?? 'Records'}`,
+      type: 'array',
+      icon: 'IconListDetails',
+      value: 'Returns an array of records',
+    };
+
+    const totalCount: Leaf = {
+      isLeaf: true,
+      label: 'Total Count',
+      icon: 'IconSum',
+      type: 'number',
+      value: 'Count of matching records',
+    };
+
+    return { first, all, totalCount } satisfies OutputSchema;
   }
 
   private async computeRecordOutputSchema({
     objectType,
     workspaceId,
+    maxDepth = 1,
   }: {
     objectType: string;
     workspaceId: string;
+    maxDepth?: number;
   }): Promise<OutputSchema> {
     const objectMetadataInfo =
       await this.workflowCommonWorkspaceService.getObjectMetadataItemWithFieldsMaps(
@@ -148,7 +288,7 @@ export class WorkflowSchemaWorkspaceService {
         workspaceId,
       );
 
-    return generateFakeObjectRecord({ objectMetadataInfo });
+    return generateFakeObjectRecord({ objectMetadataInfo, maxDepth });
   }
 
   private computeSendEmailActionOutputSchema(): OutputSchema {
@@ -156,10 +296,10 @@ export class WorkflowSchemaWorkspaceService {
   }
 
   private async computeFormActionOutputSchema({
-    formMetadata,
+    formFieldMetadataItems,
     workspaceId,
   }: {
-    formMetadata: FormFieldMetadata[];
+    formFieldMetadataItems: FormFieldMetadata[];
     workspaceId: string;
   }): Promise<OutputSchema> {
     const objectMetadataMaps =
@@ -168,8 +308,201 @@ export class WorkflowSchemaWorkspaceService {
       );
 
     return generateFakeFormResponse({
-      formMetadata,
+      formFieldMetadataItems,
       objectMetadataMaps,
     });
+  }
+
+  private async computeTriggerOutputSchemaFromAvailability({
+    availability,
+    workspaceId,
+  }: {
+    availability:
+      | GlobalAvailability
+      | SingleRecordAvailability
+      | BulkRecordsAvailability;
+    workspaceId: string;
+  }): Promise<OutputSchema> {
+    if (availability.type === 'GLOBAL') {
+      return {};
+    }
+
+    if (availability.type === 'SINGLE_RECORD') {
+      return this.computeRecordOutputSchema({
+        objectType: availability.objectNameSingular,
+        workspaceId,
+        maxDepth: 0,
+      });
+    }
+
+    if (availability.type === 'BULK_RECORDS') {
+      const objectMetadataInfo =
+        await this.workflowCommonWorkspaceService.getObjectMetadataItemWithFieldsMaps(
+          availability.objectNameSingular,
+          workspaceId,
+        );
+
+      return {
+        [objectMetadataInfo.objectMetadataItemWithFieldsMaps.namePlural]: {
+          label:
+            objectMetadataInfo.objectMetadataItemWithFieldsMaps.labelPlural,
+          isLeaf: true,
+          type: 'array',
+          value:
+            'Array of ' +
+            objectMetadataInfo.objectMetadataItemWithFieldsMaps.labelPlural,
+        },
+      };
+    }
+
+    return {};
+  }
+
+  private async computeLoopCurrentItemOutputSchema({
+    items,
+    workspaceId,
+    workflowVersionId,
+  }: {
+    items: string | undefined | unknown[];
+    workspaceId: string;
+    workflowVersionId?: string;
+  }): Promise<Leaf | Node> {
+    if (!isDefined(items)) {
+      return DEFAULT_ITERATOR_CURRENT_ITEM;
+    }
+
+    if (isString(items) && isValidVariable(items)) {
+      return this.computeIteratorCurrentItemFromVariable({
+        items,
+        workspaceId,
+        workflowVersionId,
+      });
+    }
+
+    return generateFakeArrayItem({ items });
+  }
+
+  private async computeIteratorCurrentItemFromVariable({
+    items,
+    workspaceId,
+    workflowVersionId,
+  }: {
+    items: string;
+    workspaceId: string;
+    workflowVersionId?: string;
+  }): Promise<Leaf | Node> {
+    if (!isDefined(workflowVersionId)) {
+      return DEFAULT_ITERATOR_CURRENT_ITEM;
+    }
+
+    const workflowVersion =
+      await this.workflowCommonWorkspaceService.getWorkflowVersionOrFail({
+        workflowVersionId,
+        workspaceId,
+      });
+
+    const stepId = extractRawVariableNamePart({
+      rawVariableName: items,
+      part: 'stepId',
+    });
+
+    if (stepId === TRIGGER_STEP_ID) {
+      const trigger = workflowVersion.trigger;
+
+      if (!isDefined(trigger)) {
+        return DEFAULT_ITERATOR_CURRENT_ITEM;
+      }
+
+      switch (trigger.type) {
+        case WorkflowTriggerType.MANUAL: {
+          if (trigger.settings.availability?.type === 'BULK_RECORDS') {
+            const objectMetadataInfo =
+              await this.workflowCommonWorkspaceService.getObjectMetadataItemWithFieldsMaps(
+                trigger.settings.availability.objectNameSingular,
+                workspaceId,
+              );
+
+            return {
+              label:
+                'Current Item (' +
+                objectMetadataInfo.objectMetadataItemWithFieldsMaps
+                  .labelSingular +
+                ')',
+              isLeaf: false,
+              type: 'object',
+              value: await this.computeRecordOutputSchema({
+                objectType: trigger.settings.availability.objectNameSingular,
+                workspaceId,
+                maxDepth: 0,
+              }),
+            };
+          }
+
+          return DEFAULT_ITERATOR_CURRENT_ITEM;
+        }
+        case WorkflowTriggerType.WEBHOOK: {
+          const propertyPath = extractPropertyPathFromVariable(items);
+          const schemaNode = navigateOutputSchemaProperty({
+            schema: trigger.settings.outputSchema as BaseOutputSchemaV2,
+            propertyPath,
+          });
+
+          if (!isDefined(schemaNode)) {
+            return DEFAULT_ITERATOR_CURRENT_ITEM;
+          }
+
+          return inferArrayItemSchema({ schemaNode });
+        }
+        default: {
+          return DEFAULT_ITERATOR_CURRENT_ITEM;
+        }
+      }
+    }
+
+    const step = workflowVersion.steps?.find((step) => step.id === stepId);
+
+    if (!isDefined(step)) {
+      return DEFAULT_ITERATOR_CURRENT_ITEM;
+    }
+
+    switch (step.type) {
+      case WorkflowActionType.FIND_RECORDS: {
+        const objectMetadataInfo =
+          await this.workflowCommonWorkspaceService.getObjectMetadataItemWithFieldsMaps(
+            step.settings.input.objectName,
+            workspaceId,
+          );
+
+        return {
+          label:
+            'Current Item (' +
+            objectMetadataInfo.objectMetadataItemWithFieldsMaps.labelSingular +
+            ')',
+          isLeaf: false,
+          type: 'object',
+          value: await this.computeRecordOutputSchema({
+            objectType: step.settings.input.objectName,
+            workspaceId,
+          }),
+        };
+      }
+      case WorkflowActionType.CODE:
+      case WorkflowActionType.HTTP_REQUEST: {
+        const propertyPath = extractPropertyPathFromVariable(items);
+        const schemaNode = navigateOutputSchemaProperty({
+          schema: step.settings.outputSchema as BaseOutputSchemaV2,
+          propertyPath,
+        });
+
+        if (!isDefined(schemaNode)) {
+          return DEFAULT_ITERATOR_CURRENT_ITEM;
+        }
+
+        return inferArrayItemSchema({ schemaNode });
+      }
+      default: {
+        return DEFAULT_ITERATOR_CURRENT_ITEM;
+      }
+    }
   }
 }

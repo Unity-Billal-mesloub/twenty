@@ -1,7 +1,7 @@
-import { Location, matchPath } from 'react-router-dom';
+import { type Location, matchPath } from 'react-router-dom';
 
-import { AppBasePath } from '@/types/AppBasePath';
 import { isNonEmptyString } from '@sniptt/guards';
+import { type AppBasePath } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
 
 const addTrailingSlash = (path: string) =>

@@ -1,15 +1,17 @@
-import { MessageDescriptor } from '@lingui/core';
-import { ObjectType } from 'typeorm';
+import { type MessageDescriptor } from '@lingui/core';
+import { isDefined, isUUID } from 'class-validator';
+import { CustomError } from 'twenty-shared/utils';
+import { type ObjectType } from 'typeorm';
+import { type RelationOnDeleteAction } from 'twenty-shared/types';
 
-import { RelationOnDeleteAction } from 'src/engine/metadata-modules/field-metadata/interfaces/relation-on-delete-action.interface';
-import { RelationType } from 'src/engine/metadata-modules/field-metadata/interfaces/relation-type.interface';
+import { type RelationType } from 'src/engine/metadata-modules/field-metadata/interfaces/relation-type.interface';
 
-import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
+import { type ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
 import { computeMetadataNameFromLabel } from 'src/engine/metadata-modules/utils/validate-name-and-label-are-sync-or-throw.util';
 import { metadataArgsStorage } from 'src/engine/twenty-orm/storage/metadata-args.storage';
 import { TypedReflect } from 'src/utils/typed-reflect';
 
-interface WorkspaceRelationBaseOptions<TClass> {
+interface WorkspaceRelationMinimumBaseOptions<TClass> {
   standardId: string;
   label: MessageDescriptor;
   description?:
@@ -21,16 +23,31 @@ interface WorkspaceRelationBaseOptions<TClass> {
   onDelete?: RelationOnDeleteAction;
 }
 
-interface WorkspaceOtherRelationOptions<TClass>
-  extends WorkspaceRelationBaseOptions<TClass> {
-  type: RelationType.ONE_TO_MANY;
+interface WorkspaceRegularRelationBaseOptions<TClass>
+  extends WorkspaceRelationMinimumBaseOptions<TClass> {
+  isMorphRelation?: false;
 }
 
-interface WorkspaceManyToOneRelationOptions<TClass extends object>
-  extends WorkspaceRelationBaseOptions<TClass> {
-  type: RelationType.MANY_TO_ONE;
-  inverseSideFieldKey: keyof TClass;
+interface WorkspaceMorphRelationBaseOptions<TClass>
+  extends WorkspaceRelationMinimumBaseOptions<TClass> {
+  isMorphRelation: true;
+  morphId: string;
 }
+
+type WorkspaceRelationBaseOptions<TClass> =
+  | WorkspaceRegularRelationBaseOptions<TClass>
+  | WorkspaceMorphRelationBaseOptions<TClass>;
+
+type WorkspaceOtherRelationOptions<TClass> =
+  WorkspaceRelationBaseOptions<TClass> & {
+    type: RelationType.ONE_TO_MANY;
+  };
+
+type WorkspaceManyToOneRelationOptions<TClass extends object> =
+  WorkspaceRelationBaseOptions<TClass> & {
+    type: RelationType.MANY_TO_ONE;
+    inverseSideFieldKey: keyof TClass;
+  };
 
 type WorkspaceRelationOptions<TClass extends object> =
   | WorkspaceOtherRelationOptions<TClass>
@@ -58,6 +75,12 @@ export function WorkspaceRelation<TClass extends object>(
         object,
         propertyKey.toString(),
       ) ?? false;
+    const isUIReadOnly =
+      TypedReflect.getMetadata(
+        'workspace:is-field-ui-readonly-metadata-args',
+        object,
+        propertyKey.toString(),
+      ) ?? false;
     const gate = TypedReflect.getMetadata(
       'workspace:gate-metadata-args',
       object,
@@ -66,6 +89,20 @@ export function WorkspaceRelation<TClass extends object>(
     const name = propertyKey.toString();
     const label = options.label.message ?? '';
     const isLabelSyncedWithName = computeMetadataNameFromLabel(label) === name;
+
+    if (options.isMorphRelation && !isDefined(options.morphId)) {
+      throw new CustomError(
+        'Morph relation must have a morph id',
+        'MORPH_RELATION_MUST_HAVE_MORPH_ID',
+      );
+    }
+
+    if (options.isMorphRelation && !isUUID(options.morphId)) {
+      throw new CustomError(
+        'Morph ID must be a valid UUID',
+        'INVALID_MORPH_ID_FORMAT',
+      );
+    }
 
     metadataArgsStorage.addRelations({
       target: object.constructor,
@@ -89,7 +126,10 @@ export function WorkspaceRelation<TClass extends object>(
       isPrimary,
       isNullable,
       isSystem,
+      isUIReadOnly,
       gate,
+      isMorphRelation: options.isMorphRelation ?? false,
+      morphId: options.isMorphRelation ? options.morphId : undefined,
       isLabelSyncedWithName,
     });
   };

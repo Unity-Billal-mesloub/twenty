@@ -1,32 +1,24 @@
-import { GraphQLFieldResolver } from 'graphql';
+import { type GraphQLFieldResolver } from 'graphql';
+import {
+  type ObjectRecord,
+  type OrderByWithGroupBy,
+} from 'twenty-shared/types';
 
 import {
-  ObjectRecord,
-  ObjectRecordFilter,
-  ObjectRecordOrderBy,
+  type ObjectRecordFilter,
+  type ObjectRecordGroupBy,
+  type ObjectRecordOrderBy,
 } from 'src/engine/api/graphql/workspace-query-builder/interfaces/object-record.interface';
 
-import { workspaceResolverBuilderMethodNames } from 'src/engine/api/graphql/workspace-resolver-builder/factories/factories';
+import { RESOLVER_METHOD_NAMES } from 'src/engine/api/graphql/workspace-resolver-builder/constants/resolver-method-names';
+import { type workspaceResolverBuilderMethodNames } from 'src/engine/api/graphql/workspace-resolver-builder/factories/factories';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Resolver<Args = any> = GraphQLFieldResolver<any, any, Args>;
 
-export enum ResolverArgsType {
-  FindMany = 'FindMany',
-  FindOne = 'FindOne',
-  FindDuplicates = 'FindDuplicates',
-  CreateOne = 'CreateOne',
-  CreateMany = 'CreateMany',
-  UpdateOne = 'UpdateOne',
-  UpdateMany = 'UpdateMany',
-  DeleteOne = 'DeleteOne',
-  DeleteMany = 'DeleteMany',
-  RestoreMany = 'RestoreMany',
-  DestroyMany = 'DestroyMany',
-  DestroyOne = 'DestroyOne',
-}
+// Use RESOLVER_METHOD_NAMES as the single source of truth for operation names
+// This avoids duplication and ensures consistency across the codebase
+export const ResolverArgsType = RESOLVER_METHOD_NAMES;
 
 export interface FindManyResolverArgs<
   Filter extends ObjectRecordFilter = ObjectRecordFilter,
@@ -38,6 +30,7 @@ export interface FindManyResolverArgs<
   after?: string;
   filter?: Filter;
   orderBy?: OrderBy;
+  offset?: number;
 }
 
 export interface FindOneResolverArgs<Filter = ObjectRecordFilter> {
@@ -63,6 +56,15 @@ export interface CreateManyResolverArgs<
 > {
   data: Data[];
   upsert?: boolean;
+}
+
+export interface GroupByResolverArgs<Filter = ObjectRecordFilter> {
+  filter?: Filter;
+  groupBy: ObjectRecordGroupBy;
+  viewId?: string;
+  orderBy?: OrderByWithGroupBy;
+  orderByForRecords?: ObjectRecordOrderBy;
+  limit?: number;
 }
 
 export interface UpdateOneResolverArgs<
@@ -99,6 +101,12 @@ export interface RestoreManyResolverArgs<Filter = any> {
   filter: Filter;
 }
 
+export interface MergeManyResolverArgs {
+  ids: string[];
+  conflictPriorityIndex: number;
+  dryRun?: boolean;
+}
+
 export interface DestroyOneResolverArgs {
   id: string;
 }
@@ -126,12 +134,14 @@ export interface WorkspaceResolverBuilderMethods {
 export type ResolverArgs =
   | CreateManyResolverArgs
   | CreateOneResolverArgs
+  | GroupByResolverArgs
   | DeleteManyResolverArgs
   | DeleteOneResolverArgs
   | DestroyManyResolverArgs
   | FindDuplicatesResolverArgs
   | FindManyResolverArgs
   | FindOneResolverArgs
+  | MergeManyResolverArgs
   | RestoreManyResolverArgs
   | RestoreOneResolverArgs
   | UpdateManyResolverArgs

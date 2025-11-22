@@ -6,7 +6,7 @@ import { COMMAND_MENU_COMPONENT_INSTANCE_ID } from '@/command-menu/constants/Com
 import { useOpenRecordInCommandMenu } from '@/command-menu/hooks/useOpenRecordInCommandMenu';
 import { viewableRecordIdComponentState } from '@/command-menu/pages/record-page/states/viewableRecordIdComponentState';
 import { viewableRecordNameSingularComponentState } from '@/command-menu/pages/record-page/states/viewableRecordNameSingularComponentState';
-import { commandMenuNavigationMorphItemByPageState } from '@/command-menu/states/commandMenuNavigationMorphItemsState';
+import { commandMenuNavigationMorphItemsByPageState } from '@/command-menu/states/commandMenuNavigationMorphItemsByPageState';
 import { commandMenuPageState } from '@/command-menu/states/commandMenuPageState';
 import { CommandMenuPages } from '@/command-menu/types/CommandMenuPages';
 import { contextStoreCurrentObjectMetadataItemIdComponentState } from '@/context-store/states/contextStoreCurrentObjectMetadataItemIdComponentState';
@@ -14,10 +14,10 @@ import { contextStoreCurrentViewTypeComponentState } from '@/context-store/state
 import { contextStoreNumberOfSelectedRecordsComponentState } from '@/context-store/states/contextStoreNumberOfSelectedRecordsComponentState';
 import { contextStoreTargetedRecordsRuleComponentState } from '@/context-store/states/contextStoreTargetedRecordsRuleComponentState';
 import { ContextStoreViewType } from '@/context-store/types/ContextStoreViewType';
-import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
-import { getJestMetadataAndApolloMocksAndActionMenuWrapper } from '~/testing/jest/getJestMetadataAndApolloMocksAndActionMenuWrapper';
-import { generatedMockObjectMetadataItems } from '~/testing/mock-data/generatedMockObjectMetadataItems';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
 import { useIcons } from 'twenty-ui/display';
+import { getJestMetadataAndApolloMocksAndActionMenuWrapper } from '~/testing/jest/getJestMetadataAndApolloMocksAndActionMenuWrapper';
+import { generatedMockObjectMetadataItems } from '~/testing/utils/generatedMockObjectMetadataItems';
 
 jest.mock('uuid', () => ({
   v4: jest.fn().mockReturnValue('mocked-uuid'),
@@ -54,31 +54,31 @@ const renderHooks = () => {
       const { openRecordInCommandMenu } = useOpenRecordInCommandMenu();
 
       const commandMenuPage = useRecoilValue(commandMenuPageState);
-      const commandMenuNavigationMorphItemByPage = useRecoilValue(
-        commandMenuNavigationMorphItemByPageState,
+      const commandMenuNavigationMorphItemsByPage = useRecoilValue(
+        commandMenuNavigationMorphItemsByPageState,
       );
 
-      const viewableRecordId = useRecoilComponentValueV2(
+      const viewableRecordId = useRecoilComponentValue(
         viewableRecordIdComponentState,
         'mocked-uuid',
       );
-      const viewableRecordNameSingular = useRecoilComponentValueV2(
+      const viewableRecordNameSingular = useRecoilComponentValue(
         viewableRecordNameSingularComponentState,
         'mocked-uuid',
       );
-      const currentObjectMetadataItemId = useRecoilComponentValueV2(
+      const currentObjectMetadataItemId = useRecoilComponentValue(
         contextStoreCurrentObjectMetadataItemIdComponentState,
         'mocked-uuid',
       );
-      const targetedRecordsRule = useRecoilComponentValueV2(
+      const targetedRecordsRule = useRecoilComponentValue(
         contextStoreTargetedRecordsRuleComponentState,
         'mocked-uuid',
       );
-      const numberOfSelectedRecords = useRecoilComponentValueV2(
+      const numberOfSelectedRecords = useRecoilComponentValue(
         contextStoreNumberOfSelectedRecordsComponentState,
         'mocked-uuid',
       );
-      const currentViewType = useRecoilComponentValueV2(
+      const currentViewType = useRecoilComponentValue(
         contextStoreCurrentViewTypeComponentState,
         'mocked-uuid',
       );
@@ -88,7 +88,7 @@ const renderHooks = () => {
         openRecordInCommandMenu,
         viewableRecordId,
         commandMenuPage,
-        commandMenuNavigationMorphItemByPage,
+        commandMenuNavigationMorphItemsByPage,
         viewableRecordNameSingular,
         currentObjectMetadataItemId,
         targetedRecordsRule,
@@ -134,13 +134,15 @@ describe('useOpenRecordInCommandMenu', () => {
     expect(result.current.numberOfSelectedRecords).toBe(1);
     expect(result.current.currentViewType).toBe(ContextStoreViewType.ShowPage);
 
-    expect(result.current.commandMenuNavigationMorphItemByPage.size).toBe(1);
+    expect(result.current.commandMenuNavigationMorphItemsByPage.size).toBe(1);
     expect(
-      result.current.commandMenuNavigationMorphItemByPage.get('mocked-uuid'),
-    ).toEqual({
-      objectMetadataId: personMockObjectMetadataItem.id,
-      recordId,
-    });
+      result.current.commandMenuNavigationMorphItemsByPage.get('mocked-uuid'),
+    ).toEqual([
+      {
+        objectMetadataId: personMockObjectMetadataItem.id,
+        recordId,
+      },
+    ]);
 
     expect(mockNavigateCommandMenu).toHaveBeenCalledWith({
       page: CommandMenuPages.ViewRecord,

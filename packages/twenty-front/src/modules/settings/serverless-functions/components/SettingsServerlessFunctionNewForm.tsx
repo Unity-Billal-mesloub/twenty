@@ -1,7 +1,8 @@
-import { ServerlessFunctionNewFormValues } from '@/settings/serverless-functions/hooks/useServerlessFunctionUpdateFormState';
+import { type ServerlessFunctionNewFormValues } from '@/settings/serverless-functions/hooks/useServerlessFunctionUpdateFormState';
+import { SettingsTextInput } from '@/ui/input/components/SettingsTextInput';
 import { TextArea } from '@/ui/input/components/TextArea';
-import { TextInput } from '@/ui/input/components/TextInput';
 import styled from '@emotion/styled';
+import { t } from '@lingui/core/macro';
 import { H2Title } from 'twenty-ui/display';
 import { Section } from 'twenty-ui/layout';
 
@@ -14,24 +15,30 @@ const StyledInputsContainer = styled.div`
 export const SettingsServerlessFunctionNewForm = ({
   formValues,
   onChange,
+  readonly = false,
 }: {
   formValues: ServerlessFunctionNewFormValues;
   onChange: (key: string) => (value: string) => void;
+  readonly?: boolean;
 }) => {
   const descriptionTextAreaId = `${formValues.name}-description`;
   const nameTextInputId = `${formValues.name}-name`;
 
   return (
     <Section>
-      <H2Title title="About" description="Name and set your function" />
+      <H2Title
+        title={t`About`}
+        description={t`Name and describe your function`}
+      />
       <StyledInputsContainer>
-        <TextInput
+        <SettingsTextInput
           instanceId={nameTextInputId}
           placeholder="Name"
           fullWidth
           autoFocusOnMount
           value={formValues.name}
           onChange={onChange('name')}
+          readOnly={readonly}
         />
         <TextArea
           textAreaId={descriptionTextAreaId}
@@ -39,6 +46,7 @@ export const SettingsServerlessFunctionNewForm = ({
           minRows={4}
           value={formValues.description}
           onChange={onChange('description')}
+          readOnly={readonly}
         />
       </StyledInputsContainer>
     </Section>

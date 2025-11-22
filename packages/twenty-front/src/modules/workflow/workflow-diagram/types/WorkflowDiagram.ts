@@ -1,19 +1,34 @@
 import {
-  WorkflowActionType,
-  WorkflowTriggerType,
+  type WorkflowActionType,
+  type WorkflowRunStepStatus,
+  type WorkflowTriggerType,
 } from '@/workflow/types/Workflow';
-import { Edge, Node } from '@xyflow/react';
+import { type MessageDescriptor } from '@lingui/core';
+import {
+  type Connection,
+  type Edge,
+  type Node,
+  type Position,
+} from '@xyflow/react';
+import { type StepStatus } from 'twenty-shared/workflow';
 
 export type WorkflowDiagramStepNode = Node<WorkflowDiagramStepNodeData>;
 export type WorkflowDiagramNode = Node<WorkflowDiagramNodeData>;
-export type WorkflowDiagramEdge = Edge<EdgeData>;
+export type WorkflowDiagramEdge = Edge<WorkflowDiagramEdgeData> & {
+  sourceHandle: string;
+  targetHandle: string;
+};
+
+export type WorkflowConnection = Connection & {
+  sourceHandle: string;
+  targetHandle: string;
+};
 
 export type WorkflowRunDiagramNode = Node<WorkflowRunDiagramNodeData>;
-export type WorkflowRunDiagramEdge = Edge<EdgeData>;
 
 export type WorkflowRunDiagram = {
   nodes: Array<WorkflowRunDiagramNode>;
-  edges: Array<WorkflowRunDiagramEdge>;
+  edges: Array<WorkflowDiagramEdge>;
 };
 
 export type WorkflowDiagram = {
@@ -21,11 +36,13 @@ export type WorkflowDiagram = {
   edges: Array<WorkflowDiagramEdge>;
 };
 
-export type WorkflowDiagramRunStatus =
-  | 'running'
-  | 'success'
-  | 'failure'
-  | 'not-executed';
+export type WorkflowDiagramNodeRightHandleOptions = {
+  id: string;
+};
+
+export type WorkflowDiagramNodeDefaultHandleOptions = {
+  label?: MessageDescriptor;
+};
 
 export type WorkflowDiagramStepNodeData =
   | {
@@ -33,50 +50,73 @@ export type WorkflowDiagramStepNodeData =
       triggerType: WorkflowTriggerType;
       name: string;
       icon?: string;
-      runStatus?: WorkflowDiagramRunStatus;
+      runStatus?: WorkflowRunStepStatus;
+      hasNextStepIds: boolean;
+      stepId: string;
+      defaultHandleOptions?: WorkflowDiagramNodeDefaultHandleOptions;
+      rightHandleOptions?: WorkflowDiagramNodeRightHandleOptions;
+      position: {
+        x: number;
+        y: number;
+      };
     }
   | {
       nodeType: 'action';
       actionType: WorkflowActionType;
       name: string;
-      runStatus?: WorkflowDiagramRunStatus;
+      runStatus?: WorkflowRunStepStatus;
+      hasNextStepIds: boolean;
+      stepId: string;
+      defaultHandleOptions?: WorkflowDiagramNodeDefaultHandleOptions;
+      rightHandleOptions?: WorkflowDiagramNodeRightHandleOptions;
+      position: {
+        x: number;
+        y: number;
+      };
     };
 
 export type WorkflowRunDiagramStepNodeData = Exclude<
   WorkflowDiagramStepNodeData,
   'runStatus'
 > & {
-  runStatus: WorkflowDiagramRunStatus;
-};
-
-export type WorkflowDiagramCreateStepNodeData = {
-  nodeType: 'create-step';
-  parentNodeId: string;
+  runStatus: WorkflowRunStepStatus;
 };
 
 export type WorkflowDiagramEmptyTriggerNodeData = {
   nodeType: 'empty-trigger';
+  position: {
+    x: number;
+    y: number;
+  };
 };
 
 export type WorkflowDiagramNodeData =
   | WorkflowDiagramStepNodeData
-  | WorkflowDiagramCreateStepNodeData
   | WorkflowDiagramEmptyTriggerNodeData;
 
 export type WorkflowRunDiagramNodeData = Exclude<
   WorkflowDiagramStepNodeData,
   'runStatus'
-> & { runStatus: WorkflowDiagramRunStatus };
+> & { runStatus: WorkflowRunStepStatus };
 
-export type EdgeData = {
-  stepId?: string;
-  filter?: Record<string, any>;
-  shouldDisplayEdgeOptions?: boolean;
+export type WorkflowDiagramEdgeLabelOptions = {
+  position: Position;
+  label: MessageDescriptor;
 };
 
-export type WorkflowDiagramNodeType =
-  | 'default'
-  | 'empty-trigger'
-  | 'create-step';
+export type WorkflowDiagramEdgePathStrategy =
+  | 'smooth-step-path-to-target'
+  | 'bypass-source-node-on-right-side';
 
-export type WorkflowDiagramEdgeType = 'default' | 'success';
+export type WorkflowDiagramDefaultEdgeData = {
+  edgeType: 'default';
+  edgeExecutionStatus?: StepStatus;
+  labelOptions?: WorkflowDiagramEdgeLabelOptions;
+  edgePathStrategy?: WorkflowDiagramEdgePathStrategy;
+};
+
+export type WorkflowDiagramEdgeData = WorkflowDiagramDefaultEdgeData;
+
+export type WorkflowDiagramNodeType = 'default' | 'empty-trigger';
+
+export type WorkflowDiagramEdgeType = 'blank' | 'editable' | 'readonly';

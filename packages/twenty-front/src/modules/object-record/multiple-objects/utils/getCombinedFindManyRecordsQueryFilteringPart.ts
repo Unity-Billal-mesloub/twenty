@@ -1,4 +1,4 @@
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
+import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
 import { capitalize } from 'twenty-shared/utils';
 
 export const getCombinedFindManyRecordsQueryFilteringPart = (
@@ -10,6 +10,5 @@ export const getCombinedFindManyRecordsQueryFilteringPart = (
   after: $after${capitalize(objectMetadataItem.nameSingular)},
   before: $before${capitalize(objectMetadataItem.nameSingular)},
   first: $first${capitalize(objectMetadataItem.nameSingular)},
-  last: $last${capitalize(objectMetadataItem.nameSingular)},
-  limit: $limit${capitalize(objectMetadataItem.nameSingular)})`;
+  last: $last${capitalize(objectMetadataItem.nameSingular)})`;
 };

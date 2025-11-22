@@ -2,19 +2,17 @@ import { Field, HideField, ObjectType } from '@nestjs/graphql';
 
 import {
   Authorize,
-  BeforeDeleteOne,
   CursorConnection,
   FilterableField,
   IDField,
   QueryOptions,
 } from '@ptc-org/nestjs-query-graphql';
 
-import { WorkspaceEntityDuplicateCriteria } from 'src/engine/api/graphql/workspace-query-builder/types/workspace-entity-duplicate-criteria.type';
+import { type WorkspaceEntityDuplicateCriteria } from 'src/engine/api/graphql/workspace-query-builder/types/workspace-entity-duplicate-criteria.type';
 import { UUIDScalarType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars';
 import { FieldMetadataDTO } from 'src/engine/metadata-modules/field-metadata/dtos/field-metadata.dto';
 import { IndexMetadataDTO } from 'src/engine/metadata-modules/index-metadata/dtos/index-metadata.dto';
 import { ObjectStandardOverridesDTO } from 'src/engine/metadata-modules/object-metadata/dtos/object-standard-overrides.dto';
-import { BeforeDeleteOneObject } from 'src/engine/metadata-modules/object-metadata/hooks/before-delete-one-object.hook';
 
 @ObjectType('Object')
 @Authorize({
@@ -28,15 +26,11 @@ import { BeforeDeleteOneObject } from 'src/engine/metadata-modules/object-metada
   disableSort: true,
   maxResultsSize: 1000,
 })
-@BeforeDeleteOne(BeforeDeleteOneObject)
 @CursorConnection('fields', () => FieldMetadataDTO)
 @CursorConnection('indexMetadatas', () => IndexMetadataDTO)
 export class ObjectMetadataDTO {
   @IDField(() => UUIDScalarType)
   id: string;
-
-  @Field()
-  dataSourceId: string;
 
   @Field()
   nameSingular: string;
@@ -51,16 +45,16 @@ export class ObjectMetadataDTO {
   labelPlural: string;
 
   @Field({ nullable: true })
-  description: string;
+  description?: string;
 
   @Field({ nullable: true })
-  icon: string;
+  icon?: string;
 
   @Field(() => ObjectStandardOverridesDTO, { nullable: true })
   standardOverrides?: ObjectStandardOverridesDTO;
 
   @Field({ nullable: true })
-  shortcut: string;
+  shortcut?: string;
 
   @FilterableField()
   isCustom: boolean;
@@ -75,10 +69,16 @@ export class ObjectMetadataDTO {
   isSystem: boolean;
 
   @FilterableField()
+  isUIReadOnly: boolean;
+
+  @FilterableField()
   isSearchable: boolean;
 
   @HideField()
   workspaceId: string;
+
+  @Field(() => UUIDScalarType, { nullable: true })
+  applicationId?: string;
 
   @Field()
   createdAt: Date;
@@ -86,10 +86,10 @@ export class ObjectMetadataDTO {
   @Field()
   updatedAt: Date;
 
-  @Field(() => String, { nullable: true })
+  @Field(() => UUIDScalarType, { nullable: true })
   labelIdentifierFieldMetadataId?: string | null;
 
-  @Field(() => String, { nullable: true })
+  @Field(() => UUIDScalarType, { nullable: true })
   imageIdentifierFieldMetadataId?: string | null;
 
   @Field()

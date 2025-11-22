@@ -2,14 +2,11 @@ import { Injectable } from '@nestjs/common';
 
 import { isNonEmptyString } from '@sniptt/guards';
 import chunk from 'lodash.chunk';
-import { FieldMetadataType } from 'twenty-shared/types';
+import { FieldMetadataType, ObjectRecord } from 'twenty-shared/types';
 import { getLogoUrlFromDomainName } from 'twenty-shared/utils';
-import { Brackets, ObjectLiteral } from 'typeorm';
+import { Brackets, type ObjectLiteral } from 'typeorm';
 
-import {
-  ObjectRecord,
-  ObjectRecordFilter,
-} from 'src/engine/api/graphql/workspace-query-builder/interfaces/object-record.interface';
+import { type ObjectRecordFilter } from 'src/engine/api/graphql/workspace-query-builder/interfaces/object-record.interface';
 
 import { GraphqlQueryParser } from 'src/engine/api/graphql/graphql-query-runner/graphql-query-parsers/graphql-query.parser';
 import {
@@ -18,24 +15,22 @@ import {
 } from 'src/engine/api/graphql/graphql-query-runner/utils/cursors.util';
 import { FileService } from 'src/engine/core-modules/file/services/file.service';
 import { STANDARD_OBJECTS_BY_PRIORITY_RANK } from 'src/engine/core-modules/search/constants/standard-objects-by-priority-rank';
-import { ObjectRecordFilterInput } from 'src/engine/core-modules/search/dtos/object-record-filter-input';
-import { SearchArgs } from 'src/engine/core-modules/search/dtos/search-args';
-import { SearchRecordDTO } from 'src/engine/core-modules/search/dtos/search-record.dto';
-import { SearchResultConnectionDTO } from 'src/engine/core-modules/search/dtos/search-result-connection.dto';
-import { SearchResultEdgeDTO } from 'src/engine/core-modules/search/dtos/search-result-edge.dto';
+import { type ObjectRecordFilterInput } from 'src/engine/core-modules/search/dtos/object-record-filter-input';
+import { type SearchArgs } from 'src/engine/core-modules/search/dtos/search-args';
+import { type SearchRecordDTO } from 'src/engine/core-modules/search/dtos/search-record.dto';
+import { type SearchResultConnectionDTO } from 'src/engine/core-modules/search/dtos/search-result-connection.dto';
+import { type SearchResultEdgeDTO } from 'src/engine/core-modules/search/dtos/search-result-edge.dto';
 import {
   SearchException,
   SearchExceptionCode,
 } from 'src/engine/core-modules/search/exceptions/search.exception';
-import { RecordsWithObjectMetadataItem } from 'src/engine/core-modules/search/types/records-with-object-metadata-item';
+import { type RecordsWithObjectMetadataItem } from 'src/engine/core-modules/search/types/records-with-object-metadata-item';
 import { formatSearchTerms } from 'src/engine/core-modules/search/utils/format-search-terms';
-import { Workspace } from 'src/engine/core-modules/workspace/workspace.entity';
 import { SEARCH_VECTOR_FIELD } from 'src/engine/metadata-modules/constants/search-vector-field.constants';
-import { ObjectMetadataItemWithFieldMaps } from 'src/engine/metadata-modules/types/object-metadata-item-with-field-maps';
+import { type ObjectMetadataItemWithFieldMaps } from 'src/engine/metadata-modules/types/object-metadata-item-with-field-maps';
 import { generateObjectMetadataMaps } from 'src/engine/metadata-modules/utils/generate-object-metadata-maps.util';
-import { WorkspaceRepository } from 'src/engine/twenty-orm/repository/workspace.repository';
+import { type WorkspaceRepository } from 'src/engine/twenty-orm/repository/workspace.repository';
 import { TwentyORMManager } from 'src/engine/twenty-orm/twenty-orm.manager';
-import { WorkspaceCacheStorageService } from 'src/engine/workspace-cache-storage/workspace-cache-storage.service';
 
 type LastRanks = { tsRankCD: number; tsRank: number };
 
@@ -51,17 +46,7 @@ export class SearchService {
   constructor(
     private readonly twentyORMManager: TwentyORMManager,
     private readonly fileService: FileService,
-    private readonly workspaceCacheStorageService: WorkspaceCacheStorageService,
   ) {}
-
-  async getObjectMetadataItemWithFieldMaps(workspace: Workspace) {
-    const objectMetadataMaps =
-      await this.workspaceCacheStorageService.getObjectMetadataMapsOrThrow(
-        workspace.id,
-      );
-
-    return Object.values(objectMetadataMaps.byId);
-  }
 
   async getAllRecordsWithObjectMetadataItems({
     objectMetadataItemWithFieldMaps,
@@ -189,9 +174,9 @@ export class SearchService {
       ...(imageIdentifierField ? [imageIdentifierField] : []),
     ].map((field) => `"${field}"`);
 
-    const tsRankCDExpr = `ts_rank_cd("${SEARCH_VECTOR_FIELD.name}", to_tsquery(:searchTerms))`;
+    const tsRankCDExpr = `ts_rank_cd("${SEARCH_VECTOR_FIELD.name}", to_tsquery('simple', public.unaccent_immutable(:searchTerms)))`;
 
-    const tsRankExpr = `ts_rank("${SEARCH_VECTOR_FIELD.name}", to_tsquery(:searchTermsOr))`;
+    const tsRankExpr = `ts_rank("${SEARCH_VECTOR_FIELD.name}", to_tsquery('simple', public.unaccent_immutable(:searchTermsOr)))`;
 
     const cursorWhereCondition = this.computeCursorWhereCondition({
       after,
@@ -209,10 +194,10 @@ export class SearchService {
       queryBuilder.andWhere(
         new Brackets((qb) => {
           qb.where(
-            `"${SEARCH_VECTOR_FIELD.name}" @@ to_tsquery('simple', :searchTerms)`,
+            `"${SEARCH_VECTOR_FIELD.name}" @@ to_tsquery('simple', public.unaccent_immutable(:searchTerms))`,
             { searchTerms },
           ).orWhere(
-            `"${SEARCH_VECTOR_FIELD.name}" @@ to_tsquery('simple', :searchTermsOr)`,
+            `"${SEARCH_VECTOR_FIELD.name}" @@ to_tsquery('simple', public.unaccent_immutable(:searchTermsOr))`,
             { searchTermsOr },
           );
         }),

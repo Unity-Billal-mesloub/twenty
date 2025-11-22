@@ -1,8 +1,10 @@
 import { useParams, useSearchParams } from 'react-router-dom';
 
 import { useAuth } from '@/auth/hooks/useAuth';
-import { BillingCheckoutSession } from '@/auth/types/billingCheckoutSession.type';
-import { SocialSSOSignInUpActionType } from '@/auth/types/socialSSOSignInUp.type';
+import { type BillingCheckoutSession } from '@/auth/types/billingCheckoutSession.type';
+import { type SocialSSOSignInUpActionType } from '@/auth/types/socialSSOSignInUp.type';
+import { BillingPlanKey } from '~/generated/graphql';
+import { SubscriptionInterval } from '~/generated-metadata/graphql';
 
 export const useSignInWithGoogle = () => {
   const workspaceInviteHash = useParams().workspaceInviteHash;
@@ -10,8 +12,8 @@ export const useSignInWithGoogle = () => {
   const workspacePersonalInviteToken =
     searchParams.get('inviteToken') ?? undefined;
   const billingCheckoutSession = {
-    plan: 'PRO',
-    interval: 'Month',
+    plan: BillingPlanKey.PRO,
+    interval: SubscriptionInterval.Month,
     requirePaymentMethod: true,
   } as BillingCheckoutSession;
 

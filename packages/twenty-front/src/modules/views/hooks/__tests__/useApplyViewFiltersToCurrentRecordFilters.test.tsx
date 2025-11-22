@@ -1,15 +1,14 @@
 import { act, renderHook } from '@testing-library/react';
 
-import { getFilterTypeFromFieldType } from '@/object-metadata/utils/formatFieldMetadataItemsAsFilterDefinitions';
 import { currentRecordFiltersComponentState } from '@/object-record/record-filter/states/currentRecordFiltersComponentState';
-import { RecordFilter } from '@/object-record/record-filter/types/RecordFilter';
-import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
-import { ViewFilter } from '@/views/types/ViewFilter';
-import { ViewFilterOperand } from '@/views/types/ViewFilterOperand';
+import { type RecordFilter } from '@/object-record/record-filter/types/RecordFilter';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
+import { type ViewFilter } from '@/views/types/ViewFilter';
+import { ViewFilterOperand } from 'twenty-shared/types';
+import { getFilterTypeFromFieldType, isDefined } from 'twenty-shared/utils';
 import { getJestMetadataAndApolloMocksAndActionMenuWrapper } from '~/testing/jest/getJestMetadataAndApolloMocksAndActionMenuWrapper';
-import { generatedMockObjectMetadataItems } from '~/testing/mock-data/generatedMockObjectMetadataItems';
+import { generatedMockObjectMetadataItems } from '~/testing/utils/generatedMockObjectMetadataItems';
 import { useApplyViewFiltersToCurrentRecordFilters } from '../useApplyViewFiltersToCurrentRecordFilters';
-import { isDefined } from 'twenty-shared/utils';
 
 const mockObjectMetadataItemNameSingular = 'company';
 
@@ -30,7 +29,7 @@ describe('useApplyViewFiltersToCurrentRecordFilters', () => {
     __typename: 'ViewFilter',
     id: 'filter-1',
     fieldMetadataId: mockFieldMetadataItem.id,
-    operand: ViewFilterOperand.Contains,
+    operand: ViewFilterOperand.CONTAINS,
     value: 'test',
     displayValue: mockFieldMetadataItem.label,
     viewFilterGroupId: 'group-1',
@@ -43,7 +42,7 @@ describe('useApplyViewFiltersToCurrentRecordFilters', () => {
         const { applyViewFiltersToCurrentRecordFilters } =
           useApplyViewFiltersToCurrentRecordFilters();
 
-        const currentFilters = useRecoilComponentValueV2(
+        const currentFilters = useRecoilComponentValue(
           currentRecordFiltersComponentState,
         );
 
@@ -84,7 +83,7 @@ describe('useApplyViewFiltersToCurrentRecordFilters', () => {
         const { applyViewFiltersToCurrentRecordFilters } =
           useApplyViewFiltersToCurrentRecordFilters();
 
-        const currentFilters = useRecoilComponentValueV2(
+        const currentFilters = useRecoilComponentValue(
           currentRecordFiltersComponentState,
         );
 

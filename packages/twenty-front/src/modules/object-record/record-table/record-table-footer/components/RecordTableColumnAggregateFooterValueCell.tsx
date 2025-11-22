@@ -1,10 +1,11 @@
 import { hasRecordGroupsComponentSelector } from '@/object-record/record-group/states/selectors/hasRecordGroupsComponentSelector';
-import { RECORD_TABLE_TD_WIDTH } from '@/object-record/record-table/record-table-cell/components/RecordTableTd';
+import { RECORD_TABLE_COLUMN_CHECKBOX_WIDTH } from '@/object-record/record-table/constants/RecordTableColumnCheckboxWidth';
+
 import { RecordTableColumnAggregateFooterCellContext } from '@/object-record/record-table/record-table-footer/components/RecordTableColumnAggregateFooterCellContext';
 import { RecordTableColumnAggregateFooterValue } from '@/object-record/record-table/record-table-footer/components/RecordTableColumnAggregateFooterValue';
 import { hasAggregateOperationForViewFieldFamilySelector } from '@/object-record/record-table/record-table-footer/states/hasAggregateOperationForViewFieldFamilySelector';
 import { isDropdownOpenComponentState } from '@/ui/layout/dropdown/states/isDropdownOpenComponentState';
-import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
 import { useContext, useState } from 'react';
@@ -25,20 +26,15 @@ const StyledCell = styled.div<{ isUnfolded: boolean; isFirstCell: boolean }>`
   flex-grow: 1;
   max-width: 100%;
 
+  cursor: pointer;
+
   background: ${({ theme, isUnfolded }) =>
-    isUnfolded ? theme.background.transparent.light : theme.background.primary};
+    isUnfolded ? theme.background.tertiary : 'none'};
 
-  &:hover {
-    background: ${({ theme, isUnfolded }) =>
-      isUnfolded
-        ? theme.background.transparent.medium
-        : theme.background.transparent.light};
-  }
-
-  ${({ isFirstCell }) =>
+  ${({ isFirstCell, theme }) =>
     isFirstCell &&
     `
-    padding-left: ${RECORD_TABLE_TD_WIDTH};
+    padding-left: calc(${RECORD_TABLE_COLUMN_CHECKBOX_WIDTH} + ${theme.spacing(1)});
   `}
 `;
 
@@ -61,7 +57,7 @@ export const RecordTableColumnAggregateFooterValueCell = ({
 }) => {
   const [isHovered, setIsHovered] = useState(false);
 
-  const isDropdownOpen = useRecoilComponentValueV2(
+  const isDropdownOpen = useRecoilComponentValue(
     isDropdownOpenComponentState,
     dropdownId,
   );
@@ -77,7 +73,7 @@ export const RecordTableColumnAggregateFooterValueCell = ({
     }),
   );
 
-  const hasRecordGroups = useRecoilComponentValueV2(
+  const hasRecordGroups = useRecoilComponentValue(
     hasRecordGroupsComponentSelector,
   );
 
@@ -99,7 +95,7 @@ export const RecordTableColumnAggregateFooterValueCell = ({
               dropdownId={dropdownId}
             />
             {!hasAggregateOperationForViewField && (
-              <StyledIcon fontWeight={'light'} size={theme.icon.size.sm} />
+              <StyledIcon fontWeight="light" size={theme.icon.size.sm} />
             )}
           </>
         ) : (

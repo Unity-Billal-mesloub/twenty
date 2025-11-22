@@ -1,8 +1,8 @@
 import { contextStoreCurrentViewIdComponentState } from '@/context-store/states/contextStoreCurrentViewIdComponentState';
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
-import { AppPath } from '@/types/AppPath';
-import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
-import { getAppPath } from '~/utils/navigation/getAppPath';
+import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
+import { AppPath } from 'twenty-shared/types';
+import { getAppPath } from 'twenty-shared/utils';
 
 export const useHandleIndexIdentifierClick = ({
   objectMetadataItem,
@@ -11,7 +11,7 @@ export const useHandleIndexIdentifierClick = ({
   recordIndexId: string;
   objectMetadataItem: ObjectMetadataItem;
 }) => {
-  const currentViewId = useRecoilComponentValueV2(
+  const currentViewId = useRecoilComponentValue(
     contextStoreCurrentViewIdComponentState,
     recordIndexId,
   );

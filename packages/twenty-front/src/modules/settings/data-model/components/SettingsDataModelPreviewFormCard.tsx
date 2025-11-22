@@ -1,5 +1,5 @@
 import styled from '@emotion/styled';
-import { ReactNode } from 'react';
+import { type ReactNode } from 'react';
 
 import { StyledFormCardTitle } from '@/settings/data-model/fields/components/StyledFormCardTitle';
 import { Trans } from '@lingui/react/macro';
@@ -9,6 +9,7 @@ type SettingsDataModelPreviewFormCardProps = {
   className?: string;
   preview: ReactNode;
   form?: ReactNode;
+  disabled?: boolean;
 };
 
 const StyledPreviewContainer = styled(CardContent)`

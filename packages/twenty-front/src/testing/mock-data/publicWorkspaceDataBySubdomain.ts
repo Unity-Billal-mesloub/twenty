@@ -1,4 +1,4 @@
-import { GetPublicWorkspaceDataByDomainQuery } from '~/generated-metadata/graphql';
+import { type GetPublicWorkspaceDataByDomainQuery } from '~/generated-metadata/graphql';
 
 export const mockedPublicWorkspaceDataBySubdomain: GetPublicWorkspaceDataByDomainQuery['getPublicWorkspaceDataByDomain'] =
   {
@@ -17,6 +17,12 @@ export const mockedPublicWorkspaceDataBySubdomain: GetPublicWorkspaceDataByDomai
       google: true,
       magicLink: false,
       password: true,
+      microsoft: false,
+    },
+    authBypassProviders: {
+      __typename: 'AuthBypassProviders',
+      google: false,
+      password: false,
       microsoft: false,
     },
   };

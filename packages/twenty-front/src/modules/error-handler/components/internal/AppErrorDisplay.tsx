@@ -1,4 +1,4 @@
-import { AppErrorDisplayProps } from '@/error-handler/types/AppErrorDisplayProps';
+import { type AppErrorDisplayProps } from '@/error-handler/types/AppErrorDisplayProps';
 import { t } from '@lingui/core/macro';
 import { IconRefresh } from 'twenty-ui/display';
 import { Button } from 'twenty-ui/input';
@@ -25,8 +25,8 @@ export const AppErrorDisplay = ({
       </AnimatedPlaceholderEmptyTextContainer>
       <Button
         Icon={IconRefresh}
-        title="Reload"
-        variant={'secondary'}
+        title={t`Reload`}
+        variant="secondary"
         onClick={resetErrorBoundary}
       />
     </AnimatedPlaceholderEmptyContainer>

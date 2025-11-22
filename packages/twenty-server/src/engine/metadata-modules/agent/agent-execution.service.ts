@@ -1,229 +1,405 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-
-import { createAnthropic } from '@ai-sdk/anthropic';
-import { createOpenAI } from '@ai-sdk/openai';
-import { CoreMessage, generateObject, generateText, streamText } from 'ai';
-import { Repository } from 'typeorm';
+import { Injectable, Logger } from '@nestjs/common';
 
 import {
-  ModelId,
-  ModelProvider,
-} from 'src/engine/core-modules/ai/constants/ai-models.const';
-import { getAIModelById } from 'src/engine/core-modules/ai/utils/get-ai-model-by-id';
-import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
-import {
-  AgentChatMessageEntity,
-  AgentChatMessageRole,
-} from 'src/engine/metadata-modules/agent/agent-chat-message.entity';
-import { AgentToolService } from 'src/engine/metadata-modules/agent/agent-tool.service';
+  convertToModelMessages,
+  LanguageModelUsage,
+  stepCountIs,
+  streamText,
+  ToolSet,
+  UIDataTypes,
+  UIMessage,
+  UITools,
+} from 'ai';
+import { AppPath, type ActorMetadata } from 'twenty-shared/types';
+import { getAppPath } from 'twenty-shared/utils';
+import { In } from 'typeorm';
+
+import { getAllSelectableColumnNames } from 'src/engine/api/utils/get-all-selectable-column-names.utils';
+import { AI_TELEMETRY_CONFIG } from 'src/engine/core-modules/ai/constants/ai-telemetry.const';
+import { AIBillingService } from 'src/engine/core-modules/ai/services/ai-billing.service';
+import { AiModelRegistryService } from 'src/engine/core-modules/ai/services/ai-model-registry.service';
+import { WorkspaceDomainsService } from 'src/engine/core-modules/domain/workspace-domains/services/workspace-domains.service';
+import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
+import { AgentHandoffToolService } from 'src/engine/metadata-modules/agent/agent-handoff-tool.service';
+import { AgentService } from 'src/engine/metadata-modules/agent/agent.service';
 import { AGENT_CONFIG } from 'src/engine/metadata-modules/agent/constants/agent-config.const';
 import { AGENT_SYSTEM_PROMPTS } from 'src/engine/metadata-modules/agent/constants/agent-system-prompts.const';
-import { convertOutputSchemaToZod } from 'src/engine/metadata-modules/agent/utils/convert-output-schema-to-zod';
-import { OutputSchema } from 'src/modules/workflow/workflow-builder/workflow-schema/types/output-schema.type';
-import { resolveInput } from 'src/modules/workflow/workflow-executor/utils/variable-resolver.util';
+import { AgentActorContextService } from 'src/engine/metadata-modules/agent/services/agent-actor-context.service';
+import { type RecordIdsByObjectMetadataNameSingularType } from 'src/engine/metadata-modules/agent/types/recordIdsByObjectMetadataNameSingular.type';
+import { type ToolHints } from 'src/engine/metadata-modules/ai-router/types/tool-hints.interface';
+import { getObjectMetadataMapItemByNameSingular } from 'src/engine/metadata-modules/utils/get-object-metadata-map-item-by-name-singular.util';
+import { WorkspacePermissionsCacheService } from 'src/engine/metadata-modules/workspace-permissions-cache/workspace-permissions-cache.service';
+import { TwentyORMGlobalManager } from 'src/engine/twenty-orm/twenty-orm-global.manager';
 
+import { AgentExecutionContext } from './agent-handoff-executor.service';
+import { AgentModelConfigService } from './agent-model-config.service';
+import { AgentToolGeneratorService } from './agent-tool-generator.service';
 import { AgentEntity } from './agent.entity';
 import { AgentException, AgentExceptionCode } from './agent.exception';
 
+import { repairToolCall } from './utils/repair-tool-call.util';
+
 export interface AgentExecutionResult {
-  result: {
-    textResponse: string;
-    structuredOutput?: object;
-  };
-  usage: {
-    promptTokens: number;
-    completionTokens: number;
-    totalTokens: number;
+  result: object;
+  usage: LanguageModelUsage;
+}
+
+export interface StreamChatResponseResult {
+  stream: ReturnType<typeof streamText>;
+  timings: {
+    contextBuildTimeMs: number;
+    toolGenerationTimeMs: number;
+    aiRequestPrepTimeMs: number;
+    toolCount: number;
   };
 }
 
 @Injectable()
-export class AgentExecutionService {
+export class AgentExecutionService implements AgentExecutionContext {
+  private readonly logger = new Logger(AgentExecutionService.name);
+
   constructor(
-    private readonly twentyConfigService: TwentyConfigService,
-    private readonly agentToolService: AgentToolService,
-    @InjectRepository(AgentEntity, 'core')
-    private readonly agentRepository: Repository<AgentEntity>,
-    @InjectRepository(AgentChatMessageEntity, 'core')
-    private readonly agentChatmessageRepository: Repository<AgentChatMessageEntity>,
+    private readonly agentHandoffToolService: AgentHandoffToolService,
+    private readonly workspaceDomainsService: WorkspaceDomainsService,
+    private readonly twentyORMGlobalManager: TwentyORMGlobalManager,
+    private readonly workspacePermissionsCacheService: WorkspacePermissionsCacheService,
+    private readonly aiModelRegistryService: AiModelRegistryService,
+    private readonly agentToolGeneratorService: AgentToolGeneratorService,
+    private readonly agentModelConfigService: AgentModelConfigService,
+    private readonly aiBillingService: AIBillingService,
+    private readonly agentActorContextService: AgentActorContextService,
+    private readonly agentService: AgentService,
   ) {}
-
-  getModel = (modelId: ModelId, provider: ModelProvider) => {
-    switch (provider) {
-      case ModelProvider.OPENAI: {
-        const OpenAIProvider = createOpenAI({
-          apiKey: this.twentyConfigService.get('OPENAI_API_KEY'),
-        });
-
-        return OpenAIProvider(modelId);
-      }
-      case ModelProvider.ANTHROPIC: {
-        const AnthropicProvider = createAnthropic({
-          apiKey: this.twentyConfigService.get('ANTHROPIC_API_KEY'),
-        });
-
-        return AnthropicProvider(modelId);
-      }
-      default:
-        throw new AgentException(
-          `Unsupported provider: ${provider}`,
-          AgentExceptionCode.AGENT_EXECUTION_FAILED,
-        );
-    }
-  };
-
-  private async validateApiKey(provider: ModelProvider): Promise<void> {
-    let apiKey: string | undefined;
-
-    switch (provider) {
-      case ModelProvider.OPENAI:
-        apiKey = this.twentyConfigService.get('OPENAI_API_KEY');
-        break;
-      case ModelProvider.ANTHROPIC:
-        apiKey = this.twentyConfigService.get('ANTHROPIC_API_KEY');
-        break;
-      default:
-        throw new AgentException(
-          `Unsupported provider: ${provider}`,
-          AgentExceptionCode.AGENT_EXECUTION_FAILED,
-        );
-    }
-    if (!apiKey) {
-      throw new AgentException(
-        `${provider.toUpperCase()} API key not configured`,
-        AgentExceptionCode.API_KEY_NOT_CONFIGURED,
-      );
-    }
-  }
 
   async prepareAIRequestConfig({
     messages,
-    prompt,
     system,
     agent,
+    actorContext,
+    roleIds,
+    excludeHandoffTools = false,
+    toolHints,
   }: {
     system: string;
-    agent: AgentEntity;
-    prompt?: string;
-    messages?: CoreMessage[];
+    agent: AgentEntity | null;
+    messages: UIMessage<unknown, UIDataTypes, UITools>[];
+    actorContext?: ActorMetadata;
+    roleIds?: string[];
+    excludeHandoffTools?: boolean;
+    toolHints?: ToolHints;
   }) {
-    const aiModel = getAIModelById(agent.modelId);
-
-    if (!aiModel) {
-      throw new AgentException(
-        `AI model with id ${agent.modelId} not found`,
-        AgentExceptionCode.AGENT_EXECUTION_FAILED,
-      );
-    }
-    const provider = aiModel.provider;
-
-    await this.validateApiKey(provider);
-
-    const tools = await this.agentToolService.generateToolsForAgent(
-      agent.id,
-      agent.workspaceId,
-    );
-
-    return {
-      system,
-      tools,
-      model: this.getModel(agent.modelId, aiModel.provider),
-      ...(messages && { messages }),
-      ...(prompt && { prompt }),
-      maxSteps: AGENT_CONFIG.MAX_STEPS,
-    };
-  }
-
-  async streamChatResponse({
-    agentId,
-    userMessage,
-    messages,
-  }: {
-    agentId: string;
-    userMessage: string;
-    messages: AgentChatMessageEntity[];
-  }) {
-    const agent = await this.agentRepository.findOneOrFail({
-      where: { id: agentId },
-    });
-
-    const llmMessages: CoreMessage[] = messages.map(({ role, content }) => ({
-      role,
-      content,
-    }));
-
-    llmMessages.push({
-      role: AgentChatMessageRole.USER,
-      content: userMessage,
-    });
-
-    const aiRequestConfig = await this.prepareAIRequestConfig({
-      system: `${AGENT_SYSTEM_PROMPTS.AGENT_CHAT}\n\n${agent.prompt}`,
-      agent,
-      messages: llmMessages,
-    });
-
-    return streamText(aiRequestConfig);
-  }
-
-  async executeAgent({
-    agent,
-    context,
-    schema,
-  }: {
-    agent: AgentEntity;
-    context: Record<string, unknown>;
-    schema: OutputSchema;
-  }): Promise<AgentExecutionResult> {
     try {
-      const aiRequestConfig = await this.prepareAIRequestConfig({
-        system: AGENT_SYSTEM_PROMPTS.AGENT_EXECUTION,
-        agent,
-        prompt: resolveInput(agent.prompt, context) as string,
-      });
-      const textResponse = await generateText(aiRequestConfig);
-
-      if (Object.keys(schema).length === 0) {
-        return {
-          result: { textResponse: textResponse.text },
-          usage: textResponse.usage,
-        };
+      if (agent) {
+        this.logger.log(
+          `Preparing AI request config for agent ${agent.id} with model ${agent.modelId}`,
+        );
       }
-      const output = await generateObject({
-        system: AGENT_SYSTEM_PROMPTS.OUTPUT_GENERATOR,
-        model: aiRequestConfig.model,
-        prompt: `Based on the following execution results, generate the structured output according to the schema:
 
-                 Execution Results: ${textResponse.text}
+      const registeredModel =
+        await this.aiModelRegistryService.resolveModelForAgent(agent);
 
-                 Please generate the structured output based on the execution results and context above.`,
-        schema: convertOutputSchemaToZod(schema),
-      });
+      let tools: ToolSet = {};
+      let providerOptions;
+
+      if (agent) {
+        const baseTools =
+          await this.agentToolGeneratorService.generateToolsForAgent(
+            agent.id,
+            agent.workspaceId,
+            actorContext,
+            roleIds,
+            toolHints,
+          );
+
+        let handoffTools = {};
+
+        if (!excludeHandoffTools) {
+          handoffTools =
+            await this.agentHandoffToolService.generateHandoffTools(
+              agent.id,
+              agent.workspaceId,
+              this, // Pass execution context
+            );
+        }
+
+        const nativeModelTools =
+          this.agentModelConfigService.getNativeModelTools(
+            registeredModel,
+            agent,
+          );
+
+        tools = { ...baseTools, ...handoffTools, ...nativeModelTools };
+
+        providerOptions = this.agentModelConfigService.getProviderOptions(
+          registeredModel,
+          agent,
+        );
+      }
+
+      this.logger.log(`Generated ${Object.keys(tools).length} tools for agent`);
 
       return {
-        result: {
-          textResponse: textResponse.text,
-          structuredOutput: output.object,
-        },
-        usage: {
-          promptTokens:
-            (textResponse.usage?.promptTokens ?? 0) +
-            (output.usage?.promptTokens ?? 0),
-          completionTokens:
-            (textResponse.usage?.completionTokens ?? 0) +
-            (output.usage?.completionTokens ?? 0),
-          totalTokens:
-            (textResponse.usage?.totalTokens ?? 0) +
-            (output.usage?.totalTokens ?? 0),
+        system,
+        tools,
+        model: registeredModel.model,
+        messages: convertToModelMessages(messages),
+        stopWhen: stepCountIs(AGENT_CONFIG.MAX_STEPS),
+        providerOptions,
+        experimental_telemetry: AI_TELEMETRY_CONFIG,
+        experimental_repairToolCall: async ({
+          toolCall,
+          tools: toolsForRepair,
+          inputSchema,
+          error,
+        }: {
+          toolCall: {
+            type: 'tool-call';
+            toolCallId: string;
+            toolName: string;
+            input: string;
+          };
+          tools: Record<string, unknown>;
+          inputSchema: (toolCall: { toolName: string }) => unknown;
+          error: Error;
+        }) => {
+          return repairToolCall({
+            toolCall,
+            tools: toolsForRepair,
+            inputSchema,
+            error,
+            model: registeredModel.model,
+          });
         },
       };
     } catch (error) {
-      if (error instanceof AgentException) {
-        throw error;
-      }
+      this.logger.error(
+        `Failed to prepare AI request config for agent ${agent?.id ?? 'no agent'}`,
+        error instanceof Error ? error.stack : error,
+      );
+      throw error;
+    }
+  }
+
+  // Fetches and formats record data to provide context for AI agents
+  // Respects permissions and field restrictions based on user role
+  // Returns a JSON string with record data and workspace URLs
+  async getContextForSystemPrompt(
+    workspace: WorkspaceEntity,
+    recordIdsByObjectMetadataNameSingular: RecordIdsByObjectMetadataNameSingularType,
+    userWorkspaceId: string,
+  ) {
+    const roleId =
+      await this.workspacePermissionsCacheService.getRoleIdFromUserWorkspaceId({
+        workspaceId: workspace.id,
+        userWorkspaceId,
+      });
+
+    if (!roleId) {
       throw new AgentException(
-        error instanceof Error ? error.message : 'Agent execution failed',
+        'Failed to retrieve user role.',
+        AgentExceptionCode.ROLE_NOT_FOUND,
+      );
+    }
+
+    const workspaceDataSource =
+      await this.twentyORMGlobalManager.getDataSourceForWorkspace({
+        workspaceId: workspace.id,
+      });
+
+    const objectMetadataMaps =
+      workspaceDataSource.internalContext.objectMetadataMaps;
+    const objectMetadataPermissions = workspaceDataSource.permissionsPerRoleId;
+
+    const contextObject = (
+      await Promise.all(
+        recordIdsByObjectMetadataNameSingular.map(
+          async (recordsWithObjectMetadataNameSingular) => {
+            if (recordsWithObjectMetadataNameSingular.recordIds.length === 0) {
+              return [];
+            }
+
+            const objectMetadataMapItem =
+              getObjectMetadataMapItemByNameSingular(
+                objectMetadataMaps,
+                recordsWithObjectMetadataNameSingular.objectMetadataNameSingular,
+              );
+
+            if (!objectMetadataMapItem) {
+              this.logger.warn(
+                `Object metadata not found for ${recordsWithObjectMetadataNameSingular.objectMetadataNameSingular}`,
+              );
+
+              return [];
+            }
+
+            const repository = workspaceDataSource.getRepository(
+              recordsWithObjectMetadataNameSingular.objectMetadataNameSingular,
+              { unionOf: [roleId] },
+            );
+
+            const restrictedFields =
+              objectMetadataPermissions?.[roleId]?.[objectMetadataMapItem.id]
+                ?.restrictedFields ?? {};
+
+            const hasRestrictedFields = Object.values(restrictedFields).some(
+              (field) => field.canRead === false,
+            );
+
+            const selectOptions = hasRestrictedFields
+              ? getAllSelectableColumnNames({
+                  restrictedFields,
+                  objectMetadata: { objectMetadataMapItem },
+                })
+              : undefined;
+
+            return (
+              await repository.find({
+                ...(selectOptions && { select: selectOptions }),
+                where: {
+                  id: In(recordsWithObjectMetadataNameSingular.recordIds),
+                },
+              })
+            ).map((record) => {
+              return {
+                ...record,
+                resourceUrl: this.workspaceDomainsService.buildWorkspaceURL({
+                  workspace,
+                  pathname: getAppPath(AppPath.RecordShowPage, {
+                    objectNameSingular:
+                      recordsWithObjectMetadataNameSingular.objectMetadataNameSingular,
+                    objectRecordId: record.id,
+                  }),
+                }),
+              };
+            });
+          },
+        ),
+      )
+    ).flat(2);
+
+    return JSON.stringify(contextObject);
+  }
+
+  async streamChatResponse({
+    workspace,
+    userWorkspaceId,
+    agentId,
+    messages,
+    recordIdsByObjectMetadataNameSingular,
+    toolHints,
+  }: {
+    workspace: WorkspaceEntity;
+    userWorkspaceId: string;
+    agentId: string;
+    messages: UIMessage<unknown, UIDataTypes, UITools>[];
+    recordIdsByObjectMetadataNameSingular: RecordIdsByObjectMetadataNameSingularType;
+    toolHints?: ToolHints;
+  }): Promise<{
+    stream: ReturnType<typeof streamText>;
+    timings: {
+      contextBuildTimeMs: number;
+      toolGenerationTimeMs: number;
+      aiRequestPrepTimeMs: number;
+      toolCount: number;
+    };
+    contextInfo: {
+      contextString: string;
+      contextRecordCount: number;
+      contextSizeBytes: number;
+    };
+  }> {
+    try {
+      const agent = await this.agentService.findOneAgent(agentId, workspace.id);
+
+      const contextBuildStart = Date.now();
+      let contextPart = '';
+      let contextRecordCount = 0;
+
+      if (recordIdsByObjectMetadataNameSingular.length > 0) {
+        contextPart = await this.getContextForSystemPrompt(
+          workspace,
+          recordIdsByObjectMetadataNameSingular,
+          userWorkspaceId,
+        );
+
+        try {
+          const contextData = JSON.parse(contextPart);
+
+          contextRecordCount = Array.isArray(contextData)
+            ? contextData.length
+            : 0;
+        } catch (error) {
+          this.logger.warn('Failed to parse context for record count:', error);
+        }
+      }
+
+      const contextString = contextPart ? `\n\nCONTEXT:\n${contextPart}` : '';
+      const contextBuildTime = Date.now() - contextBuildStart;
+
+      const { actorContext, roleId } =
+        await this.agentActorContextService.buildUserAndAgentActorContext(
+          userWorkspaceId,
+          workspace.id,
+        );
+
+      const aiRequestPrepStart = Date.now();
+
+      const aiRequestConfig = await this.prepareAIRequestConfig({
+        system: `${AGENT_SYSTEM_PROMPTS.AGENT_CHAT}\n\n${agent.prompt}${contextString}`,
+        agent,
+        messages,
+        actorContext,
+        roleIds: [roleId, ...(agent?.roleId ? [agent?.roleId] : [])],
+        toolHints,
+      });
+
+      const aiRequestPrepTime = Date.now() - aiRequestPrepStart;
+      const toolCount = Object.keys(aiRequestConfig.tools || {}).length;
+      const toolGenerationTime = aiRequestPrepTime;
+
+      this.logger.log(
+        `Sending request to AI model with ${messages.length} messages and ${toolCount} tools`,
+      );
+
+      const model =
+        await this.aiModelRegistryService.resolveModelForAgent(agent);
+
+      const stream = streamText(aiRequestConfig);
+
+      stream.usage
+        .then((usage) => {
+          this.aiBillingService.calculateAndBillUsage(
+            model.modelId,
+            usage,
+            workspace.id,
+          );
+        })
+        .catch((usageError) => {
+          this.logger.error('Failed to get usage information:', usageError);
+        });
+
+      return {
+        stream,
+        timings: {
+          contextBuildTimeMs: contextBuildTime,
+          toolGenerationTimeMs: toolGenerationTime,
+          aiRequestPrepTimeMs: aiRequestPrepTime,
+          toolCount,
+        },
+        contextInfo: {
+          contextString: contextPart,
+          contextRecordCount,
+          contextSizeBytes: contextPart
+            ? Buffer.byteLength(contextPart, 'utf8')
+            : 0,
+        },
+      };
+    } catch (error) {
+      this.logger.error('Error in streamChatResponse:', error);
+      throw new AgentException(
+        error instanceof Error
+          ? error.message
+          : 'Failed to stream chat response',
         AgentExceptionCode.AGENT_EXECUTION_FAILED,
       );
     }

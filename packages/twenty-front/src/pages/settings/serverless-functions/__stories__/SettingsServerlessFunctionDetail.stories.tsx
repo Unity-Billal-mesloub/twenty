@@ -1,12 +1,13 @@
-import { Meta, StoryObj } from '@storybook/react';
+import { type Meta, type StoryObj } from '@storybook/react';
 import { within } from '@storybook/test';
 import { HttpResponse, graphql, http } from 'msw';
 import { getImageAbsoluteURI } from 'twenty-shared/utils';
 import { REACT_APP_SERVER_BASE_URL } from '~/config';
 import { SettingsServerlessFunctionDetail } from '~/pages/settings/serverless-functions/SettingsServerlessFunctionDetail';
+import { I18nFrontDecorator } from '~/testing/decorators/I18nFrontDecorator';
 import {
   PageDecorator,
-  PageDecoratorArgs,
+  type PageDecoratorArgs,
 } from '~/testing/decorators/PageDecorator';
 import { graphqlMocks } from '~/testing/graphqlMocks';
 import { sleep } from '~/utils/sleep';
@@ -17,7 +18,7 @@ const SOURCE_CODE_FULL_PATH =
 const meta: Meta<PageDecoratorArgs> = {
   title: 'Pages/Settings/ServerlessFunctions/SettingsServerlessFunctionDetail',
   component: SettingsServerlessFunctionDetail,
-  decorators: [PageDecorator],
+  decorators: [PageDecorator, I18nFrontDecorator],
   args: {
     routePath: '/settings/function/',
     routeParams: {

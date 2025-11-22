@@ -1,5 +1,5 @@
-import { WorkflowFormAction } from '@/workflow/types/Workflow';
-import { Meta, StoryObj } from '@storybook/react';
+import { type WorkflowFormAction } from '@/workflow/types/Workflow';
+import { type Meta, type StoryObj } from '@storybook/react';
 import { expect, fn, userEvent, within } from '@storybook/test';
 import { FieldMetadataType } from 'twenty-shared/types';
 import { ComponentDecorator } from 'twenty-ui/testing';
@@ -139,6 +139,34 @@ export const DateFieldSettings: Story = {
 
     const typeSelect = await canvas.findByText('Date');
     expect(typeSelect).toBeVisible();
+
+    const closeButton = await canvas.findByTestId('close-button');
+    await userEvent.click(closeButton);
+    expect(args.onClose).toHaveBeenCalled();
+  },
+};
+
+export const SelectFieldSettings: Story = {
+  args: {
+    field: {
+      id: 'field-5',
+      name: 'select',
+      label: 'Select Field',
+      type: FieldMetadataType.SELECT,
+      settings: {
+        selectedFieldId: 'field-1',
+      },
+    },
+    onClose: fn(),
+  },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+
+    const fieldTypeSelect = await canvas.findByText('Select');
+    expect(fieldTypeSelect).toBeVisible();
+
+    const selectTypeSelect = await canvas.findByText('Select Type');
+    expect(selectTypeSelect).toBeVisible();
 
     const closeButton = await canvas.findByTestId('close-button');
     await userEvent.click(closeButton);

@@ -1,4 +1,4 @@
-import { t } from '@lingui/core/macro';
+import { msg } from '@lingui/core/macro';
 
 import {
   WorkflowQueryValidationException,
@@ -6,7 +6,7 @@ import {
 } from 'src/modules/workflow/common/exceptions/workflow-query-validation.exception';
 import {
   WorkflowVersionStatus,
-  WorkflowVersionWorkspaceEntity,
+  type WorkflowVersionWorkspaceEntity,
 } from 'src/modules/workflow/common/standard-objects/workflow-version.workspace-entity';
 
 export const assertWorkflowVersionIsDraft = (
@@ -17,7 +17,7 @@ export const assertWorkflowVersionIsDraft = (
       'Workflow version is not in draft status',
       WorkflowQueryValidationExceptionCode.FORBIDDEN,
       {
-        userFriendlyMessage: t`Workflow version is not in draft status`,
+        userFriendlyMessage: msg`Workflow version is not in draft status`,
       },
     );
   }

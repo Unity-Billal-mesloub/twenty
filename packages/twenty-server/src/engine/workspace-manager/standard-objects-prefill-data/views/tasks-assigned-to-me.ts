@@ -1,12 +1,16 @@
-import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
+import { msg } from '@lingui/core/macro';
+import { ViewFilterOperand } from 'twenty-shared/types';
+import { STANDARD_OBJECT_IDS } from 'twenty-shared/metadata';
+
+import { type ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
 import {
   BASE_OBJECT_STANDARD_FIELD_IDS,
   TASK_STANDARD_FIELD_IDS,
 } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-field-ids';
-import { STANDARD_OBJECT_IDS } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-object-ids';
 
 export const tasksAssignedToMeView = (
   objectMetadataItems: ObjectMetadataEntity[],
+  useCoreNaming = false,
 ) => {
   const taskObjectMetadata = objectMetadataItems.find(
     (object) => object.standardId === STANDARD_OBJECT_IDS.task,
@@ -17,7 +21,7 @@ export const tasksAssignedToMeView = (
   }
 
   return {
-    name: 'Assigned to Me',
+    name: useCoreNaming ? msg`Assigned to Me` : 'Assigned to Me',
     objectMetadataId: taskObjectMetadata.id,
     type: 'table',
     key: null,
@@ -31,7 +35,7 @@ export const tasksAssignedToMeView = (
             (field) => field.standardId === TASK_STANDARD_FIELD_IDS.assignee,
           )?.id ?? '',
         displayValue: 'Me',
-        operand: 'is',
+        operand: ViewFilterOperand.IS,
         value: JSON.stringify({
           isCurrentWorkspaceMemberSelected: true,
           selectedRecordIds: [],
@@ -96,7 +100,7 @@ export const tasksAssignedToMeView = (
       {
         fieldMetadataId:
           taskObjectMetadata.fields.find(
-            (field) => field.standardId === TASK_STANDARD_FIELD_IDS.body,
+            (field) => field.standardId === TASK_STANDARD_FIELD_IDS.bodyV2,
           )?.id ?? '',
         position: 7,
         isVisible: true,

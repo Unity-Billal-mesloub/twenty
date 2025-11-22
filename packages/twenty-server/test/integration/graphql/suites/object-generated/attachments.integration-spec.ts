@@ -34,7 +34,7 @@ describe('attachmentsResolver (e2e)', () => {
 
     return client
       .post('/graphql')
-      .set('Authorization', `Bearer ${ADMIN_ACCESS_TOKEN}`)
+      .set('Authorization', `Bearer ${APPLE_JANE_ADMIN_ACCESS_TOKEN}`)
       .send(queryData)
       .expect(200)
       .expect((res) => {
@@ -59,7 +59,6 @@ describe('attachmentsResolver (e2e)', () => {
           expect(attachments).toHaveProperty('createdAt');
           expect(attachments).toHaveProperty('updatedAt');
           expect(attachments).toHaveProperty('deletedAt');
-          expect(attachments).toHaveProperty('authorId');
           expect(attachments).toHaveProperty('taskId');
           expect(attachments).toHaveProperty('noteId');
           expect(attachments).toHaveProperty('personId');

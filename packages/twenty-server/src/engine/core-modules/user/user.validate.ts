@@ -1,25 +1,27 @@
 import { isDefined } from 'twenty-shared/utils';
 
-import { User } from 'src/engine/core-modules/user/user.entity';
+import { type UserEntity } from 'src/engine/core-modules/user/user.entity';
 import {
   UserException,
   UserExceptionCode,
 } from 'src/engine/core-modules/user/user.exception';
-import { CustomException } from 'src/utils/custom-exception';
+import { type CustomException } from 'src/utils/custom-exception';
 
 const assertIsDefinedOrThrow = (
-  user: User | undefined | null,
+  user: UserEntity | undefined | null,
   exceptionToThrow: CustomException = new UserException(
-    'User not found',
+    'UserEntity not found',
     UserExceptionCode.USER_NOT_FOUND,
   ),
-): asserts user is User => {
+): asserts user is UserEntity => {
   if (!isDefined(user)) {
     throw exceptionToThrow;
   }
 };
 
-const isUserDefined = (user: User | undefined | null): user is User => {
+const isUserDefined = (
+  user: UserEntity | undefined | null,
+): user is UserEntity => {
   return isDefined(user);
 };
 

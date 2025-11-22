@@ -1,12 +1,9 @@
-import { FieldMultiSelectValue } from '@/object-record/record-field/types/FieldMetadata';
-import { DEFAULT_CELL_SCOPE } from '@/object-record/record-table/record-table-cell/hooks/useOpenRecordTableCellV2';
-import { TableHotkeyScope } from '@/object-record/record-table/types/TableHotkeyScope';
+import { type FieldMultiSelectValue } from '@/object-record/record-field/ui/types/FieldMetadata';
 import { getRecordFieldInputInstanceId } from '@/object-record/utils/getRecordFieldInputId';
 import { usePushFocusItemToFocusStack } from '@/ui/utilities/focus/hooks/usePushFocusItemToFocusStack';
 import { FocusComponentType } from '@/ui/utilities/focus/types/FocusComponentType';
-import { expect } from '@storybook/jest';
-import { Meta, StoryObj } from '@storybook/react';
-import { fn, userEvent, waitFor, within } from '@storybook/test';
+import { type Meta, type StoryObj } from '@storybook/react';
+import { expect, fn, userEvent, waitFor, within } from '@storybook/test';
 import { useEffect, useState } from 'react';
 import {
   IconBolt,
@@ -18,7 +15,7 @@ import {
   IconTag,
   IconTarget,
 } from 'twenty-ui/display';
-import { SelectOption } from 'twenty-ui/input';
+import { type SelectOption } from 'twenty-ui/input';
 import { ComponentDecorator } from 'twenty-ui/testing';
 import { I18nFrontDecorator } from '~/testing/decorators/I18nFrontDecorator';
 import { MultiSelectInput } from '../MultiSelectInput';
@@ -80,6 +77,12 @@ const priorityOptions: SelectOption[] = [
   { value: 'urgent', label: 'Urgent', color: 'red' },
 ];
 
+const instanceId = getRecordFieldInputInstanceId({
+  recordId: '123',
+  fieldName: 'Relation',
+  prefix: 'multi-select-story',
+});
+
 const Render = ({
   values,
   options,
@@ -94,23 +97,11 @@ const Render = ({
 
   useEffect(() => {
     pushFocusItemToFocusStack({
-      focusId: TableHotkeyScope.CellEditMode,
+      focusId: instanceId,
       component: {
         type: FocusComponentType.DROPDOWN,
-        instanceId: getRecordFieldInputInstanceId({
-          recordId: '123',
-          fieldName: 'Relation',
-          prefix: 'multi-select-story',
-        }),
+        instanceId,
       },
-      hotkeyScope: {
-        scope: TableHotkeyScope.CellEditMode,
-      },
-      memoizeKey: getRecordFieldInputInstanceId({
-        recordId: '123',
-        fieldName: 'Relation',
-        prefix: 'multi-select-story',
-      }),
     });
   }, [pushFocusItemToFocusStack]);
 
@@ -125,7 +116,7 @@ const Render = ({
         selectableListComponentInstanceId="multi-select-story"
         values={currentValues}
         options={options}
-        focusId={DEFAULT_CELL_SCOPE.scope}
+        focusId={instanceId}
         onCancel={onCancel}
         onOptionSelected={handleOptionSelected}
         dropdownWidth={dropdownWidth}

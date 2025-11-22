@@ -6,7 +6,7 @@ import { viewableRecordIdComponentState } from '@/command-menu/pages/record-page
 import { viewableRecordNameSingularComponentState } from '@/command-menu/pages/record-page/states/viewableRecordNameSingularComponentState';
 import { commandMenuWorkflowIdComponentState } from '@/command-menu/pages/workflow/states/commandMenuWorkflowIdComponentState';
 import { commandMenuWorkflowVersionIdComponentState } from '@/command-menu/pages/workflow/states/commandMenuWorkflowVersionIdComponentState';
-import { commandMenuNavigationMorphItemByPageState } from '@/command-menu/states/commandMenuNavigationMorphItemsState';
+import { commandMenuNavigationMorphItemsByPageState } from '@/command-menu/states/commandMenuNavigationMorphItemsByPageState';
 import { commandMenuPageState } from '@/command-menu/states/commandMenuPageState';
 import { CommandMenuPages } from '@/command-menu/types/CommandMenuPages';
 import { contextStoreCurrentObjectMetadataItemIdComponentState } from '@/context-store/states/contextStoreCurrentObjectMetadataItemIdComponentState';
@@ -14,12 +14,12 @@ import { contextStoreCurrentViewTypeComponentState } from '@/context-store/state
 import { contextStoreNumberOfSelectedRecordsComponentState } from '@/context-store/states/contextStoreNumberOfSelectedRecordsComponentState';
 import { contextStoreTargetedRecordsRuleComponentState } from '@/context-store/states/contextStoreTargetedRecordsRuleComponentState';
 import { ContextStoreViewType } from '@/context-store/types/ContextStoreViewType';
-import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
 import { t } from '@lingui/core/macro';
 import { act } from 'react';
 import { IconBolt, IconSettingsAutomation, useIcons } from 'twenty-ui/display';
 import { getJestMetadataAndApolloMocksAndActionMenuWrapper } from '~/testing/jest/getJestMetadataAndApolloMocksAndActionMenuWrapper';
-import { generatedMockObjectMetadataItems } from '~/testing/mock-data/generatedMockObjectMetadataItems';
+import { generatedMockObjectMetadataItems } from '~/testing/utils/generatedMockObjectMetadataItems';
 import { useWorkflowCommandMenu } from '../useWorkflowCommandMenu';
 
 jest.mock('uuid', () => ({
@@ -62,44 +62,45 @@ const renderHooks = () => {
     () => {
       const {
         openWorkflowTriggerTypeInCommandMenu,
-        openStepSelectInCommandMenu,
+        openWorkflowCreateStepInCommandMenu,
         openWorkflowEditStepInCommandMenu,
+        openWorkflowEditStepTypeInCommandMenu,
         openWorkflowViewStepInCommandMenu,
       } = useWorkflowCommandMenu();
       const commandMenuPage = useRecoilValue(commandMenuPageState);
-      const commandMenuNavigationMorphItemByPage = useRecoilValue(
-        commandMenuNavigationMorphItemByPageState,
+      const commandMenuNavigationMorphItemsByPage = useRecoilValue(
+        commandMenuNavigationMorphItemsByPageState,
       );
 
-      const viewableRecordId = useRecoilComponentValueV2(
+      const viewableRecordId = useRecoilComponentValue(
         viewableRecordIdComponentState,
         'mocked-uuid',
       );
-      const viewableRecordNameSingular = useRecoilComponentValueV2(
+      const viewableRecordNameSingular = useRecoilComponentValue(
         viewableRecordNameSingularComponentState,
         'mocked-uuid',
       );
-      const currentObjectMetadataItemId = useRecoilComponentValueV2(
+      const currentObjectMetadataItemId = useRecoilComponentValue(
         contextStoreCurrentObjectMetadataItemIdComponentState,
         'mocked-uuid',
       );
-      const targetedRecordsRule = useRecoilComponentValueV2(
+      const targetedRecordsRule = useRecoilComponentValue(
         contextStoreTargetedRecordsRuleComponentState,
         'mocked-uuid',
       );
-      const numberOfSelectedRecords = useRecoilComponentValueV2(
+      const numberOfSelectedRecords = useRecoilComponentValue(
         contextStoreNumberOfSelectedRecordsComponentState,
         'mocked-uuid',
       );
-      const currentViewType = useRecoilComponentValueV2(
+      const currentViewType = useRecoilComponentValue(
         contextStoreCurrentViewTypeComponentState,
         'mocked-uuid',
       );
-      const workflowId = useRecoilComponentValueV2(
+      const workflowId = useRecoilComponentValue(
         commandMenuWorkflowIdComponentState,
         'mocked-uuid',
       );
-      const workflowVersionId = useRecoilComponentValueV2(
+      const workflowVersionId = useRecoilComponentValue(
         commandMenuWorkflowVersionIdComponentState,
         'mocked-uuid',
       );
@@ -107,14 +108,15 @@ const renderHooks = () => {
 
       return {
         openWorkflowTriggerTypeInCommandMenu,
-        openStepSelectInCommandMenu,
+        openWorkflowCreateStepInCommandMenu,
         openWorkflowEditStepInCommandMenu,
+        openWorkflowEditStepTypeInCommandMenu,
         openWorkflowViewStepInCommandMenu,
         workflowId,
         workflowVersionId,
         viewableRecordId,
         commandMenuPage,
-        commandMenuNavigationMorphItemByPage,
+        commandMenuNavigationMorphItemsByPage,
         viewableRecordNameSingular,
         currentObjectMetadataItemId,
         targetedRecordsRule,
@@ -145,25 +147,42 @@ describe('useWorkflowCommandMenu', () => {
     expect(result.current.workflowId).toBe('test-workflow-id');
 
     expect(mockNavigateCommandMenu).toHaveBeenCalledWith({
-      page: CommandMenuPages.WorkflowStepSelectTriggerType,
+      page: CommandMenuPages.WorkflowTriggerSelectType,
       pageTitle: t`Trigger Type`,
       pageIcon: IconBolt,
       pageId: 'mocked-uuid',
     });
   });
 
-  it('should navigate to the workflow step select action page', () => {
+  it('should navigate to the workflow step create action page', () => {
     const { result } = renderHooks();
 
     act(() => {
-      result.current.openStepSelectInCommandMenu('test-workflow-id');
+      result.current.openWorkflowCreateStepInCommandMenu('test-workflow-id');
     });
 
     expect(result.current.workflowId).toBe('test-workflow-id');
 
     expect(mockNavigateCommandMenu).toHaveBeenCalledWith({
-      page: CommandMenuPages.WorkflowStepSelectAction,
+      page: CommandMenuPages.WorkflowStepCreate,
       pageTitle: t`Select Action`,
+      pageIcon: IconSettingsAutomation,
+      pageId: 'mocked-uuid',
+    });
+  });
+
+  it('should navigate to the workflow step edit type page', () => {
+    const { result } = renderHooks();
+
+    act(() => {
+      result.current.openWorkflowEditStepTypeInCommandMenu('test-workflow-id');
+    });
+
+    expect(result.current.workflowId).toBe('test-workflow-id');
+
+    expect(mockNavigateCommandMenu).toHaveBeenCalledWith({
+      page: CommandMenuPages.WorkflowStepEditType,
+      pageTitle: t`Select action`,
       pageIcon: IconSettingsAutomation,
       pageId: 'mocked-uuid',
     });

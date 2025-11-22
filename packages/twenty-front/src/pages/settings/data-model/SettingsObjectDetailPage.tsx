@@ -6,21 +6,21 @@ import { SettingsPageContainer } from '@/settings/components/SettingsPageContain
 import { ObjectFields } from '@/settings/data-model/object-details/components/tabs/ObjectFields';
 import { ObjectIndexes } from '@/settings/data-model/object-details/components/tabs/ObjectIndexes';
 import { ObjectSettings } from '@/settings/data-model/object-details/components/tabs/ObjectSettings';
-import { SettingsDataModelObjectTypeTag } from '@/settings/data-model/objects/components/SettingsDataModelObjectTypeTag';
-import { getObjectTypeLabel } from '@/settings/data-model/utils/getObjectTypeLabel';
-import { AppPath } from '@/types/AppPath';
-import { SettingsPath } from '@/types/SettingsPath';
 import { SubMenuTopBarContainer } from '@/ui/layout/page/components/SubMenuTopBarContainer';
 import { TabList } from '@/ui/layout/tab-list/components/TabList';
 import { isAdvancedModeEnabledState } from '@/ui/navigation/navigation-drawer/states/isAdvancedModeEnabledState';
 import { useIsFeatureEnabled } from '@/workspace/hooks/useIsFeatureEnabled';
 import styled from '@emotion/styled';
 import { useRecoilState, useRecoilValue } from 'recoil';
+import { AppPath, SettingsPath } from 'twenty-shared/types';
 
+import { isObjectMetadataSettingsReadOnly } from '@/object-record/read-only/utils/isObjectMetadataSettingsReadOnly';
+import { SettingsItemTypeTag } from '@/settings/components/SettingsItemTypeTag';
 import { activeTabIdComponentState } from '@/ui/layout/tab-list/states/activeTabIdComponentState';
-import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
+import { useTheme } from '@emotion/react';
 import { useLingui } from '@lingui/react/macro';
-import { isDefined } from 'twenty-shared/utils';
+import { getSettingsPath, isDefined } from 'twenty-shared/utils';
 import {
   H3Title,
   IconCodeCircle,
@@ -31,12 +31,10 @@ import {
 } from 'twenty-ui/display';
 import { Button } from 'twenty-ui/input';
 import { UndecoratedLink } from 'twenty-ui/navigation';
-import { MAIN_COLORS } from 'twenty-ui/theme';
 import { FeatureFlagKey } from '~/generated/graphql';
 import { useNavigateApp } from '~/hooks/useNavigateApp';
 import { SETTINGS_OBJECT_DETAIL_TABS } from '~/pages/settings/data-model/constants/SettingsObjectDetailTabs';
 import { updatedObjectNamePluralState } from '~/pages/settings/data-model/states/updatedObjectNamePluralState';
-import { getSettingsPath } from '~/utils/navigation/getSettingsPath';
 
 const StyledContentContainer = styled.div`
   flex: 1;
@@ -44,7 +42,7 @@ const StyledContentContainer = styled.div`
   padding-left: 0;
 `;
 
-const StyledObjectTypeTag = styled(SettingsDataModelObjectTypeTag)`
+const StyledObjectTypeTag = styled(SettingsItemTypeTag)`
   box-sizing: border-box;
   height: ${({ theme }) => theme.spacing(5)};
   margin-left: ${({ theme }) => theme.spacing(2)};
@@ -59,17 +57,19 @@ export const SettingsObjectDetailPage = () => {
   const { t } = useLingui();
 
   const { objectNamePlural = '' } = useParams();
-  const { findActiveObjectMetadataItemByNamePlural } =
+  const { findObjectMetadataItemByNamePlural } =
     useFilteredObjectMetadataItems();
 
   const [updatedObjectNamePlural, setUpdatedObjectNamePlural] = useRecoilState(
     updatedObjectNamePluralState,
   );
   const objectMetadataItem =
-    findActiveObjectMetadataItemByNamePlural(objectNamePlural) ??
-    findActiveObjectMetadataItemByNamePlural(updatedObjectNamePlural);
+    findObjectMetadataItemByNamePlural(objectNamePlural) ??
+    findObjectMetadataItemByNamePlural(updatedObjectNamePlural);
 
-  const activeTabId = useRecoilComponentValueV2(
+  const readonly = isObjectMetadataSettingsReadOnly({ objectMetadataItem });
+
+  const activeTabId = useRecoilComponentValue(
     activeTabIdComponentState,
     SETTINGS_OBJECT_DETAIL_TABS.COMPONENT_INSTANCE_ID,
   );
@@ -90,6 +90,8 @@ export const SettingsObjectDetailPage = () => {
     updatedObjectNamePlural,
     setUpdatedObjectNamePlural,
   ]);
+
+  const theme = useTheme();
 
   if (!isDefined(objectMetadataItem)) return <></>;
 
@@ -114,8 +116,8 @@ export const SettingsObjectDetailPage = () => {
       pill: (
         <IconPoint
           size={12}
-          color={MAIN_COLORS.yellow}
-          fill={MAIN_COLORS.yellow}
+          color={theme.color.yellow}
+          fill={theme.color.yellow}
         />
       ),
     },
@@ -134,15 +136,13 @@ export const SettingsObjectDetailPage = () => {
     }
   };
 
-  const objectTypeLabel = getObjectTypeLabel(objectMetadataItem);
-
   return (
     <>
       <SubMenuTopBarContainer
         title={
           <StyledTitleContainer>
             <H3Title title={objectMetadataItem.labelPlural} />
-            <StyledObjectTypeTag objectTypeLabel={objectTypeLabel} />
+            <StyledObjectTypeTag item={objectMetadataItem} />
           </StyledTitleContainer>
         }
         links={[
@@ -156,8 +156,9 @@ export const SettingsObjectDetailPage = () => {
           },
         ]}
         actionButton={
+          !readonly &&
           activeTabId === SETTINGS_OBJECT_DETAIL_TABS.TABS_IDS.FIELDS && (
-            <UndecoratedLink to={'./new-field/select'}>
+            <UndecoratedLink to="./new-field/select">
               <Button
                 title={t`New Field`}
                 variant="primary"

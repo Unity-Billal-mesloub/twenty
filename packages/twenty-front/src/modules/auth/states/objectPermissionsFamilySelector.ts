@@ -5,6 +5,7 @@ import { selectorFamily } from 'recoil';
 export const objectPermissionsFamilySelector = selectorFamily<
   {
     canRead: boolean;
+    canUpdate: boolean;
   },
   { objectNameSingular: string }
 >({
@@ -26,12 +27,13 @@ export const objectPermissionsFamilySelector = selectorFamily<
         };
       }
 
-      const objectPermissions = currentUserWorkspace?.objectPermissions?.find(
+      const objectPermissions = currentUserWorkspace?.objectsPermissions?.find(
         (permission) => permission.objectMetadataId === objectMetadataItem.id,
       );
 
       return {
         canRead: objectPermissions?.canReadObjectRecords ?? false,
+        canUpdate: objectPermissions?.canUpdateObjectRecords ?? false,
       };
     },
 });

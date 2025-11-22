@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 
-import { t } from '@lingui/core/macro';
+import { msg } from '@lingui/core/macro';
 import { IsNull, Not } from 'typeorm';
 
 import {
-  CreateOneResolverArgs,
-  DeleteOneResolverArgs,
-  UpdateOneResolverArgs,
+  type CreateOneResolverArgs,
+  type DeleteOneResolverArgs,
+  type UpdateOneResolverArgs,
 } from 'src/engine/api/graphql/workspace-resolver-builder/interfaces/workspace-resolvers-builder.interface';
 
 import { TwentyORMGlobalManager } from 'src/engine/twenty-orm/twenty-orm-global.manager';
@@ -16,7 +16,7 @@ import {
 } from 'src/modules/workflow/common/exceptions/workflow-query-validation.exception';
 import {
   WorkflowVersionStatus,
-  WorkflowVersionWorkspaceEntity,
+  type WorkflowVersionWorkspaceEntity,
 } from 'src/modules/workflow/common/standard-objects/workflow-version.workspace-entity';
 import { assertWorkflowVersionIsDraft } from 'src/modules/workflow/common/utils/assert-workflow-version-is-draft.util';
 import { WorkflowCommonWorkspaceService } from 'src/modules/workflow/common/workspace-services/workflow-common.workspace-service';
@@ -40,7 +40,7 @@ export class WorkflowVersionValidationWorkspaceService {
         'Cannot create workflow version with status other than draft',
         WorkflowQueryValidationExceptionCode.FORBIDDEN,
         {
-          userFriendlyMessage: t`Cannot create workflow version with status other than draft`,
+          userFriendlyMessage: msg`Cannot create workflow version with status other than draft`,
         },
       );
     }
@@ -67,7 +67,7 @@ export class WorkflowVersionValidationWorkspaceService {
         'Cannot create multiple draft versions for the same workflow',
         WorkflowQueryValidationExceptionCode.FORBIDDEN,
         {
-          userFriendlyMessage: t`Cannot create multiple draft versions for the same workflow`,
+          userFriendlyMessage: msg`Cannot create multiple draft versions for the same workflow`,
         },
       );
     }
@@ -97,7 +97,7 @@ export class WorkflowVersionValidationWorkspaceService {
         'Cannot update workflow version status manually',
         WorkflowQueryValidationExceptionCode.FORBIDDEN,
         {
-          userFriendlyMessage: t`Cannot update workflow version status manually`,
+          userFriendlyMessage: msg`Cannot update workflow version status manually`,
         },
       );
     }
@@ -143,7 +143,7 @@ export class WorkflowVersionValidationWorkspaceService {
         'The initial version of a workflow can not be deleted',
         WorkflowQueryValidationExceptionCode.FORBIDDEN,
         {
-          userFriendlyMessage: t`The initial version of a workflow can not be deleted`,
+          userFriendlyMessage: msg`The initial version of a workflow can not be deleted`,
         },
       );
     }

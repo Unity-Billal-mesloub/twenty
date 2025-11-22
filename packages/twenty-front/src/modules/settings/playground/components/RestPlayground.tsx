@@ -1,13 +1,13 @@
 import { playgroundApiKeyState } from '@/settings/playground/states/playgroundApiKeyState';
-import { PlaygroundSchemas } from '@/settings/playground/types/PlaygroundSchemas';
-import { SettingsPath } from '@/types/SettingsPath';
+import { type PlaygroundSchemas } from '@/settings/playground/types/PlaygroundSchemas';
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
 import { lazy, Suspense } from 'react';
 import Skeleton, { SkeletonTheme } from 'react-loading-skeleton';
 import { useRecoilValue } from 'recoil';
+import { SettingsPath } from 'twenty-shared/types';
+import { getSettingsPath } from 'twenty-shared/utils';
 import { REACT_APP_SERVER_BASE_URL } from '~/config';
-import { getSettingsPath } from '~/utils/navigation/getSettingsPath';
 
 const StyledContainer = styled.div`
   border: 1px solid ${({ theme }) => theme.border.color.medium};
@@ -81,6 +81,7 @@ export const RestPlayground = ({ onError, schema }: RestPlaygroundProps) => {
             forceDarkModeState: theme.name === 'dark' ? 'dark' : 'light',
             hideClientButton: true,
             hideDarkModeToggle: true,
+            hideModels: schema === 'metadata',
             pathRouting: {
               basePath: getSettingsPath(SettingsPath.RestPlayground, {
                 schema,

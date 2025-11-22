@@ -1,10 +1,10 @@
 import { css, useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
-import Editor, { EditorProps, Monaco } from '@monaco-editor/react';
+import Editor, { type EditorProps, type Monaco } from '@monaco-editor/react';
 import { Loader } from '@ui/feedback/loader/components/Loader';
 import { BASE_CODE_EDITOR_THEME_ID } from '@ui/input/code-editor/constants/BaseCodeEditorThemeId';
 import { getBaseCodeEditorTheme } from '@ui/input/code-editor/theme/utils/getBaseCodeEditorTheme';
-import { editor } from 'monaco-editor';
+import { type editor } from 'monaco-editor';
 import { useState } from 'react';
 import { isDefined } from 'twenty-shared/utils';
 
@@ -27,7 +27,8 @@ const StyledEditorLoader = styled.div<{
 }>`
   align-items: center;
   display: flex;
-  height: ${({ height }) => height}px;
+  height: ${({ height }) =>
+    typeof height === 'number' ? `${height}px` : height};
   justify-content: center;
   border: 1px solid ${({ theme }) => theme.border.color.medium};
   background-color: ${({ theme }) => theme.background.transparent.lighter};
@@ -164,6 +165,8 @@ export const CodeEditor = ({
         onValidate?.(markers);
       }}
       options={{
+        formatOnPaste: true,
+        formatOnType: true,
         overviewRulerLanes: 0,
         scrollbar: {
           vertical: 'hidden',

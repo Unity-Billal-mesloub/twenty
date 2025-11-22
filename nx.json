@@ -1,4 +1,8 @@
 {
+  "workspaceLayout": {
+    "appsDir": "packages",
+    "libsDir": "packages"
+  },
   "namedInputs": {
     "default": ["{projectRoot}/**/*"],
     "excludeStories": [
@@ -32,7 +36,7 @@
       "dependsOn": ["^build"]
     },
     "start": {
-      "cache": true,
+      "cache": false,
       "dependsOn": ["^build"]
     },
     "lint": {
@@ -40,14 +44,17 @@
       "cache": true,
       "outputs": ["{options.outputFile}"],
       "options": {
-        "eslintConfig": "{projectRoot}/.eslintrc.cjs",
+        "eslintConfig": "{projectRoot}/eslint.config.mjs",
         "cache": true,
-        "cacheLocation": "{workspaceRoot}/.cache/eslint",
-        "ignorePath": "{workspaceRoot}/.gitignore"
+        "cacheLocation": "{workspaceRoot}/.cache/eslint"
       },
       "configurations": {
-        "ci": { "cacheStrategy": "content" },
-        "fix": { "fix": true }
+        "ci": {
+          "cacheStrategy": "content"
+        },
+        "fix": {
+          "fix": true
+        }
       },
       "dependsOn": ["^build"]
     },
@@ -63,8 +70,12 @@
         "write": false
       },
       "configurations": {
-        "ci": { "cacheStrategy": "content" },
-        "fix": { "write": true }
+        "ci": {
+          "cacheStrategy": "content"
+        },
+        "fix": {
+          "write": true
+        }
       },
       "dependsOn": ["^build"]
     },
@@ -76,7 +87,9 @@
         "command": "tsc -b tsconfig.json --incremental"
       },
       "configurations": {
-        "watch": { "watch": true }
+        "watch": {
+          "watch": true
+        }
       },
       "dependsOn": ["^build"]
     },
@@ -91,7 +104,7 @@
       ],
       "outputs": ["{projectRoot}/coverage"],
       "options": {
-        "jestConfig": "{projectRoot}/jest.config.ts",
+        "jestConfig": "{projectRoot}/jest.config.mjs",
         "coverage": true,
         "coverageReporters": ["text-summary"],
         "cacheDirectory": "../../.cache/jest/{projectRoot}"
@@ -101,8 +114,12 @@
           "ci": true,
           "maxWorkers": 3
         },
-        "coverage": { "coverageReporters": ["lcov", "text"] },
-        "watch": { "watch": true }
+        "coverage": {
+          "coverageReporters": ["lcov", "text"]
+        },
+        "watch": {
+          "watch": true
+        }
       }
     },
     "test:e2e": {
@@ -116,7 +133,7 @@
       "outputs": ["{projectRoot}/{options.output-dir}"],
       "options": {
         "cwd": "{projectRoot}",
-        "command": "VITE_DISABLE_TYPESCRIPT_CHECKER=true VITE_DISABLE_ESLINT_CHECKER=true storybook build --test",
+        "command": "VITE_DISABLE_TYPESCRIPT_CHECKER=true storybook build --test",
         "output-dir": "storybook-static",
         "config-dir": ".storybook"
       },
@@ -192,7 +209,9 @@
         "checkCoverage": true
       },
       "configurations": {
-        "text": { "reporter": "text" }
+        "text": {
+          "reporter": "text"
+        }
       }
     },
     "storybook:serve-and-test:static": {
@@ -215,7 +234,7 @@
             "command": "nx storybook:build {projectName}",
             "forwardAllArgs": false
           },
-          "cross-var chromatic --project-token=$CHROMATIC_PROJECT_TOKEN --storybook-build-dir=storybook-static {args.ci}"
+          "chromatic --storybook-build-dir=storybook-static {args.ci}"
         ],
         "parallel": false
       },
@@ -246,7 +265,7 @@
       "cache": true,
       "inputs": [
         "default",
-        "{workspaceRoot}/.eslintrc.js",
+        "{workspaceRoot}/eslint.config.mjs",
         "{workspaceRoot}/tools/eslint-rules/**/*"
       ]
     },
@@ -261,7 +280,7 @@
     }
   },
   "installation": {
-    "version": "18.3.3"
+    "version": "22.0.3"
   },
   "generators": {
     "@nx/react": {
@@ -294,5 +313,8 @@
     }
   },
   "useInferencePlugins": false,
-  "defaultBase": "main"
+  "defaultBase": "main",
+  "tui": {
+    "enabled": false
+  }
 }

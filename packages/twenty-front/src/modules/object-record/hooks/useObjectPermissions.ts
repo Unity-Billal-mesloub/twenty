@@ -1,25 +1,31 @@
 import { useRecoilValue } from 'recoil';
 
 import { currentUserWorkspaceState } from '@/auth/states/currentUserWorkspaceState';
+import { type ObjectPermissions } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
-import { ObjectPermission } from '~/generated-metadata/graphql';
 
 type useObjectPermissionsReturnType = {
-  objectPermissionsByObjectMetadataId: Record<string, ObjectPermission>;
+  objectPermissionsByObjectMetadataId: Record<
+    string,
+    ObjectPermissions & { objectMetadataId: string }
+  >;
 };
 
 export const useObjectPermissions = (): useObjectPermissionsReturnType => {
   const currentUserWorkspace = useRecoilValue(currentUserWorkspaceState);
-  const objectPermissions = currentUserWorkspace?.objectPermissions;
+  const objectsPermissions = currentUserWorkspace?.objectsPermissions;
 
-  if (!isDefined(objectPermissions)) {
+  if (!isDefined(objectsPermissions)) {
     return {
       objectPermissionsByObjectMetadataId: {},
     };
   }
 
-  const objectPermissionsByObjectMetadataId = objectPermissions?.reduce(
-    (acc: Record<string, ObjectPermission>, objectPermission) => {
+  const objectPermissionsByObjectMetadataId = objectsPermissions?.reduce(
+    (
+      acc: Record<string, ObjectPermissions & { objectMetadataId: string }>,
+      objectPermission,
+    ) => {
       acc[objectPermission.objectMetadataId] = objectPermission;
       return acc;
     },

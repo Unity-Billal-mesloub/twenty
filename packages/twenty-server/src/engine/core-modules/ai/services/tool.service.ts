@@ -1,41 +1,52 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
-import {
-  In,
-  IsNull,
-  LessThan,
-  LessThanOrEqual,
-  Like,
-  ILike,
-  MoreThan,
-  MoreThanOrEqual,
-  Not,
-} from 'typeorm';
-import { ToolSet } from 'ai';
-import { z } from 'zod';
+import { type ToolSet } from 'ai';
+import { type ActorMetadata } from 'twenty-shared/types';
 
-import { TwentyORMGlobalManager } from 'src/engine/twenty-orm/twenty-orm-global.manager';
-import { ObjectMetadataService } from 'src/engine/metadata-modules/object-metadata/object-metadata.service';
-import { WorkspaceEventEmitter } from 'src/engine/workspace-event-emitter/workspace-event-emitter';
-import { DatabaseEventAction } from 'src/engine/api/graphql/graphql-query-runner/enums/database-event-action';
-import { WorkspacePermissionsCacheService } from 'src/engine/metadata-modules/workspace-permissions-cache/workspace-permissions-cache.service';
-import {
-  generateBulkDeleteToolSchema,
-  generateFindToolSchema,
-  getRecordInputSchema,
-} from 'src/engine/metadata-modules/agent/utils/agent-tool-schema.utils';
+import { CreateRecordService } from 'src/engine/core-modules/record-crud/services/create-record.service';
+import { DeleteRecordService } from 'src/engine/core-modules/record-crud/services/delete-record.service';
+import { FindRecordsService } from 'src/engine/core-modules/record-crud/services/find-records.service';
+import { UpdateRecordService } from 'src/engine/core-modules/record-crud/services/update-record.service';
+import { generateCreateRecordInputSchema } from 'src/engine/core-modules/record-crud/utils/generate-create-record-input-schema.util';
+import { generateUpdateRecordInputSchema } from 'src/engine/core-modules/record-crud/utils/generate-update-record-input-schema.util';
+import { BulkDeleteToolInputSchema } from 'src/engine/core-modules/record-crud/zod-schemas/bulk-delete-tool.zod-schema';
+import { generateFindToolInputSchema } from 'src/engine/core-modules/record-crud/zod-schemas/find-tool.zod-schema';
+import { SoftDeleteToolInputSchema } from 'src/engine/core-modules/record-crud/zod-schemas/soft-delete-tool.zod-schema';
+import { FindOneToolInputSchema } from 'src/engine/core-modules/record-crud/zod-schemas/find-one-tool.zod-schema';
 import { isWorkflowRelatedObject } from 'src/engine/metadata-modules/agent/utils/is-workflow-related-object.util';
+import {
+  type ToolHints,
+  type ToolOperation,
+} from 'src/engine/metadata-modules/ai-router/types/tool-hints.interface';
+import { ObjectMetadataServiceV2 } from 'src/engine/metadata-modules/object-metadata/object-metadata-v2.service';
+import { WorkspacePermissionsCacheService } from 'src/engine/metadata-modules/workspace-permissions-cache/workspace-permissions-cache.service';
+import { TwentyORMGlobalManager } from 'src/engine/twenty-orm/twenty-orm-global.manager';
+import { type RolePermissionConfig } from 'src/engine/twenty-orm/types/role-permission-config';
+import { computePermissionIntersection } from 'src/engine/twenty-orm/utils/compute-permission-intersection.util';
 
 @Injectable()
 export class ToolService {
+  private readonly logger = new Logger(ToolService.name);
+
   constructor(
     private readonly twentyORMGlobalManager: TwentyORMGlobalManager,
-    private readonly workspaceEventEmitter: WorkspaceEventEmitter,
-    private readonly objectMetadataService: ObjectMetadataService,
+    private readonly objectMetadataService: ObjectMetadataServiceV2,
     protected readonly workspacePermissionsCacheService: WorkspacePermissionsCacheService,
+    private readonly createRecordService: CreateRecordService,
+    private readonly updateRecordService: UpdateRecordService,
+    private readonly deleteRecordService: DeleteRecordService,
+    private readonly findRecordsService: FindRecordsService,
   ) {}
 
-  async listTools(roleId: string, workspaceId: string): Promise<ToolSet> {
+  // Generates AI tools for database operations based on workspace objects and permissions
+  // Supports filtering by object names and operation types via toolHints
+  // Returns a map of tool names to tool definitions
+  async listTools(
+    rolePermissionConfig: RolePermissionConfig,
+    workspaceId: string,
+    actorContext?: ActorMetadata,
+    toolHints?: ToolHints,
+  ): Promise<ToolSet> {
     const tools: ToolSet = {};
 
     const { data: rolesPermissions } =
@@ -43,7 +54,29 @@ export class ToolService {
         workspaceId,
       });
 
-    const objectPermissions = rolesPermissions[roleId];
+    let objectPermissions;
+
+    if ('unionOf' in rolePermissionConfig) {
+      if (rolePermissionConfig.unionOf.length === 1) {
+        objectPermissions = rolesPermissions[rolePermissionConfig.unionOf[0]];
+      } else {
+        // TODO: Implement union logic for multiple roles
+        throw new Error(
+          'Union permission logic for multiple roles not yet implemented',
+        );
+      }
+    } else if ('intersectionOf' in rolePermissionConfig) {
+      const allRolePermissions = rolePermissionConfig.intersectionOf.map(
+        (roleId: string) => rolesPermissions[roleId],
+      );
+
+      objectPermissions =
+        allRolePermissions.length === 1
+          ? allRolePermissions[0]
+          : computePermissionIntersection(allRolePermissions);
+    } else {
+      return tools;
+    }
 
     const allObjectMetadata =
       await this.objectMetadataService.findManyWithinWorkspace(workspaceId, {
@@ -54,9 +87,41 @@ export class ToolService {
         relations: ['fields'],
       });
 
-    const filteredObjectMetadata = allObjectMetadata.filter(
+    let filteredObjectMetadata = allObjectMetadata.filter(
       (objectMetadata) => !isWorkflowRelatedObject(objectMetadata),
     );
+
+    if (toolHints?.relevantObjects && toolHints.relevantObjects.length > 0) {
+      const relevantSet = new Set(toolHints.relevantObjects);
+      const originalCount = filteredObjectMetadata.length;
+
+      filteredObjectMetadata = filteredObjectMetadata.filter(
+        (obj) =>
+          relevantSet.has(obj.nameSingular) || relevantSet.has(obj.namePlural),
+      );
+
+      this.logger.log(
+        `Tool filtering: reduced from ${originalCount} to ${filteredObjectMetadata.length} objects based on hints: ${toolHints.relevantObjects.join(', ')}`,
+      );
+
+      if (filteredObjectMetadata.length === 0) {
+        this.logger.warn(
+          `Tool filtering resulted in 0 objects. Hints may be incorrect: ${toolHints.relevantObjects.join(', ')}`,
+        );
+      }
+    }
+
+    const operationsSet = toolHints?.operations
+      ? new Set(toolHints.operations)
+      : null;
+
+    const shouldIncludeOperation = (operation: ToolOperation) =>
+      !operationsSet || operationsSet.has(operation);
+
+    const shouldIncludeFind = shouldIncludeOperation('find');
+    const shouldIncludeCreate = shouldIncludeOperation('create');
+    const shouldIncludeUpdate = shouldIncludeOperation('update');
+    const shouldIncludeDelete = shouldIncludeOperation('delete');
 
     filteredObjectMetadata.forEach((objectMetadata) => {
       const objectPermission = objectPermissions[objectMetadata.id];
@@ -65,547 +130,144 @@ export class ToolService {
         return;
       }
 
-      if (objectPermission.canUpdate) {
-        tools[`create_${objectMetadata.nameSingular}`] = {
-          description: `Create a new ${objectMetadata.labelSingular} record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data.`,
-          parameters: getRecordInputSchema(objectMetadata),
-          execute: async (parameters) => {
-            return this.createRecord(
-              objectMetadata.nameSingular,
-              parameters,
-              workspaceId,
-              roleId,
-            );
-          },
-        };
+      const restrictedFields = objectPermission.restrictedFields;
 
-        tools[`update_${objectMetadata.nameSingular}`] = {
-          description: `Update an existing ${objectMetadata.labelSingular} record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data.`,
-          parameters: getRecordInputSchema(objectMetadata),
-          execute: async (parameters) => {
-            return this.updateRecord(
-              objectMetadata.nameSingular,
-              parameters,
-              workspaceId,
-              roleId,
-            );
-          },
-        };
-      }
-
-      if (objectPermission.canRead) {
+      if (shouldIncludeFind && objectPermission.canReadObjectRecords) {
         tools[`find_${objectMetadata.nameSingular}`] = {
-          description: `Search for ${objectMetadata.labelSingular} records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination. Returns an array of matching records with their full data.`,
-          parameters: generateFindToolSchema(objectMetadata),
+          description: `Search for ${objectMetadata.labelSingular} records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: "record-id" } }. Returns an array of matching records with their full data.`,
+          inputSchema: generateFindToolInputSchema(
+            objectMetadata,
+            restrictedFields,
+          ),
           execute: async (parameters) => {
-            return this.findRecords(
-              objectMetadata.nameSingular,
-              parameters,
+            const { limit, offset, orderBy, ...filter } = parameters.input;
+
+            return this.findRecordsService.execute({
+              objectName: objectMetadata.nameSingular,
+              filter,
+              orderBy,
+              limit,
+              offset,
               workspaceId,
-              roleId,
-            );
+              rolePermissionConfig,
+            });
           },
         };
 
         tools[`find_one_${objectMetadata.nameSingular}`] = {
           description: `Retrieve a single ${objectMetadata.labelSingular} record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found.`,
-          parameters: z.object({
-            id: z
-              .string()
-              .describe('The unique UUID of the record to retrieve'),
-          }),
+          inputSchema: FindOneToolInputSchema,
           execute: async (parameters) => {
-            return this.findOneRecord(
-              objectMetadata.nameSingular,
-              parameters,
+            return this.findRecordsService.execute({
+              objectName: objectMetadata.nameSingular,
+              filter: { id: { eq: parameters.input.id } },
+              limit: 1,
               workspaceId,
-              roleId,
-            );
+              rolePermissionConfig,
+            });
           },
         };
       }
 
-      if (objectPermission.canSoftDelete) {
+      if (objectPermission.canUpdateObjectRecords) {
+        if (shouldIncludeCreate) {
+          tools[`create_${objectMetadata.nameSingular}`] = {
+            description: `Create a new ${objectMetadata.labelSingular} record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data.`,
+            inputSchema: generateCreateRecordInputSchema(
+              objectMetadata,
+              restrictedFields,
+            ),
+            execute: async (parameters) => {
+              return this.createRecordService.execute({
+                objectName: objectMetadata.nameSingular,
+                objectRecord: parameters.input,
+                workspaceId,
+                rolePermissionConfig,
+                createdBy: actorContext,
+              });
+            },
+          };
+        }
+
+        if (shouldIncludeUpdate) {
+          tools[`update_${objectMetadata.nameSingular}`] = {
+            description: `Update an existing ${objectMetadata.labelSingular} record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data.`,
+            inputSchema: generateUpdateRecordInputSchema(
+              objectMetadata,
+              restrictedFields,
+            ),
+            execute: async (parameters) => {
+              const { id, ...allFields } = parameters.input;
+
+              const objectRecord = Object.fromEntries(
+                Object.entries(allFields).filter(
+                  ([, value]) => value !== undefined,
+                ),
+              );
+
+              return this.updateRecordService.execute({
+                objectName: objectMetadata.nameSingular,
+                objectRecordId: id,
+                objectRecord,
+                workspaceId,
+                rolePermissionConfig,
+              });
+            },
+          };
+        }
+      }
+
+      if (shouldIncludeDelete && objectPermission.canSoftDeleteObjectRecords) {
         tools[`soft_delete_${objectMetadata.nameSingular}`] = {
           description: `Soft delete a ${objectMetadata.labelSingular} record by marking it as deleted. The record remains in the database but is hidden from normal queries. This is reversible and preserves all data. Use this for temporary removal.`,
-          parameters: z.object({
-            id: z
-              .string()
-              .describe('The unique UUID of the record to soft delete'),
-          }),
+          inputSchema: SoftDeleteToolInputSchema,
           execute: async (parameters) => {
-            return this.softDeleteRecord(
-              objectMetadata.nameSingular,
-              parameters,
+            return this.deleteRecordService.execute({
+              objectName: objectMetadata.nameSingular,
+              objectRecordId: parameters.input.id,
               workspaceId,
-              roleId,
-            );
+              rolePermissionConfig,
+              soft: true,
+            });
           },
         };
 
         tools[`soft_delete_many_${objectMetadata.nameSingular}`] = {
           description: `Soft delete multiple ${objectMetadata.labelSingular} records at once by providing an array of record IDs. All records are marked as deleted but remain in the database. This is efficient for bulk operations and preserves all data.`,
-          parameters: generateBulkDeleteToolSchema(),
+          inputSchema: BulkDeleteToolInputSchema,
           execute: async (parameters) => {
             return this.softDeleteManyRecords(
               objectMetadata.nameSingular,
-              parameters,
+              parameters.input,
               workspaceId,
-              roleId,
+              rolePermissionConfig,
             );
           },
         };
       }
     });
 
+    if (operationsSet) {
+      this.logger.log(
+        `Tool filtering: included operations [${Array.from(operationsSet).join(', ')}]`,
+      );
+    }
+
     return tools;
-  }
-
-  private async findRecords(
-    objectName: string,
-    parameters: Record<string, unknown>,
-    workspaceId: string,
-    roleId: string,
-  ) {
-    try {
-      const repository =
-        await this.twentyORMGlobalManager.getRepositoryForWorkspace(
-          workspaceId,
-          objectName,
-          { roleId },
-        );
-
-      const { limit = 100, offset = 0, ...searchCriteria } = parameters;
-
-      const whereConditions = this.buildWhereConditions(searchCriteria);
-
-      const records = await repository.find({
-        where: whereConditions,
-        take: limit as number,
-        skip: offset as number,
-        order: { createdAt: 'DESC' },
-      });
-
-      return {
-        success: true,
-        records,
-        count: records.length,
-        message: `Found ${records.length} ${objectName} records`,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        message: `Failed to find ${objectName} records`,
-      };
-    }
-  }
-
-  private buildWhereConditions(
-    searchCriteria: Record<string, unknown>,
-  ): Record<string, unknown> {
-    const whereConditions: Record<string, unknown> = {};
-
-    Object.entries(searchCriteria).forEach(([key, value]) => {
-      if (value === undefined || value === null || value === '') {
-        return;
-      }
-
-      if (typeof value === 'object' && !Array.isArray(value)) {
-        const nestedConditions = this.buildNestedWhereConditions(
-          value as Record<string, unknown>,
-        );
-
-        if (Object.keys(nestedConditions).length > 0) {
-          whereConditions[key] = nestedConditions;
-        } else {
-          const filterCondition = this.parseFilterCondition(
-            value as Record<string, unknown>,
-          );
-
-          if (filterCondition !== null) {
-            whereConditions[key] = filterCondition;
-          }
-        }
-
-        return;
-      }
-
-      whereConditions[key] = value;
-    });
-
-    return whereConditions;
-  }
-
-  private buildNestedWhereConditions(
-    nestedValue: Record<string, unknown>,
-  ): Record<string, unknown> {
-    const nestedConditions: Record<string, unknown> = {};
-
-    Object.entries(nestedValue).forEach(([nestedKey, nestedFieldValue]) => {
-      if (
-        nestedFieldValue === undefined ||
-        nestedFieldValue === null ||
-        nestedFieldValue === ''
-      ) {
-        return;
-      }
-
-      if (
-        typeof nestedFieldValue === 'object' &&
-        !Array.isArray(nestedFieldValue)
-      ) {
-        const filterCondition = this.parseFilterCondition(
-          nestedFieldValue as Record<string, unknown>,
-        );
-
-        if (filterCondition !== null) {
-          nestedConditions[nestedKey] = filterCondition;
-        }
-      } else {
-        nestedConditions[nestedKey] = nestedFieldValue;
-      }
-    });
-
-    return nestedConditions;
-  }
-
-  private parseFilterCondition(filterValue: Record<string, unknown>): unknown {
-    if ('eq' in filterValue) {
-      return filterValue.eq;
-    }
-    if ('neq' in filterValue) {
-      return Not(filterValue.neq);
-    }
-    if ('gt' in filterValue) {
-      return MoreThan(filterValue.gt);
-    }
-    if ('gte' in filterValue) {
-      return MoreThanOrEqual(filterValue.gte);
-    }
-    if ('lt' in filterValue) {
-      return LessThan(filterValue.lt);
-    }
-    if ('lte' in filterValue) {
-      return LessThanOrEqual(filterValue.lte);
-    }
-    if ('in' in filterValue) {
-      return In(filterValue.in as string[]);
-    }
-    if ('like' in filterValue) {
-      return Like(filterValue.like as string);
-    }
-    if ('ilike' in filterValue) {
-      return ILike(filterValue.ilike as string);
-    }
-    if ('startsWith' in filterValue) {
-      return Like(`${filterValue.startsWith}%`);
-    }
-    if ('is' in filterValue) {
-      if (filterValue.is === 'NULL') {
-        return IsNull();
-      }
-      if (filterValue.is === 'NOT_NULL') {
-        return Not(IsNull());
-      }
-    }
-    if ('isEmptyArray' in filterValue) {
-      return [];
-    }
-    if ('containsIlike' in filterValue) {
-      return Like(`%${filterValue.containsIlike}%`);
-    }
-
-    return null;
-  }
-
-  private async findOneRecord(
-    objectName: string,
-    parameters: Record<string, unknown>,
-    workspaceId: string,
-    roleId: string,
-  ) {
-    try {
-      const repository =
-        await this.twentyORMGlobalManager.getRepositoryForWorkspace(
-          workspaceId,
-          objectName,
-          { roleId },
-        );
-
-      const { id } = parameters;
-
-      if (!id || typeof id !== 'string') {
-        return {
-          success: false,
-          error: 'Record ID is required',
-          message: `Failed to find ${objectName}: Record ID is required`,
-        };
-      }
-
-      const record = await repository.findOne({
-        where: { id },
-      });
-
-      if (!record) {
-        return {
-          success: false,
-          error: 'Record not found',
-          message: `Failed to find ${objectName}: Record with ID ${id} not found`,
-        };
-      }
-
-      return {
-        success: true,
-        record,
-        message: `Found ${objectName} record`,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        message: `Failed to find ${objectName} record`,
-      };
-    }
-  }
-
-  async createRecord(
-    objectName: string,
-    parameters: Record<string, unknown>,
-    workspaceId: string,
-    roleId: string,
-  ) {
-    try {
-      const repository =
-        await this.twentyORMGlobalManager.getRepositoryForWorkspace(
-          workspaceId,
-          objectName,
-          { roleId },
-        );
-
-      const createdRecord = await repository.save(parameters);
-
-      await this.emitDatabaseEvent({
-        objectName,
-        action: DatabaseEventAction.CREATED,
-        records: [createdRecord],
-        workspaceId,
-      });
-
-      return {
-        success: true,
-        record: createdRecord,
-        message: `Successfully created ${objectName}`,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        message: `Failed to create ${objectName}`,
-      };
-    }
-  }
-
-  private async updateRecord(
-    objectName: string,
-    parameters: Record<string, unknown>,
-    workspaceId: string,
-    roleId: string,
-  ) {
-    try {
-      const repository =
-        await this.twentyORMGlobalManager.getRepositoryForWorkspace(
-          workspaceId,
-          objectName,
-          { roleId },
-        );
-
-      const { id, ...updateData } = parameters;
-
-      if (!id || typeof id !== 'string') {
-        return {
-          success: false,
-          error: 'Record ID is required for update',
-          message: `Failed to update ${objectName}: Record ID is required`,
-        };
-      }
-
-      const existingRecord = await repository.findOne({
-        where: { id },
-      });
-
-      if (!existingRecord) {
-        return {
-          success: false,
-          error: 'Record not found',
-          message: `Failed to update ${objectName}: Record with ID ${id} not found`,
-        };
-      }
-
-      await repository.update(id as string, updateData);
-
-      const updatedRecord = await repository.findOne({
-        where: { id: id as string },
-      });
-
-      if (!updatedRecord) {
-        return {
-          success: false,
-          error: 'Failed to retrieve updated record',
-          message: `Failed to update ${objectName}: Could not retrieve updated record`,
-        };
-      }
-
-      await this.emitDatabaseEvent({
-        objectName,
-        action: DatabaseEventAction.UPDATED,
-        records: [updatedRecord],
-        workspaceId,
-        beforeRecords: [existingRecord],
-      });
-
-      return {
-        success: true,
-        record: updatedRecord,
-        message: `Successfully updated ${objectName}`,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        message: `Failed to update ${objectName}`,
-      };
-    }
-  }
-
-  private async softDeleteRecord(
-    objectName: string,
-    parameters: Record<string, unknown>,
-    workspaceId: string,
-    roleId: string,
-  ) {
-    try {
-      const repository =
-        await this.twentyORMGlobalManager.getRepositoryForWorkspace(
-          workspaceId,
-          objectName,
-          { roleId },
-        );
-
-      const { id } = parameters;
-
-      if (!id || typeof id !== 'string') {
-        return {
-          success: false,
-          error: 'Record ID is required for soft delete',
-          message: `Failed to soft delete ${objectName}: Record ID is required`,
-        };
-      }
-
-      const existingRecord = await repository.findOne({
-        where: { id },
-      });
-
-      if (!existingRecord) {
-        return {
-          success: false,
-          error: 'Record not found',
-          message: `Failed to soft delete ${objectName}: Record with ID ${id} not found`,
-        };
-      }
-
-      await repository.softDelete(id);
-
-      await this.emitDatabaseEvent({
-        objectName,
-        action: DatabaseEventAction.DELETED,
-        records: [existingRecord],
-        workspaceId,
-      });
-
-      return {
-        success: true,
-        message: `Successfully soft deleted ${objectName}`,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        message: `Failed to soft delete ${objectName}`,
-      };
-    }
-  }
-
-  private async destroyRecord(
-    objectName: string,
-    parameters: Record<string, unknown>,
-    workspaceId: string,
-    roleId: string,
-  ) {
-    try {
-      const repository =
-        await this.twentyORMGlobalManager.getRepositoryForWorkspace(
-          workspaceId,
-          objectName,
-          { roleId },
-        );
-
-      const { id } = parameters;
-
-      if (!id || typeof id !== 'string') {
-        return {
-          success: false,
-          error: 'Record ID is required for destroy',
-          message: `Failed to destroy ${objectName}: Record ID is required`,
-        };
-      }
-
-      const existingRecord = await repository.findOne({
-        where: { id },
-      });
-
-      if (!existingRecord) {
-        return {
-          success: false,
-          error: 'Record not found',
-          message: `Failed to destroy ${objectName}: Record with ID ${id} not found`,
-        };
-      }
-
-      await repository.remove(existingRecord);
-
-      await this.emitDatabaseEvent({
-        objectName,
-        action: DatabaseEventAction.DESTROYED,
-        records: [existingRecord],
-        workspaceId,
-      });
-
-      return {
-        success: true,
-        message: `Successfully destroyed ${objectName}`,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        message: `Failed to destroy ${objectName}`,
-      };
-    }
   }
 
   private async softDeleteManyRecords(
     objectName: string,
     parameters: Record<string, unknown>,
     workspaceId: string,
-    roleId: string,
+    rolePermissionConfig: RolePermissionConfig,
   ) {
     try {
       const repository =
         await this.twentyORMGlobalManager.getRepositoryForWorkspace(
           workspaceId,
           objectName,
-          { roleId },
+          rolePermissionConfig,
         );
 
       const { filter } = parameters;
@@ -613,8 +275,8 @@ export class ToolService {
       if (!filter || typeof filter !== 'object' || !('id' in filter)) {
         return {
           success: false,
-          error: 'Filter with record IDs is required for bulk soft delete',
           message: `Failed to soft delete many ${objectName}: Filter with record IDs is required`,
+          error: 'Filter with record IDs is required for bulk soft delete',
         };
       }
 
@@ -624,8 +286,8 @@ export class ToolService {
       if (!Array.isArray(recordIds) || recordIds.length === 0) {
         return {
           success: false,
-          error: 'At least one record ID is required for bulk soft delete',
           message: `Failed to soft delete many ${objectName}: At least one record ID is required`,
+          error: 'At least one record ID is required for bulk soft delete',
         };
       }
 
@@ -636,150 +298,27 @@ export class ToolService {
       if (existingRecords.length === 0) {
         return {
           success: false,
-          error: 'No records found to soft delete',
           message: `Failed to soft delete many ${objectName}: No records found with the provided IDs`,
+          error: 'No records found to soft delete',
         };
       }
 
       await repository.softDelete({ id: { in: recordIds } });
 
-      await this.emitDatabaseEvent({
-        objectName,
-        action: DatabaseEventAction.DELETED,
-        records: existingRecords,
-        workspaceId,
-      });
-
       return {
         success: true,
-        count: existingRecords.length,
         message: `Successfully soft deleted ${existingRecords.length} ${objectName} records`,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        message: `Failed to soft delete many ${objectName}`,
-      };
-    }
-  }
-
-  private async destroyManyRecords(
-    objectName: string,
-    parameters: Record<string, unknown>,
-    workspaceId: string,
-    roleId: string,
-  ) {
-    try {
-      const repository =
-        await this.twentyORMGlobalManager.getRepositoryForWorkspace(
-          workspaceId,
-          objectName,
-          { roleId },
-        );
-
-      const { filter } = parameters;
-
-      if (!filter || typeof filter !== 'object' || !('id' in filter)) {
-        return {
-          success: false,
-          error: 'Filter with record IDs is required for bulk destroy',
-          message: `Failed to destroy many ${objectName}: Filter with record IDs is required`,
-        };
-      }
-
-      const idFilter = filter.id as Record<string, unknown>;
-      const recordIds = idFilter.in as string[];
-
-      if (!Array.isArray(recordIds) || recordIds.length === 0) {
-        return {
-          success: false,
-          error: 'At least one record ID is required for bulk destroy',
-          message: `Failed to destroy many ${objectName}: At least one record ID is required`,
-        };
-      }
-
-      const existingRecords = await repository.find({
-        where: { id: { in: recordIds } },
-      });
-
-      if (existingRecords.length === 0) {
-        return {
-          success: false,
-          error: 'No records found to destroy',
-          message: `Failed to destroy many ${objectName}: No records found with the provided IDs`,
-        };
-      }
-
-      await repository.delete({ id: { in: recordIds } });
-
-      await this.emitDatabaseEvent({
-        objectName,
-        action: DatabaseEventAction.DESTROYED,
-        records: existingRecords,
-        workspaceId,
-      });
-
-      return {
-        success: true,
-        count: existingRecords.length,
-        message: `Successfully destroyed ${existingRecords.length} ${objectName} records`,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        message: `Failed to destroy many ${objectName}`,
-      };
-    }
-  }
-
-  private async emitDatabaseEvent({
-    objectName,
-    action,
-    records,
-    workspaceId,
-    beforeRecords,
-  }: {
-    objectName: string;
-    action: DatabaseEventAction;
-    records: Record<string, unknown>[];
-    workspaceId: string;
-    beforeRecords?: Record<string, unknown>[];
-  }) {
-    const objectMetadata =
-      await this.objectMetadataService.findOneWithinWorkspace(workspaceId, {
-        where: {
-          nameSingular: objectName,
-          isActive: true,
+        result: {
+          count: existingRecords.length,
+          deletedIds: recordIds,
         },
-        relations: ['fields'],
-      });
-
-    if (!objectMetadata) {
-      return;
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to soft delete many ${objectName}`,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
     }
-
-    this.workspaceEventEmitter.emitDatabaseBatchEvent({
-      objectMetadataNameSingular: objectName,
-      action,
-      events: records.map((record) => {
-        const beforeRecord = beforeRecords?.find((r) => r.id === record.id);
-
-        return {
-          recordId: record.id as string,
-          objectMetadata,
-          properties: {
-            before: beforeRecord || undefined,
-            after:
-              action === DatabaseEventAction.DELETED ||
-              action === DatabaseEventAction.DESTROYED
-                ? undefined
-                : (record as Record<string, unknown>),
-          },
-        };
-      }),
-      workspaceId,
-    });
   }
 }

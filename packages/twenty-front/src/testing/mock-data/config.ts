@@ -1,4 +1,4 @@
-import { ClientConfig } from '@/client-config/types/ClientConfig';
+import { type ClientConfig } from '@/client-config/types/ClientConfig';
 import { CaptchaDriverType, SupportDriver } from '~/generated/graphql';
 
 export const mockedClientConfig: ClientConfig = {
@@ -16,7 +16,6 @@ export const mockedClientConfig: ClientConfig = {
   frontDomain: 'localhost',
   defaultSubdomain: 'app',
   chromeExtensionId: 'MOCKED_EXTENSION_ID',
-  debugMode: false,
   analyticsEnabled: true,
   support: {
     supportDriver: SupportDriver.FRONT,
@@ -54,5 +53,7 @@ export const mockedClientConfig: ClientConfig = {
   isGoogleCalendarEnabled: true,
   isAttachmentPreviewEnabled: true,
   isConfigVariablesInDbEnabled: false,
-  isIMAPMessagingEnabled: false,
+  isImapSmtpCaldavEnabled: false,
+  isTwoFactorAuthenticationEnabled: false,
+  isEmailingDomainsEnabled: false,
 };

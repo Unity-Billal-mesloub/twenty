@@ -3,12 +3,15 @@ import { FavoritesDroppable } from '@/favorites/components/FavoritesDroppable';
 import { FavoritesDragContext } from '@/favorites/contexts/FavoritesDragContext';
 import { useDeleteFavorite } from '@/favorites/hooks/useDeleteFavorite';
 import { useFavorites } from '@/favorites/hooks/useFavorites';
+import { getFavoriteSecondaryLabel } from '@/favorites/utils/getFavoriteSecondaryLabel';
 import { isLocationMatchingFavorite } from '@/favorites/utils/isLocationMatchingFavorite';
+import { objectMetadataItemsState } from '@/object-metadata/states/objectMetadataItemsState';
 import { DraggableItem } from '@/ui/layout/draggable-list/components/DraggableItem';
 import { NavigationDrawerItem } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerItem';
 import styled from '@emotion/styled';
 import { useContext } from 'react';
 import { useLocation } from 'react-router-dom';
+import { useRecoilValue } from 'recoil';
 import { IconHeartOff } from 'twenty-ui/display';
 import { LightIconButton } from 'twenty-ui/input';
 
@@ -21,6 +24,7 @@ const StyledOrphanFavoritesContainer = styled.div`
 `;
 
 export const CurrentWorkspaceMemberOrphanFavorites = () => {
+  const objectMetadataItems = useRecoilValue(objectMetadataItemsState);
   const { sortedFavorites: favorites } = useFavorites();
   const { deleteFavorite } = useDeleteFavorite();
   const currentPath = useLocation().pathname;
@@ -43,6 +47,10 @@ export const CurrentWorkspaceMemberOrphanFavorites = () => {
             itemComponent={
               <StyledOrphanFavoritesContainer>
                 <NavigationDrawerItem
+                  secondaryLabel={getFavoriteSecondaryLabel({
+                    objectMetadataItems,
+                    favoriteObjectNameSingular: favorite.objectNameSingular,
+                  })}
                   label={favorite.labelIdentifier}
                   Icon={() => <FavoriteIcon favorite={favorite} />}
                   active={isLocationMatchingFavorite(
@@ -58,7 +66,6 @@ export const CurrentWorkspaceMemberOrphanFavorites = () => {
                       accent="tertiary"
                     />
                   }
-                  objectName={favorite.objectNameSingular}
                   isDragging={isDragging}
                   triggerEvent="CLICK"
                 />

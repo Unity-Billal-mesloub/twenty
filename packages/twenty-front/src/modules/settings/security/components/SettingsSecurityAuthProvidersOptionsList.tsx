@@ -17,9 +17,11 @@ import {
 } from 'twenty-ui/display';
 import { Card } from 'twenty-ui/layout';
 import {
-  AuthProviders,
+  type AuthProviders,
   useUpdateWorkspaceMutation,
 } from '~/generated-metadata/graphql';
+
+import { Toggle2FA } from './Toggle2FA';
 
 const StyledSettingsSecurityOptionsList = styled.div`
   display: flex;
@@ -131,7 +133,7 @@ export const SettingsSecurityAuthProvidersOptionsList = () => {
             {authProviders.google === true && (
               <SettingsOptionCardContentToggle
                 Icon={IconGoogle}
-                title="Google"
+                title={t`Google`}
                 description={t`Allow logins through Google's single sign-on functionality.`}
                 checked={currentWorkspace.isGoogleAuthEnabled}
                 advancedMode
@@ -144,7 +146,7 @@ export const SettingsSecurityAuthProvidersOptionsList = () => {
             {authProviders.microsoft === true && (
               <SettingsOptionCardContentToggle
                 Icon={IconMicrosoft}
-                title="Microsoft"
+                title={t`Microsoft`}
                 description={t`Allow logins through Microsoft's single sign-on functionality.`}
                 checked={currentWorkspace.isMicrosoftAuthEnabled}
                 advancedMode
@@ -176,6 +178,9 @@ export const SettingsSecurityAuthProvidersOptionsList = () => {
                 handleChange(!currentWorkspace.isPublicInviteLinkEnabled)
               }
             />
+          </Card>
+          <Card rounded>
+            <Toggle2FA />
           </Card>
         </>
       )}

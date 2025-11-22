@@ -10,16 +10,16 @@ import { ObjectFilterDropdownBooleanSelect } from '@/object-record/object-filter
 import { ObjectFilterDropdownCountrySelect } from '@/object-record/object-filter-dropdown/components/ObjectFilterDropdownCountrySelect';
 import { ObjectFilterDropdownCurrencySelect } from '@/object-record/object-filter-dropdown/components/ObjectFilterDropdownCurrencySelect';
 import { ObjectFilterDropdownDateInput } from '@/object-record/object-filter-dropdown/components/ObjectFilterDropdownDateInput';
+import { ObjectFilterDropdownDateTimeInput } from '@/object-record/object-filter-dropdown/components/ObjectFilterDropdownDateTimeInput';
 import { ObjectFilterDropdownTextInput } from '@/object-record/object-filter-dropdown/components/ObjectFilterDropdownTextInput';
-import { DATE_FILTER_TYPES } from '@/object-record/object-filter-dropdown/constants/DateFilterTypes';
 import { subFieldNameUsedInDropdownComponentState } from '@/object-record/object-filter-dropdown/states/subFieldNameUsedInDropdownComponentState';
-import { isExpectedSubFieldName } from '@/object-record/object-filter-dropdown/utils/isExpectedSubFieldName';
 import { isFilterOnActorSourceSubField } from '@/object-record/object-filter-dropdown/utils/isFilterOnActorSourceSubField';
-import { RecordFilter } from '@/object-record/record-filter/types/RecordFilter';
+import { type RecordFilter } from '@/object-record/record-filter/types/RecordFilter';
 import { DropdownContent } from '@/ui/layout/dropdown/components/DropdownContent';
 import { GenericDropdownContentWidth } from '@/ui/layout/dropdown/constants/GenericDropdownContentWidth';
-import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
 import { FieldMetadataType } from 'twenty-shared/types';
+import { isExpectedSubFieldName } from 'twenty-shared/utils';
 
 type AdvancedFilterDropdownFilterInputProps = {
   filterDropdownId: string;
@@ -30,7 +30,7 @@ export const AdvancedFilterDropdownFilterInput = ({
   filterDropdownId,
   recordFilter,
 }: AdvancedFilterDropdownFilterInputProps) => {
-  const subFieldNameUsedInDropdown = useRecoilComponentValueV2(
+  const subFieldNameUsedInDropdown = useRecoilComponentValue(
     subFieldNameUsedInDropdownComponentState,
   );
 
@@ -49,9 +49,8 @@ export const AdvancedFilterDropdownFilterInput = ({
           <AdvancedFilterDropdownTextInput recordFilter={recordFilter} />
         ))}
       {filterType === 'RATING' && <ObjectFilterDropdownRatingInput />}
-      {DATE_FILTER_TYPES.includes(filterType) && (
-        <ObjectFilterDropdownDateInput />
-      )}
+      {filterType === 'DATE_TIME' && <ObjectFilterDropdownDateTimeInput />}
+      {filterType === 'DATE' && <ObjectFilterDropdownDateInput />}
       {filterType === 'RELATION' && (
         <DropdownContent widthInPixels={GenericDropdownContentWidth.ExtraLarge}>
           <ObjectFilterDropdownSearchInput />

@@ -1,7 +1,7 @@
 import { ConfigService } from '@nestjs/config';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 
-import { ConfigVariables } from 'src/engine/core-modules/twenty-config/config-variables';
+import { type ConfigVariables } from 'src/engine/core-modules/twenty-config/config-variables';
 import { CONFIG_VARIABLES_INSTANCE_TOKEN } from 'src/engine/core-modules/twenty-config/constants/config-variables-instance-tokens.constants';
 import { DatabaseConfigDriver } from 'src/engine/core-modules/twenty-config/drivers/database-config.driver';
 import { EnvironmentConfigDriver } from 'src/engine/core-modules/twenty-config/drivers/environment-config.driver';
@@ -43,17 +43,17 @@ type TwentyConfigServicePrivateProps = {
 
 const mockConfigVarMetadata = {
   TEST_VAR: {
-    group: ConfigVariablesGroup.GoogleAuth,
+    group: ConfigVariablesGroup.GOOGLE_AUTH,
     description: 'Test variable',
     isEnvOnly: false,
   },
   ENV_ONLY_VAR: {
-    group: ConfigVariablesGroup.StorageConfig,
+    group: ConfigVariablesGroup.STORAGE_CONFIG,
     description: 'Environment only variable',
     isEnvOnly: true,
   },
   SENSITIVE_VAR: {
-    group: ConfigVariablesGroup.Logging,
+    group: ConfigVariablesGroup.LOGGING,
     description: 'Sensitive variable',
     isSensitive: true,
   },

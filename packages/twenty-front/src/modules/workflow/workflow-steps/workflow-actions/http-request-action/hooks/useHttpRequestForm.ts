@@ -1,8 +1,11 @@
-import { WorkflowHttpRequestAction } from '@/workflow/types/Workflow';
+import { type WorkflowHttpRequestAction } from '@/workflow/types/Workflow';
 import { isMethodWithBody } from '@/workflow/workflow-steps/workflow-actions/http-request-action/utils/isMethodWithBody';
 import { useState } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
-import { HttpRequestBody, HttpRequestFormData } from '../constants/HttpRequest';
+import {
+  type HttpRequestBody,
+  type HttpRequestFormData,
+} from '../constants/HttpRequest';
 
 export type UseHttpRequestFormParams = {
   action: WorkflowHttpRequestAction;
@@ -48,13 +51,19 @@ export const useHttpRequestForm = ({
     let newFormData = { ...formData, [field]: value };
 
     if (field === 'method' && !isMethodWithBody(value as string)) {
+      const headersCopy = { ...formData.headers };
+      delete headersCopy?.['content-type'];
+      newFormData = { ...newFormData, body: undefined, headers: headersCopy };
+    } else if (
+      field === 'headers' &&
+      typeof value === 'object' &&
+      formData.headers?.['content-type'] !== value?.['content-type']
+    ) {
       newFormData = { ...newFormData, body: undefined };
     }
-
     setFormData(newFormData);
     saveAction(newFormData);
   };
-
   return {
     formData,
     handleFieldChange,

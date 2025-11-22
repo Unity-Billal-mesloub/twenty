@@ -1,17 +1,17 @@
 import { ActionModal } from '@/action-menu/actions/components/ActionModal';
 import { useSelectedRecordIdOrThrow } from '@/action-menu/actions/record-actions/single-record/hooks/useSelectedRecordIdOrThrow';
-import { useContextStoreObjectMetadataItemOrThrow } from '@/context-store/hooks/useContextStoreObjectMetadataItemOrThrow';
 import { useRestoreManyRecords } from '@/object-record/hooks/useRestoreManyRecords';
-import { useRecordTable } from '@/object-record/record-table/hooks/useRecordTable';
+import { useRecordIndexIdFromCurrentContextStore } from '@/object-record/record-index/hooks/useRecordIndexIdFromCurrentContextStore';
+import { useResetTableRowSelection } from '@/object-record/record-table/hooks/internal/useResetTableRowSelection';
+import { t } from '@lingui/core/macro';
 
 export const RestoreSingleRecordAction = () => {
-  const { objectMetadataItem } = useContextStoreObjectMetadataItemOrThrow();
+  const { recordIndexId, objectMetadataItem } =
+    useRecordIndexIdFromCurrentContextStore();
 
   const recordId = useSelectedRecordIdOrThrow();
 
-  const { resetTableRowSelection } = useRecordTable({
-    recordTableId: objectMetadataItem.namePlural,
-  });
+  const { resetTableRowSelection } = useResetTableRowSelection(recordIndexId);
 
   const { restoreManyRecords } = useRestoreManyRecords({
     objectNameSingular: objectMetadataItem.nameSingular,
@@ -27,10 +27,10 @@ export const RestoreSingleRecordAction = () => {
 
   return (
     <ActionModal
-      title="Restore Record"
-      subtitle="Are you sure you want to restore this record?"
+      title={t`Restore Record`}
+      subtitle={t`Are you sure you want to restore this record?`}
       onConfirmClick={handleRestoreClick}
-      confirmButtonText="Restore Record"
+      confirmButtonText={t`Restore Record`}
       confirmButtonAccent="default"
     />
   );

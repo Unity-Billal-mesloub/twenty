@@ -1,4 +1,4 @@
-import { Bundle, ZObject } from 'zapier-platform-core';
+import { type Bundle, type ZObject } from 'zapier-platform-core';
 
 import handleQueryParams from '../../utils/handleQueryParams';
 import requestDb, {
@@ -18,13 +18,15 @@ export const performSubscribe = async (z: ZObject, bundle: Bundle) => {
     operations: [
       `${bundle.inputData.nameSingular}.${bundle.inputData.operation}`,
     ],
+    secret: '',
   };
   const result = await requestDb(
     z,
     bundle,
-    `mutation createWebhook {createWebhook(data:{${handleQueryParams(
+    `mutation createWebhook {createWebhook(input:{${handleQueryParams(
       data,
     )}}) {id}}`,
+    'metadata',
   );
   return result.data.createWebhook;
 };
@@ -34,7 +36,8 @@ export const performUnsubscribe = async (z: ZObject, bundle: Bundle) => {
   const result = await requestDb(
     z,
     bundle,
-    `mutation deleteWebhook {deleteWebhook(${handleQueryParams(data)}) {id}}`,
+    `mutation deleteWebhook {deleteWebhook(${handleQueryParams(data)})}`,
+    'metadata',
   );
   return result.data.deleteWebhook;
 };
@@ -90,9 +93,7 @@ export const performList = async (
   return results.map((result) => ({
     record: result,
     ...(bundle.inputData.operation === DatabaseEventAction.UPDATED && {
-      updatedFields: [
-        Object.keys(result).filter((key) => key !== 'id')?.[0],
-      ] || ['updatedField'],
+      updatedFields: [Object.keys(result).filter((key) => key !== 'id')?.[0]],
     }),
   }));
 };

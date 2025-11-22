@@ -3,21 +3,22 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import Stripe from 'stripe';
 import { Repository } from 'typeorm';
+
+import type Stripe from 'stripe';
 
 import {
   BillingException,
   BillingExceptionCode,
 } from 'src/engine/core-modules/billing/billing.exception';
-import { BillingCustomer } from 'src/engine/core-modules/billing/entities/billing-customer.entity';
+import { BillingCustomerEntity } from 'src/engine/core-modules/billing/entities/billing-customer.entity';
 
 @Injectable()
 export class BillingWebhookCustomerService {
   protected readonly logger = new Logger(BillingWebhookCustomerService.name);
   constructor(
-    @InjectRepository(BillingCustomer, 'core')
-    private readonly billingCustomerRepository: Repository<BillingCustomer>,
+    @InjectRepository(BillingCustomerEntity)
+    private readonly billingCustomerRepository: Repository<BillingCustomerEntity>,
   ) {}
 
   async processStripeEvent(data: Stripe.CustomerCreatedEvent.Data) {

@@ -4,30 +4,32 @@ import { Key } from 'ts-key-enum';
 import { useObjectMetadataItemById } from '@/object-metadata/hooks/useObjectMetadataItemById';
 import { IconPicker } from '@/ui/input/components/IconPicker';
 import { Select } from '@/ui/input/components/Select';
-import { TextInputV2 } from '@/ui/input/components/TextInputV2';
+import { TextInput } from '@/ui/input/components/TextInput';
 import { DropdownContent } from '@/ui/layout/dropdown/components/DropdownContent';
 import { DropdownMenuHeader } from '@/ui/layout/dropdown/components/DropdownMenuHeader/DropdownMenuHeader';
 import { DropdownMenuHeaderLeftComponent } from '@/ui/layout/dropdown/components/DropdownMenuHeader/internal/DropdownMenuHeaderLeftComponent';
 import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
 import { DropdownMenuSeparator } from '@/ui/layout/dropdown/components/DropdownMenuSeparator';
-import { DropdownHotkeyScope } from '@/ui/layout/dropdown/constants/DropdownHotkeyScope';
 import { useHotkeysOnFocusedElement } from '@/ui/utilities/hotkey/hooks/useHotkeysOnFocusedElement';
-import { useRecoilComponentStateV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentStateV2';
-import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
-import { useSetRecoilComponentStateV2 } from '@/ui/utilities/state/component-state/hooks/useSetRecoilComponentStateV2';
+import { useRecoilComponentState } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentState';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
+import { useSetRecoilComponentState } from '@/ui/utilities/state/component-state/hooks/useSetRecoilComponentState';
 import { viewObjectMetadataIdComponentState } from '@/views/states/viewObjectMetadataIdComponentState';
 import { ViewType, viewTypeIconMapping } from '@/views/types/ViewType';
 import { ViewPickerCreateButton } from '@/views/view-picker/components/ViewPickerCreateButton';
 import { ViewPickerIconAndNameContainer } from '@/views/view-picker/components/ViewPickerIconAndNameContainer';
 import { ViewPickerSaveButtonContainer } from '@/views/view-picker/components/ViewPickerSaveButtonContainer';
 import { ViewPickerSelectContainer } from '@/views/view-picker/components/ViewPickerSelectContainer';
+import { VIEW_PICKER_CALENDAR_FIELD_DROPDOWN_ID } from '@/views/view-picker/constants/ViewPickerCalendarFieldDropdownId';
 import { VIEW_PICKER_DROPDOWN_ID } from '@/views/view-picker/constants/ViewPickerDropdownId';
 import { VIEW_PICKER_KANBAN_FIELD_DROPDOWN_ID } from '@/views/view-picker/constants/ViewPickerKanbanFieldDropdownId';
 import { VIEW_PICKER_TYPE_SELECT_OPTIONS } from '@/views/view-picker/constants/ViewPickerTypeSelectOptions';
 import { VIEW_PICKER_VIEW_TYPE_DROPDOWN_ID } from '@/views/view-picker/constants/ViewPickerViewTypeDropdownId';
 import { useCreateViewFromCurrentState } from '@/views/view-picker/hooks/useCreateViewFromCurrentState';
+import { useGetAvailableFieldsForCalendar } from '@/views/view-picker/hooks/useGetAvailableFieldsForCalendar';
 import { useGetAvailableFieldsForKanban } from '@/views/view-picker/hooks/useGetAvailableFieldsForKanban';
 import { useViewPickerMode } from '@/views/view-picker/hooks/useViewPickerMode';
+import { viewPickerCalendarFieldMetadataIdComponentState } from '@/views/view-picker/states/viewPickerCalendarFieldMetadataIdComponentState';
 import { viewPickerInputNameComponentState } from '@/views/view-picker/states/viewPickerInputNameComponentState';
 import { viewPickerIsDirtyComponentState } from '@/views/view-picker/states/viewPickerIsDirtyComponentState';
 import { viewPickerIsPersistingComponentState } from '@/views/view-picker/states/viewPickerIsPersistingComponentState';
@@ -38,7 +40,7 @@ import { useLingui } from '@lingui/react/macro';
 import { useMemo, useState } from 'react';
 import { IconX } from 'twenty-ui/display';
 
-const StyledNoKanbanFieldAvailableContainer = styled.div`
+const StyledFieldAvailableContainer = styled.div`
   color: ${({ theme }) => theme.font.color.light};
   display: flex;
   margin: ${({ theme }) => theme.spacing(1, 2)};
@@ -51,36 +53,44 @@ export const ViewPickerContentCreateMode = () => {
   const { viewPickerMode, setViewPickerMode } = useViewPickerMode();
   const [hasManuallySelectedIcon, setHasManuallySelectedIcon] = useState(false);
 
-  const viewObjectMetadataId = useRecoilComponentValueV2(
+  const viewObjectMetadataId = useRecoilComponentValue(
     viewObjectMetadataIdComponentState,
   );
   const { objectMetadataItem } = useObjectMetadataItemById({
     objectId: viewObjectMetadataId ?? '',
   });
 
-  const [viewPickerInputName, setViewPickerInputName] =
-    useRecoilComponentStateV2(viewPickerInputNameComponentState);
+  const [viewPickerInputName, setViewPickerInputName] = useRecoilComponentState(
+    viewPickerInputNameComponentState,
+  );
 
   const [viewPickerSelectedIcon, setViewPickerSelectedIcon] =
-    useRecoilComponentStateV2(viewPickerSelectedIconComponentState);
+    useRecoilComponentState(viewPickerSelectedIconComponentState);
 
-  const viewPickerIsPersisting = useRecoilComponentValueV2(
+  const viewPickerIsPersisting = useRecoilComponentValue(
     viewPickerIsPersistingComponentState,
   );
-  const setViewPickerIsDirty = useSetRecoilComponentStateV2(
+  const setViewPickerIsDirty = useSetRecoilComponentState(
     viewPickerIsDirtyComponentState,
   );
 
   const [viewPickerKanbanFieldMetadataId, setViewPickerKanbanFieldMetadataId] =
-    useRecoilComponentStateV2(viewPickerKanbanFieldMetadataIdComponentState);
+    useRecoilComponentState(viewPickerKanbanFieldMetadataIdComponentState);
 
-  const [viewPickerType, setViewPickerType] = useRecoilComponentStateV2(
+  const [
+    viewPickerCalendarFieldMetadataId,
+    setViewPickerCalendarFieldMetadataId,
+  ] = useRecoilComponentState(viewPickerCalendarFieldMetadataIdComponentState);
+
+  const [viewPickerType, setViewPickerType] = useRecoilComponentState(
     viewPickerTypeComponentState,
   );
 
   const { createViewFromCurrentState } = useCreateViewFromCurrentState();
 
   const { availableFieldsForKanban } = useGetAvailableFieldsForKanban();
+
+  const { availableFieldsForCalendar } = useGetAvailableFieldsForCalendar();
 
   useHotkeysOnFocusedElement({
     keys: [Key.Enter],
@@ -99,12 +109,12 @@ export const ViewPickerContentCreateMode = () => {
       await createViewFromCurrentState();
     },
     focusId: VIEW_PICKER_DROPDOWN_ID,
-    scope: DropdownHotkeyScope.Dropdown,
     dependencies: [
       viewPickerIsPersisting,
       createViewFromCurrentState,
       viewPickerType,
       availableFieldsForKanban,
+      availableFieldsForCalendar,
     ],
   });
 
@@ -147,7 +157,7 @@ export const ViewPickerContentCreateMode = () => {
       <DropdownMenuItemsContainer>
         <ViewPickerIconAndNameContainer>
           <IconPicker onChange={onIconChange} selectedIconKey={selectedIcon} />
-          <TextInputV2
+          <TextInput
             value={viewPickerInputName}
             onChange={(value) => {
               setViewPickerIsDirty(true);
@@ -195,10 +205,40 @@ export const ViewPickerContentCreateMode = () => {
               />
             </ViewPickerSelectContainer>
             {availableFieldsForKanban.length === 0 && (
-              <StyledNoKanbanFieldAvailableContainer>
+              <StyledFieldAvailableContainer>
                 Set up a Select field on {objectMetadataItem.labelPlural} to
                 create a Kanban
-              </StyledNoKanbanFieldAvailableContainer>
+              </StyledFieldAvailableContainer>
+            )}
+          </>
+        )}
+        {viewPickerType === ViewType.Calendar && (
+          <>
+            <ViewPickerSelectContainer>
+              <Select
+                label={t`Date field`}
+                fullWidth
+                value={viewPickerCalendarFieldMetadataId}
+                onChange={(value) => {
+                  setViewPickerIsDirty(true);
+                  setViewPickerCalendarFieldMetadataId(value);
+                }}
+                options={
+                  availableFieldsForCalendar.length > 0
+                    ? availableFieldsForCalendar.map((field) => ({
+                        value: field.id,
+                        label: field.label,
+                      }))
+                    : [{ value: '', label: t`No Date field` }]
+                }
+                dropdownId={VIEW_PICKER_CALENDAR_FIELD_DROPDOWN_ID}
+              />
+            </ViewPickerSelectContainer>
+            {availableFieldsForCalendar.length === 0 && (
+              <StyledFieldAvailableContainer>
+                Set up a Date field on {objectMetadataItem.labelPlural} to
+                create a Calendar
+              </StyledFieldAvailableContainer>
             )}
           </>
         )}

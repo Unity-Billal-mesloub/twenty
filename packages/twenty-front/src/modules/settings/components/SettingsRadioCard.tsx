@@ -1,7 +1,7 @@
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
 import { CardContent } from 'twenty-ui/layout';
-import { IconComponent } from 'twenty-ui/display';
+import { type IconComponent } from 'twenty-ui/display';
 import { Radio } from 'twenty-ui/input';
 
 const StyledRadioCardContent = styled(CardContent)`
@@ -59,7 +59,7 @@ export const SettingsRadioCard = ({
 
   return (
     <StyledRadioCardContent tabIndex={0} onClick={onClick}>
-      {Icon && <Icon size={theme.icon.size.xl} color={theme.color.gray50} />}
+      {Icon && <Icon size={theme.icon.size.xl} color={theme.color.gray10} />}
       <span>
         {title && <StyledTitle>{title}</StyledTitle>}
         {description && <StyledDescription>{description}</StyledDescription>}

@@ -6,8 +6,8 @@ import {
 import { TEST_PRIMARY_LINK_URL } from 'test/integration/constants/test-primary-link-url.constant';
 import { makeRestAPIRequest } from 'test/integration/rest/utils/make-rest-api-request.util';
 import { deleteAllRecords } from 'test/integration/utils/delete-all-records';
+import { FieldActorSource } from 'twenty-shared/types';
 
-import { FieldActorSource } from 'src/engine/metadata-modules/field-metadata/composite-types/actor.composite-type';
 import { WORKSPACE_MEMBER_DATA_SEED_IDS } from 'src/engine/workspace-manager/dev-seeder/data/constants/workspace-member-data-seeds.constant';
 
 describe('Core REST API Create Many endpoint', () => {
@@ -102,7 +102,7 @@ describe('Core REST API Create Many endpoint', () => {
       method: 'post',
       path: `/batch/people`,
       body: requestBody,
-      bearer: ADMIN_ACCESS_TOKEN,
+      bearer: APPLE_JANE_ADMIN_ACCESS_TOKEN,
     })
       .expect(201)
       .expect((res) => {
@@ -178,7 +178,7 @@ describe('Core REST API Create Many endpoint', () => {
       });
   });
 
-  it('should support depth 2 parameter', async () => {
+  it('should not support depth 2 parameter', async () => {
     const requestBody = [
       {
         id: TEST_PERSON_1_ID,
@@ -194,26 +194,7 @@ describe('Core REST API Create Many endpoint', () => {
       method: 'post',
       path: `/batch/people?depth=2`,
       body: requestBody,
-    })
-      .expect(201)
-      .expect((res) => {
-        const [createdPerson1, createdPerson2] = res.body.data.createPeople;
-
-        expect(createdPerson1.company.people).toBeDefined();
-        expect(createdPerson2.company.people).toBeDefined();
-
-        const depth2Person1 = createdPerson1.company.people.find(
-          // @ts-expect-error legacy noImplicitAny
-          (p) => p.id === createdPerson1.id,
-        );
-        const depth2Person2 = createdPerson2.company.people.find(
-          // @ts-expect-error legacy noImplicitAny
-          (p) => p.id === createdPerson2.id,
-        );
-
-        expect(depth2Person1).toBeDefined();
-        expect(depth2Person2).toBeDefined();
-      });
+    }).expect(400);
   });
 
   it('should return a BadRequestException when trying to create a person with an existing ID', async () => {
@@ -239,7 +220,9 @@ describe('Core REST API Create Many endpoint', () => {
     })
       .expect(400)
       .expect((res) => {
-        expect(res.body.messages[0]).toContain(`Record already exists`);
+        expect(res.body.messages[0]).toContain(
+          `A duplicate entry was detected`,
+        );
         expect(res.body.error).toBe('BadRequestException');
       });
   });

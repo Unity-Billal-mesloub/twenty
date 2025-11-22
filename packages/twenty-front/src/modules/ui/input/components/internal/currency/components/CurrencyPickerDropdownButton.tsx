@@ -1,13 +1,11 @@
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
 
-import { CurrencyCode } from '@/object-record/record-field/types/CurrencyCode';
 import { Dropdown } from '@/ui/layout/dropdown/components/Dropdown';
-
-import { CurrencyPickerHotkeyScope } from '../types/CurrencyPickerHotkeyScope';
+import { CurrencyCode } from 'twenty-shared/constants';
 
 import { CURRENCIES } from '@/settings/data-model/constants/Currencies';
-import { Currency } from '@/ui/input/components/internal/types/Currency';
+import { type Currency } from '@/ui/input/components/internal/types/Currency';
 import { useCloseDropdown } from '@/ui/layout/dropdown/hooks/useCloseDropdown';
 import { IconChevronDown } from 'twenty-ui/display';
 import { CurrencyPickerDropdownSelect } from './CurrencyPickerDropdownSelect';
@@ -52,7 +50,7 @@ export const CurrencyPickerDropdownButton = ({
 }) => {
   const theme = useTheme();
 
-  const dropdownId = CurrencyPickerHotkeyScope.CurrencyPicker;
+  const dropdownId = 'currency-picker-dropdown-id';
 
   const { closeDropdown } = useCloseDropdown();
 
@@ -69,7 +67,7 @@ export const CurrencyPickerDropdownButton = ({
 
   return (
     <Dropdown
-      dropdownId="currency-picker-dropdown-id"
+      dropdownId={dropdownId}
       clickableComponent={
         <StyledDropdownButtonContainer>
           <StyledIconContainer>

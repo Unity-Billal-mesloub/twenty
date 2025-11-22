@@ -1,17 +1,19 @@
-import { ApolloCache, StoreObject } from '@apollo/client';
+import { type ApolloCache, type StoreObject } from '@apollo/client';
 
+import { triggerUpdateGroupByQueriesOptimisticEffect } from '@/apollo/optimistic-effect/group-by/utils/triggerUpdateGroupByQueriesOptimisticEffect';
 import { sortCachedObjectEdges } from '@/apollo/optimistic-effect/utils/sortCachedObjectEdges';
 import { triggerUpdateRelationsOptimisticEffect } from '@/apollo/optimistic-effect/utils/triggerUpdateRelationsOptimisticEffect';
-import { CachedObjectRecordQueryVariables } from '@/apollo/types/CachedObjectRecordQueryVariables';
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
-import { RecordGqlRefEdge } from '@/object-record/cache/types/RecordGqlRefEdge';
+import { type CachedObjectRecordQueryVariables } from '@/apollo/types/CachedObjectRecordQueryVariables';
+import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
+import { type RecordGqlRefEdge } from '@/object-record/cache/types/RecordGqlRefEdge';
 import { getEdgeTypename } from '@/object-record/cache/utils/getEdgeTypename';
 import { isObjectRecordConnectionWithRefs } from '@/object-record/cache/utils/isObjectRecordConnectionWithRefs';
-import { RecordGqlNode } from '@/object-record/graphql/types/RecordGqlNode';
+import { type RecordGqlNode } from '@/object-record/graphql/types/RecordGqlNode';
 import { isRecordMatchingFilter } from '@/object-record/record-filter/utils/isRecordMatchingFilter';
-import { parseApolloStoreFieldName } from '~/utils/parseApolloStoreFieldName';
+import { type ObjectRecord } from '@/object-record/types/ObjectRecord';
+import { type ObjectPermissions } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
-
+import { parseApolloStoreFieldName } from '~/utils/parseApolloStoreFieldName';
 // TODO: add extensive unit tests for this function
 // That will also serve as documentation
 export const triggerUpdateRecordOptimisticEffect = ({
@@ -20,12 +22,19 @@ export const triggerUpdateRecordOptimisticEffect = ({
   currentRecord,
   updatedRecord,
   objectMetadataItems,
+  objectPermissionsByObjectMetadataId,
+  upsertRecordsInStore,
 }: {
   cache: ApolloCache<unknown>;
   objectMetadataItem: ObjectMetadataItem;
   currentRecord: RecordGqlNode;
   updatedRecord: RecordGqlNode;
   objectMetadataItems: ObjectMetadataItem[];
+  objectPermissionsByObjectMetadataId: Record<
+    string,
+    ObjectPermissions & { objectMetadataId: string }
+  >;
+  upsertRecordsInStore: (records: ObjectRecord[]) => void;
 }) => {
   triggerUpdateRelationsOptimisticEffect({
     cache,
@@ -33,6 +42,8 @@ export const triggerUpdateRecordOptimisticEffect = ({
     currentSourceRecord: currentRecord,
     updatedSourceRecord: updatedRecord,
     objectMetadataItems,
+    objectPermissionsByObjectMetadataId,
+    upsertRecordsInStore,
   });
 
   cache.modify<StoreObject>({
@@ -123,5 +134,13 @@ export const triggerUpdateRecordOptimisticEffect = ({
         };
       },
     },
+  });
+
+  triggerUpdateGroupByQueriesOptimisticEffect({
+    cache,
+    objectMetadataItem,
+    operation: 'update',
+    records: [updatedRecord],
+    shouldMatchRootQueryFilter: true,
   });
 };

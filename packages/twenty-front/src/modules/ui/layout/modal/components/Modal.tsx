@@ -1,7 +1,7 @@
 import { RootStackingContextZIndices } from '@/ui/layout/constants/RootStackingContextZIndices';
 import { ModalHotkeysAndClickOutsideEffect } from '@/ui/layout/modal/components/ModalHotkeysAndClickOutsideEffect';
-import { ModalHotkeyScope } from '@/ui/layout/modal/components/types/ModalHotkeyScope';
 import { ModalComponentInstanceContext } from '@/ui/layout/modal/contexts/ModalComponentInstanceContext';
+import { useModalContainer } from '@/ui/layout/modal/contexts/ModalContainerContext';
 import { isModalOpenedComponentState } from '@/ui/layout/modal/states/isModalOpenedComponentState';
 
 import { MODAL_BACKDROP_CLICK_OUTSIDE_ID } from '@/ui/layout/modal/constants/ModalBackdropClickOutsideId';
@@ -9,11 +9,12 @@ import { MODAL_CLICK_OUTSIDE_LISTENER_EXCLUDED_ID } from '@/ui/layout/modal/cons
 import { useModal } from '@/ui/layout/modal/hooks/useModal';
 import { ClickOutsideListenerContext } from '@/ui/utilities/pointer-event/contexts/ClickOutsideListenerContext';
 import { useIsMobile } from '@/ui/utilities/responsive/hooks/useIsMobile';
-import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
 import { css, useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
 import { AnimatePresence, motion } from 'framer-motion';
 import React, { useRef } from 'react';
+import { createPortal } from 'react-dom';
 const StyledModalDiv = styled(motion.div)<{
   size?: ModalSize;
   padding?: ModalPadding;
@@ -123,19 +124,23 @@ const StyledFooter = styled.div`
 
 const StyledBackDrop = styled(motion.div)<{
   modalVariant: ModalVariants;
+  isInContainer?: boolean;
 }>`
   align-items: center;
-  background: ${({ theme, modalVariant }) =>
-    modalVariant === 'primary' || modalVariant === 'transparent'
-      ? theme.background.overlayPrimary
-      : modalVariant === 'secondary'
-        ? theme.background.overlaySecondary
-        : theme.background.overlayTertiary};
+  background: ${({ theme, modalVariant, isInContainer }) =>
+    isInContainer
+      ? theme.background.overlayTertiary
+      : modalVariant === 'primary' || modalVariant === 'transparent'
+        ? theme.background.overlayPrimary
+        : modalVariant === 'secondary'
+          ? theme.background.overlaySecondary
+          : theme.background.overlayTertiary};
   display: flex;
   height: 100%;
   justify-content: center;
   left: 0;
-  position: fixed;
+  pointer-events: auto;
+  position: ${({ isInContainer }) => (isInContainer ? 'absolute' : 'fixed')};
   top: 0;
   width: 100%;
   z-index: ${RootStackingContextZIndices.RootModalBackDrop};
@@ -191,7 +196,6 @@ export type ModalProps = React.PropsWithChildren & {
   size?: ModalSize;
   padding?: ModalPadding;
   className?: string;
-  hotkeyScope?: ModalHotkeyScope;
   onEnter?: () => void;
   modalVariant?: ModalVariants;
   dataGloballyPreventClickOutside?: boolean;
@@ -222,6 +226,8 @@ export const Modal = ({
 }: ModalProps) => {
   const isMobile = useIsMobile();
   const modalRef = useRef<HTMLDivElement>(null);
+  const { container } = useModalContainer();
+  const isInContainer = container !== null;
 
   const theme = useTheme();
 
@@ -229,7 +235,7 @@ export const Modal = ({
     e.stopPropagation();
   };
 
-  const isModalOpened = useRecoilComponentValueV2(
+  const isModalOpened = useRecoilComponentValue(
     isModalOpenedComponentState,
     modalId,
   );
@@ -241,7 +247,7 @@ export const Modal = ({
     if (shouldCloseModalOnClickOutsideOrEscape) closeModal(modalId);
   };
 
-  return (
+  const modalContent = (
     <AnimatePresence mode="wait">
       {isModalOpened && (
         <ModalComponentInstanceContext.Provider
@@ -266,6 +272,7 @@ export const Modal = ({
               data-click-outside-id={MODAL_BACKDROP_CLICK_OUTSIDE_ID}
               onMouseDown={stopEventPropagation}
               modalVariant={modalVariant}
+              isInContainer={isInContainer}
             >
               <StyledModalDiv
                 ref={modalRef}
@@ -292,6 +299,12 @@ export const Modal = ({
       )}
     </AnimatePresence>
   );
+
+  if (container !== null) {
+    return createPortal(modalContent, container);
+  }
+
+  return modalContent;
 };
 
 Modal.Header = ModalHeader;

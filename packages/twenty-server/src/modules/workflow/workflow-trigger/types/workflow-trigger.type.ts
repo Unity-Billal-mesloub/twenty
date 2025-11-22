@@ -1,4 +1,10 @@
-import { OutputSchema } from 'src/modules/workflow/workflow-builder/workflow-schema/types/output-schema.type';
+import {
+  type BulkRecordsAvailability,
+  type GlobalAvailability,
+  type SingleRecordAvailability,
+} from 'twenty-shared/workflow';
+
+import { type OutputSchema } from 'src/modules/workflow/workflow-builder/workflow-schema/types/output-schema.type';
 
 export enum WorkflowTriggerType {
   DATABASE_EVENT = 'DATABASE_EVENT',
@@ -8,7 +14,6 @@ export enum WorkflowTriggerType {
 }
 
 type BaseWorkflowTriggerSettings = {
-  input?: object;
   outputSchema: OutputSchema;
 };
 
@@ -16,6 +21,11 @@ type BaseTrigger = {
   name: string;
   type: WorkflowTriggerType;
   settings: BaseWorkflowTriggerSettings;
+  nextStepIds?: string[];
+  position?: {
+    x: number;
+    y: number;
+  };
 };
 
 export type WorkflowDatabaseEventTrigger = BaseTrigger & {
@@ -25,16 +35,15 @@ export type WorkflowDatabaseEventTrigger = BaseTrigger & {
   };
 };
 
-export enum WorkflowManualTriggerAvailability {
-  EVERYWHERE = 'EVERYWHERE',
-  WHEN_RECORD_SELECTED = 'WHEN_RECORD_SELECTED',
-}
-
 export type WorkflowManualTrigger = BaseTrigger & {
   type: WorkflowTriggerType.MANUAL;
   settings: BaseWorkflowTriggerSettings & {
     objectType?: string;
     icon?: string;
+    availability?:
+      | GlobalAvailability
+      | SingleRecordAvailability
+      | BulkRecordsAvailability;
   };
 };
 
@@ -76,8 +85,6 @@ export type WorkflowWebhookTrigger = BaseTrigger & {
         }
     );
 };
-
-export type WorkflowManualTriggerSettings = WorkflowManualTrigger['settings'];
 
 export type WorkflowTrigger =
   | WorkflowDatabaseEventTrigger

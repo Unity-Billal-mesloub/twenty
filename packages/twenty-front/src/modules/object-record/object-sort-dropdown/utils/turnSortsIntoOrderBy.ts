@@ -1,15 +1,16 @@
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
+import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
 
-import { RecordGqlOperationOrderBy } from '@/object-record/graphql/types/RecordGqlOperationOrderBy';
+import { type RecordGqlOperationOrderBy } from '@/object-record/graphql/types/RecordGqlOperationOrderBy';
 import { mapArrayToObject } from '~/utils/array/mapArrayToObject';
 import { isUndefinedOrNull } from '~/utils/isUndefinedOrNull';
 
-import { FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
+import { type FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
 import { getOrderByForFieldMetadataType } from '@/object-metadata/utils/getOrderByForFieldMetadataType';
 import { hasObjectMetadataItemPositionField } from '@/object-metadata/utils/hasObjectMetadataItemPositionField';
-import { RecordSort } from '@/object-record/record-sort/types/RecordSort';
-import { OrderBy } from '@/types/OrderBy';
+import { type RecordSort } from '@/object-record/record-sort/types/RecordSort';
+import { type OrderBy } from '@/types/OrderBy';
 import { isDefined } from 'twenty-shared/utils';
+import { ViewSortDirection } from '~/generated/graphql';
 
 export const turnSortsIntoOrderBy = (
   objectMetadataItem: ObjectMetadataItem,
@@ -29,7 +30,9 @@ export const turnSortsIntoOrderBy = (
       }
 
       const direction: OrderBy =
-        sort.direction === 'asc' ? 'AscNullsFirst' : 'DescNullsLast';
+        sort.direction === ViewSortDirection.ASC
+          ? 'AscNullsFirst'
+          : 'DescNullsLast';
 
       return getOrderByForFieldMetadataType(correspondingField, direction);
     })

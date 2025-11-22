@@ -1,10 +1,10 @@
 import { ObjectSortDropdownComponentInstanceContext } from '@/object-record/object-sort-dropdown/states/context/ObjectSortDropdownComponentInstanceContext';
-import { RecordSortDirection } from '@/object-record/record-sort/types/RecordSortDirection';
-import { createComponentStateV2 } from '@/ui/utilities/state/component-state/utils/createComponentStateV2';
+import { createComponentState } from '@/ui/utilities/state/component-state/utils/createComponentState';
+import { ViewSortDirection } from '~/generated/graphql';
 
 export const selectedRecordSortDirectionComponentState =
-  createComponentStateV2<RecordSortDirection>({
+  createComponentState<ViewSortDirection>({
     key: 'selectedRecordSortDirectionComponentState',
-    defaultValue: 'asc',
+    defaultValue: ViewSortDirection.ASC,
     componentInstanceContext: ObjectSortDropdownComponentInstanceContext,
   });

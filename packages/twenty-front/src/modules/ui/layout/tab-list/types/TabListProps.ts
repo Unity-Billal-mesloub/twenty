@@ -1,4 +1,4 @@
-import { SingleTabProps } from '@/ui/layout/tab-list/types/SingleTabProps';
+import { type SingleTabProps } from '@/ui/layout/tab-list/types/SingleTabProps';
 
 export type TabListProps = {
   tabs: SingleTabProps[];
@@ -7,4 +7,5 @@ export type TabListProps = {
   className?: string;
   isInRightDrawer?: boolean;
   componentInstanceId: string;
+  onChangeTab?: (tabId: string) => void;
 };

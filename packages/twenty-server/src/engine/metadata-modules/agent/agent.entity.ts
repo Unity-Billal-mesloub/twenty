@@ -12,20 +12,39 @@ import {
 } from 'typeorm';
 
 import { Relation } from 'src/engine/workspace-manager/workspace-sync-metadata/interfaces/relation.interface';
+import { SyncableEntity } from 'src/engine/workspace-manager/workspace-sync/interfaces/syncable-entity.interface';
 
 import { ModelId } from 'src/engine/core-modules/ai/constants/ai-models.const';
-import { Workspace } from 'src/engine/core-modules/workspace/workspace.entity';
+import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
+import { AgentResponseFormat } from 'src/engine/metadata-modules/agent/types/agent-response-format.type';
+import { ModelConfiguration } from 'src/engine/metadata-modules/agent/types/modelConfiguration';
 
-import { AgentChatThreadEntity } from './agent-chat-thread.entity';
+import { AgentHandoffEntity } from './agent-handoff.entity';
 
 @Entity('agent')
 @Index('IDX_AGENT_ID_DELETED_AT', ['id', 'deletedAt'])
-export class AgentEntity {
+@Index('IDX_AGENT_NAME_WORKSPACE_ID_UNIQUE', ['name', 'workspaceId'], {
+  unique: true,
+  where: '"deletedAt" IS NULL',
+})
+export class AgentEntity
+  extends SyncableEntity
+  implements Required<AgentEntity>
+{
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Column({ nullable: true, type: 'uuid' })
+  standardId: string | null;
+
   @Column({ nullable: false })
   name: string;
+
+  @Column({ nullable: false })
+  label: string;
+
+  @Column({ nullable: true })
+  icon: string;
 
   @Column({ nullable: true })
   description: string;
@@ -33,23 +52,29 @@ export class AgentEntity {
   @Column({ nullable: false, type: 'text' })
   prompt: string;
 
-  @Column({ nullable: false, type: 'varchar' })
+  @Column({ nullable: false, type: 'varchar', default: 'auto' })
   modelId: ModelId;
 
-  @Column({ nullable: true, type: 'jsonb' })
-  responseFormat: object;
+  @Column({ nullable: true, type: 'jsonb', default: { type: 'text' } })
+  responseFormat: AgentResponseFormat;
 
   @Column({ nullable: false, type: 'uuid' })
   workspaceId: string;
 
-  @ManyToOne(() => Workspace, (workspace) => workspace.agents, {
+  @Column({ default: false })
+  isCustom: boolean;
+
+  @ManyToOne(() => WorkspaceEntity, (workspace) => workspace.agents, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'workspaceId' })
-  workspace: Relation<Workspace>;
+  workspace: Relation<WorkspaceEntity>;
 
-  @OneToMany(() => AgentChatThreadEntity, (chatThread) => chatThread.agent)
-  chatThreads: Relation<AgentChatThreadEntity[]>;
+  @OneToMany(() => AgentHandoffEntity, (handoff) => handoff.fromAgent)
+  outgoingHandoffs: Relation<AgentHandoffEntity[]>;
+
+  @OneToMany(() => AgentHandoffEntity, (handoff) => handoff.toAgent)
+  incomingHandoffs: Relation<AgentHandoffEntity[]>;
 
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
@@ -58,5 +83,8 @@ export class AgentEntity {
   updatedAt: Date;
 
   @DeleteDateColumn({ type: 'timestamptz' })
-  deletedAt?: Date;
+  deletedAt: Date | null;
+
+  @Column({ nullable: true, type: 'jsonb' })
+  modelConfiguration: ModelConfiguration;
 }

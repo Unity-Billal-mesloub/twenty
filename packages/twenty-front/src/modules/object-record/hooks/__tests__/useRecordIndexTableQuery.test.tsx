@@ -1,18 +1,26 @@
 import { renderHook, waitFor } from '@testing-library/react';
-import { ReactNode } from 'react';
+import { type ReactNode } from 'react';
 
+import { RecordComponentInstanceContextsWrapper } from '@/object-record/components/RecordComponentInstanceContextsWrapper';
 import { RecordGroupContext } from '@/object-record/record-group/states/context/RecordGroupContext';
 import { useRecordIndexTableQuery } from '@/object-record/record-index/hooks/useRecordIndexTableQuery';
 import { RecordTableComponentInstance } from '@/object-record/record-table/components/RecordTableComponentInstance';
+
+import { RecordTableContextProvider } from '@/object-record/record-table/components/RecordTableContextProvider';
 import { ViewComponentInstanceContext } from '@/views/states/contexts/ViewComponentInstanceContext';
-import { MockedResponse } from '@apollo/client/testing';
+import { type MockedResponse } from '@apollo/client/testing';
 import gql from 'graphql-tag';
+import { QUERY_DEFAULT_LIMIT_RECORDS } from 'twenty-shared/constants';
 import { getJestMetadataAndApolloMocksWrapper } from '~/testing/jest/getJestMetadataAndApolloMocksWrapper';
-import { peopleQueryResult } from '~/testing/mock-data/people';
+import { JestRecordIndexContextProviderWrapper } from '~/testing/jest/JestRecordIndexContextProviderWrapper';
+import {
+  getMockPersonObjectMetadataItem,
+  peopleQueryResult,
+} from '~/testing/mock-data/people';
 
 const recordTableId = 'people';
 const objectNameSingular = 'person';
-const onColumnsChange = jest.fn();
+const mockPersonObjectMetadataItem = getMockPersonObjectMetadataItem();
 
 const ObjectNamePluralSetter = ({ children }: { children: ReactNode }) => {
   return <>{children}</>;
@@ -27,38 +35,22 @@ const mocks: MockedResponse[] = [
           $orderBy: [PersonOrderByInput]
           $lastCursor: String
           $limit: Int
+          $offset: Int
         ) {
           people(
             filter: $filter
             orderBy: $orderBy
             first: $limit
             after: $lastCursor
+            offset: $offset
           ) {
             edges {
               node {
                 __typename
                 avatarUrl
-                city
                 createdAt
-                createdBy {
-                  source
-                  workspaceMemberId
-                  name
-                  context
-                }
                 deletedAt
-                emails {
-                  primaryEmail
-                  additionalEmails
-                }
                 id
-                intro
-                jobTitle
-                linkedinLink {
-                  primaryLinkUrl
-                  primaryLinkLabel
-                  secondaryLinks
-                }
                 name {
                   firstName
                   lastName
@@ -67,548 +59,30 @@ const mocks: MockedResponse[] = [
                   edges {
                     node {
                       __typename
-                      company {
-                        __typename
-                        accountOwnerId
-                        address {
-                          addressStreet1
-                          addressStreet2
-                          addressCity
-                          addressState
-                          addressCountry
-                          addressPostcode
-                          addressLat
-                          addressLng
-                        }
-                        annualRecurringRevenue {
-                          amountMicros
-                          currencyCode
-                        }
-                        createdAt
-                        createdBy {
-                          source
-                          workspaceMemberId
-                          name
-                          context
-                        }
-                        deletedAt
-                        domainName {
-                          primaryLinkUrl
-                          primaryLinkLabel
-                          secondaryLinks
-                        }
-                        employees
-                        id
-                        idealCustomerProfile
-                        introVideo {
-                          primaryLinkUrl
-                          primaryLinkLabel
-                          secondaryLinks
-                        }
-                        linkedinLink {
-                          primaryLinkUrl
-                          primaryLinkLabel
-                          secondaryLinks
-                        }
-                        name
-                        position
-                        tagline
-                        updatedAt
-                        visaSponsorship
-                        workPolicy
-                        xLink {
-                          primaryLinkUrl
-                          primaryLinkLabel
-                          secondaryLinks
-                        }
-                      }
-                      companyId
-                      createdAt
-                      deletedAt
                       id
                       note {
                         __typename
-                        body
-                        bodyV2 {
-                          blocknote
-                          markdown
-                        }
-                        createdAt
-                        createdBy {
-                          source
-                          workspaceMemberId
-                          name
-                          context
-                        }
-                        deletedAt
                         id
-                        position
                         title
-                        updatedAt
                       }
-                      noteId
-                      opportunity {
-                        __typename
-                        amount {
-                          amountMicros
-                          currencyCode
-                        }
-                        closeDate
-                        companyId
-                        createdAt
-                        createdBy {
-                          source
-                          workspaceMemberId
-                          name
-                          context
-                        }
-                        deletedAt
-                        id
-                        name
-                        pointOfContactId
-                        position
-                        stage
-                        updatedAt
-                      }
-                      opportunityId
-                      person {
-                        __typename
-                        avatarUrl
-                        city
-                        companyId
-                        createdAt
-                        createdBy {
-                          source
-                          workspaceMemberId
-                          name
-                          context
-                        }
-                        deletedAt
-                        emails {
-                          primaryEmail
-                          additionalEmails
-                        }
-                        id
-                        intro
-                        jobTitle
-                        linkedinLink {
-                          primaryLinkUrl
-                          primaryLinkLabel
-                          secondaryLinks
-                        }
-                        name {
-                          firstName
-                          lastName
-                        }
-                        performanceRating
-                        phones {
-                          primaryPhoneNumber
-                          primaryPhoneCountryCode
-                          primaryPhoneCallingCode
-                          additionalPhones
-                        }
-                        position
-                        updatedAt
-                        whatsapp {
-                          primaryPhoneNumber
-                          primaryPhoneCountryCode
-                          primaryPhoneCallingCode
-                          additionalPhones
-                        }
-                        workPreference
-                        xLink {
-                          primaryLinkUrl
-                          primaryLinkLabel
-                          secondaryLinks
-                        }
-                      }
-                      personId
-                      pet {
-                        __typename
-                        age
-                        averageCostOfKibblePerMonth {
-                          amountMicros
-                          currencyCode
-                        }
-                        bio
-                        birthday
-                        comments
-                        createdAt
-                        createdBy {
-                          source
-                          workspaceMemberId
-                          name
-                          context
-                        }
-                        deletedAt
-                        extraData
-                        id
-                        interestingFacts
-                        isGoodWithKids
-                        location {
-                          addressStreet1
-                          addressStreet2
-                          addressCity
-                          addressState
-                          addressCountry
-                          addressPostcode
-                          addressLat
-                          addressLng
-                        }
-                        makesOwnerThinkOf {
-                          firstName
-                          lastName
-                        }
-                        name
-                        pictures {
-                          primaryLinkUrl
-                          primaryLinkLabel
-                          secondaryLinks
-                        }
-                        position
-                        soundSwag
-                        species
-                        traits
-                        updatedAt
-                        vetEmail {
-                          primaryEmail
-                          additionalEmails
-                        }
-                        vetPhone {
-                          primaryPhoneNumber
-                          primaryPhoneCountryCode
-                          primaryPhoneCallingCode
-                          additionalPhones
-                        }
-                      }
-                      petId
-                      rocket {
-                        __typename
-                        createdAt
-                        createdBy {
-                          source
-                          workspaceMemberId
-                          name
-                          context
-                        }
-                        deletedAt
-                        id
-                        name
-                        position
-                        updatedAt
-                      }
-                      rocketId
-                      surveyResult {
-                        __typename
-                        averageEstimatedNumberOfAtomsInTheUniverse
-                        comments
-                        createdAt
-                        createdBy {
-                          source
-                          workspaceMemberId
-                          name
-                          context
-                        }
-                        deletedAt
-                        id
-                        name
-                        participants
-                        percentageOfCompletion
-                        position
-                        score
-                        shortNotes
-                        updatedAt
-                      }
-                      surveyResultId
-                      updatedAt
                     }
                   }
-                }
-                performanceRating
-                phones {
-                  primaryPhoneNumber
-                  primaryPhoneCountryCode
-                  primaryPhoneCallingCode
-                  additionalPhones
                 }
                 position
                 taskTargets {
                   edges {
                     node {
                       __typename
-                      company {
-                        __typename
-                        accountOwnerId
-                        address {
-                          addressStreet1
-                          addressStreet2
-                          addressCity
-                          addressState
-                          addressCountry
-                          addressPostcode
-                          addressLat
-                          addressLng
-                        }
-                        annualRecurringRevenue {
-                          amountMicros
-                          currencyCode
-                        }
-                        createdAt
-                        createdBy {
-                          source
-                          workspaceMemberId
-                          name
-                          context
-                        }
-                        deletedAt
-                        domainName {
-                          primaryLinkUrl
-                          primaryLinkLabel
-                          secondaryLinks
-                        }
-                        employees
-                        id
-                        idealCustomerProfile
-                        introVideo {
-                          primaryLinkUrl
-                          primaryLinkLabel
-                          secondaryLinks
-                        }
-                        linkedinLink {
-                          primaryLinkUrl
-                          primaryLinkLabel
-                          secondaryLinks
-                        }
-                        name
-                        position
-                        tagline
-                        updatedAt
-                        visaSponsorship
-                        workPolicy
-                        xLink {
-                          primaryLinkUrl
-                          primaryLinkLabel
-                          secondaryLinks
-                        }
-                      }
-                      companyId
-                      createdAt
-                      deletedAt
                       id
-                      opportunity {
-                        __typename
-                        amount {
-                          amountMicros
-                          currencyCode
-                        }
-                        closeDate
-                        companyId
-                        createdAt
-                        createdBy {
-                          source
-                          workspaceMemberId
-                          name
-                          context
-                        }
-                        deletedAt
-                        id
-                        name
-                        pointOfContactId
-                        position
-                        stage
-                        updatedAt
-                      }
-                      opportunityId
-                      person {
-                        __typename
-                        avatarUrl
-                        city
-                        companyId
-                        createdAt
-                        createdBy {
-                          source
-                          workspaceMemberId
-                          name
-                          context
-                        }
-                        deletedAt
-                        emails {
-                          primaryEmail
-                          additionalEmails
-                        }
-                        id
-                        intro
-                        jobTitle
-                        linkedinLink {
-                          primaryLinkUrl
-                          primaryLinkLabel
-                          secondaryLinks
-                        }
-                        name {
-                          firstName
-                          lastName
-                        }
-                        performanceRating
-                        phones {
-                          primaryPhoneNumber
-                          primaryPhoneCountryCode
-                          primaryPhoneCallingCode
-                          additionalPhones
-                        }
-                        position
-                        updatedAt
-                        whatsapp {
-                          primaryPhoneNumber
-                          primaryPhoneCountryCode
-                          primaryPhoneCallingCode
-                          additionalPhones
-                        }
-                        workPreference
-                        xLink {
-                          primaryLinkUrl
-                          primaryLinkLabel
-                          secondaryLinks
-                        }
-                      }
-                      personId
-                      pet {
-                        __typename
-                        age
-                        averageCostOfKibblePerMonth {
-                          amountMicros
-                          currencyCode
-                        }
-                        bio
-                        birthday
-                        comments
-                        createdAt
-                        createdBy {
-                          source
-                          workspaceMemberId
-                          name
-                          context
-                        }
-                        deletedAt
-                        extraData
-                        id
-                        interestingFacts
-                        isGoodWithKids
-                        location {
-                          addressStreet1
-                          addressStreet2
-                          addressCity
-                          addressState
-                          addressCountry
-                          addressPostcode
-                          addressLat
-                          addressLng
-                        }
-                        makesOwnerThinkOf {
-                          firstName
-                          lastName
-                        }
-                        name
-                        pictures {
-                          primaryLinkUrl
-                          primaryLinkLabel
-                          secondaryLinks
-                        }
-                        position
-                        soundSwag
-                        species
-                        traits
-                        updatedAt
-                        vetEmail {
-                          primaryEmail
-                          additionalEmails
-                        }
-                        vetPhone {
-                          primaryPhoneNumber
-                          primaryPhoneCountryCode
-                          primaryPhoneCallingCode
-                          additionalPhones
-                        }
-                      }
-                      petId
-                      rocket {
-                        __typename
-                        createdAt
-                        createdBy {
-                          source
-                          workspaceMemberId
-                          name
-                          context
-                        }
-                        deletedAt
-                        id
-                        name
-                        position
-                        updatedAt
-                      }
-                      rocketId
-                      surveyResult {
-                        __typename
-                        averageEstimatedNumberOfAtomsInTheUniverse
-                        comments
-                        createdAt
-                        createdBy {
-                          source
-                          workspaceMemberId
-                          name
-                          context
-                        }
-                        deletedAt
-                        id
-                        name
-                        participants
-                        percentageOfCompletion
-                        position
-                        score
-                        shortNotes
-                        updatedAt
-                      }
-                      surveyResultId
                       task {
                         __typename
-                        assigneeId
-                        body
-                        bodyV2 {
-                          blocknote
-                          markdown
-                        }
-                        createdAt
-                        createdBy {
-                          source
-                          workspaceMemberId
-                          name
-                          context
-                        }
-                        deletedAt
-                        dueAt
                         id
-                        position
-                        status
                         title
-                        updatedAt
                       }
-                      taskId
-                      updatedAt
                     }
                   }
                 }
                 updatedAt
-                whatsapp {
-                  primaryPhoneNumber
-                  primaryPhoneCountryCode
-                  primaryPhoneCallingCode
-                  additionalPhones
-                }
-                workPreference
-                xLink {
-                  primaryLinkUrl
-                  primaryLinkLabel
-                  secondaryLinks
-                }
               }
               cursor
             }
@@ -625,6 +99,7 @@ const mocks: MockedResponse[] = [
       variables: {
         filter: {},
         orderBy: [{ position: 'AscNullsFirst' }],
+        limit: QUERY_DEFAULT_LIMIT_RECORDS,
       },
     },
     result: jest.fn(() => ({
@@ -660,20 +135,33 @@ jest.mock('react-router-dom', () => ({
 const Wrapper = ({ children }: { children: ReactNode }) => {
   return (
     <HookMockWrapper>
-      <ObjectNamePluralSetter>
-        <ViewComponentInstanceContext.Provider
-          value={{ instanceId: 'instanceId' }}
+      <ViewComponentInstanceContext.Provider
+        value={{ instanceId: 'instanceId' }}
+      >
+        <RecordComponentInstanceContextsWrapper
+          componentInstanceId={recordTableId}
         >
-          <RecordTableComponentInstance
-            recordTableId={recordTableId}
-            onColumnsChange={onColumnsChange}
+          <JestRecordIndexContextProviderWrapper
+            objectMetadataItem={mockPersonObjectMetadataItem}
           >
-            <RecordGroupContext.Provider value={{ recordGroupId: 'default' }}>
-              {children}
-            </RecordGroupContext.Provider>
-          </RecordTableComponentInstance>
-        </ViewComponentInstanceContext.Provider>
-      </ObjectNamePluralSetter>
+            <RecordTableContextProvider
+              objectNameSingular={objectNameSingular}
+              recordTableId={recordTableId}
+              viewBarId="instanceId"
+            >
+              <ObjectNamePluralSetter>
+                <RecordTableComponentInstance recordTableId={recordTableId}>
+                  <RecordGroupContext.Provider
+                    value={{ recordGroupId: 'default' }}
+                  >
+                    {children}
+                  </RecordGroupContext.Provider>
+                </RecordTableComponentInstance>
+              </ObjectNamePluralSetter>
+            </RecordTableContextProvider>
+          </JestRecordIndexContextProviderWrapper>
+        </RecordComponentInstanceContextsWrapper>
+      </ViewComponentInstanceContext.Provider>
     </HookMockWrapper>
   );
 };

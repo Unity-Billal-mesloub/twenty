@@ -1,63 +1,73 @@
 import { RecordShowRightDrawerActionMenu } from '@/action-menu/components/RecordShowRightDrawerActionMenu';
 import { RecordShowRightDrawerOpenRecordButton } from '@/action-menu/components/RecordShowRightDrawerOpenRecordButton';
-import { ActivityTargetableObject } from '@/activities/types/ActivityTargetableEntity';
 import { CommandMenuPageComponentInstanceContext } from '@/command-menu/states/contexts/CommandMenuPageComponentInstanceContext';
-import { CardComponents } from '@/object-record/record-show/components/CardComponents';
 import { FieldsCard } from '@/object-record/record-show/components/FieldsCard';
 import { SummaryCard } from '@/object-record/record-show/components/SummaryCard';
-import { RecordLayout } from '@/object-record/record-show/types/RecordLayout';
+import { type RecordLayout } from '@/object-record/record-show/types/RecordLayout';
+import { getCardComponent } from '@/object-record/record-show/utils/getCardComponent';
 import { RightDrawerFooter } from '@/ui/layout/right-drawer/components/RightDrawerFooter';
 import { ShowPageLeftContainer } from '@/ui/layout/show-page/components/ShowPageLeftContainer';
 import { getShowPageTabListComponentId } from '@/ui/layout/show-page/utils/getShowPageTabListComponentId';
 import { TabList } from '@/ui/layout/tab-list/components/TabList';
 
+import { type TargetRecordIdentifier } from '@/ui/layout/contexts/TargetRecordIdentifier';
 import { activeTabIdComponentState } from '@/ui/layout/tab-list/states/activeTabIdComponentState';
 import { TabListComponentInstanceContext } from '@/ui/layout/tab-list/states/contexts/TabListComponentInstanceContext';
-import { SingleTabProps } from '@/ui/layout/tab-list/types/SingleTabProps';
+import { type SingleTabProps } from '@/ui/layout/tab-list/types/SingleTabProps';
 import { useIsMobile } from '@/ui/utilities/responsive/hooks/useIsMobile';
 import { useComponentInstanceStateContext } from '@/ui/utilities/state/component-state/hooks/useComponentInstanceStateContext';
-import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
+import { css } from '@emotion/react';
 import styled from '@emotion/styled';
+import React from 'react';
+import { isDefined } from 'twenty-shared/utils';
 
-const StyledShowPageRightContainer = styled.div<{ isMobile: boolean }>`
+const StyledShowPageRightContainer = styled.div`
   display: flex;
   flex-direction: column;
   height: 100%;
   justify-content: start;
   width: 100%;
-  height: 100%;
   overflow: auto;
 `;
 
 const StyledTabListContainer = styled.div<{ shouldDisplay: boolean }>`
   ${({ shouldDisplay }) =>
     !shouldDisplay &&
-    `
-    visibility: hidden;
-    height: 0;
-    overflow: hidden;
-  `}
+    css`
+      height: 0;
+      overflow: hidden;
+      visibility: hidden;
+    `}
 `;
 
 const StyledTabList = styled(TabList)`
   padding-left: ${({ theme }) => theme.spacing(2)};
 `;
 
-const StyledContentContainer = styled.div<{ isInRightDrawer: boolean }>`
+const StyledContentContainer = styled.div<{
+  isInRightDrawer: boolean;
+}>`
+  background: ${({ theme, isInRightDrawer }) =>
+    isInRightDrawer ? theme.background.secondary : theme.background.primary};
+  border: ${({ theme, isInRightDrawer }) =>
+    isInRightDrawer ? `1px solid ${theme.border.color.light}` : 'none'};
+  border-radius: ${({ theme, isInRightDrawer }) =>
+    isInRightDrawer ? theme.border.radius.md : '0'};
   flex: 1;
+  margin: ${({ theme, isInRightDrawer }) =>
+    isInRightDrawer ? theme.spacing(3) : '0'};
   overflow-y: auto;
-  background: ${({ theme }) => theme.background.primary};
-  padding-bottom: ${({ theme, isInRightDrawer }) =>
-    isInRightDrawer ? theme.spacing(16) : 0};
+
+  .scroll-wrapper-y-enabled {
+    height: auto;
+  }
 `;
 
 type ShowPageSubContainerProps = {
   layout?: RecordLayout;
   tabs: SingleTabProps[];
-  targetableObject: Pick<
-    ActivityTargetableObject,
-    'targetObjectNameSingular' | 'id'
-  >;
+  targetRecordIdentifier: TargetRecordIdentifier;
   isInRightDrawer?: boolean;
   loading: boolean;
 };
@@ -65,7 +75,7 @@ type ShowPageSubContainerProps = {
 export const ShowPageSubContainer = ({
   tabs,
   layout,
-  targetableObject,
+  targetRecordIdentifier,
   loading,
   isInRightDrawer = false,
 }: ShowPageSubContainerProps) => {
@@ -75,9 +85,9 @@ export const ShowPageSubContainer = ({
 
   const tabListComponentId = getShowPageTabListComponentId({
     pageId: commandMenuPageComponentInstance?.instanceId,
-    targetObjectId: targetableObject.id,
+    targetObjectId: targetRecordIdentifier.id,
   });
-  const activeTabId = useRecoilComponentValueV2(
+  const activeTabId = useRecoilComponentValue(
     activeTabIdComponentState,
     tabListComponentId,
   );
@@ -86,36 +96,32 @@ export const ShowPageSubContainer = ({
 
   const summaryCard = (
     <SummaryCard
-      objectNameSingular={targetableObject.targetObjectNameSingular}
-      objectRecordId={targetableObject.id}
+      objectNameSingular={targetRecordIdentifier.targetObjectNameSingular}
+      objectRecordId={targetRecordIdentifier.id}
       isInRightDrawer={isInRightDrawer}
     />
   );
 
-  const fieldsCard = (
-    <FieldsCard
-      objectNameSingular={targetableObject.targetObjectNameSingular}
-      objectRecordId={targetableObject.id}
-    />
-  );
+  const fieldsCard = <FieldsCard />;
 
   const renderActiveTabContent = () => {
     const activeTab = tabs.find((tab) => tab.id === activeTabId);
     if (!activeTab?.cards?.length) return null;
 
-    return activeTab.cards.map((card, index) => {
-      const CardComponent = CardComponents[card.type];
-      return CardComponent ? (
-        <CardComponent
-          key={`${activeTab.id}-card-${index}`}
-          targetableObject={targetableObject}
-          isInRightDrawer={isInRightDrawer}
-        />
-      ) : null;
-    });
+    return (
+      <>
+        {activeTab.cards.map((card, index) => (
+          <React.Fragment key={`${activeTab.id}-card-${index}`}>
+            {getCardComponent(card.type, card.configuration)}
+          </React.Fragment>
+        ))}
+      </>
+    );
   };
 
   const visibleTabs = tabs.filter((tab) => !tab.hide);
+
+  const isInCommandMenu = isDefined(commandMenuPageComponentInstance);
 
   const displaySummaryAndFields =
     layout && !layout.hideSummaryAndFields && !isMobile && !isInRightDrawer;
@@ -125,12 +131,12 @@ export const ShowPageSubContainer = ({
       value={{ instanceId: tabListComponentId }}
     >
       {displaySummaryAndFields && (
-        <ShowPageLeftContainer forceMobile={isMobile}>
+        <ShowPageLeftContainer>
           {summaryCard}
           {fieldsCard}
         </ShowPageLeftContainer>
       )}
-      <StyledShowPageRightContainer isMobile={isMobile}>
+      <StyledShowPageRightContainer>
         <StyledTabListContainer shouldDisplay={visibleTabs.length > 1}>
           <StyledTabList
             behaveAsLinks={!isInRightDrawer}
@@ -140,7 +146,7 @@ export const ShowPageSubContainer = ({
             componentInstanceId={tabListComponentId}
           />
         </StyledTabListContainer>
-        {(isMobile || isInRightDrawer) && summaryCard}
+        {(isMobile || isInRightDrawer) && !isInCommandMenu && summaryCard}
         <StyledContentContainer isInRightDrawer={isInRightDrawer}>
           {renderActiveTabContent()}
         </StyledContentContainer>
@@ -149,8 +155,10 @@ export const ShowPageSubContainer = ({
             actions={[
               <RecordShowRightDrawerActionMenu />,
               <RecordShowRightDrawerOpenRecordButton
-                objectNameSingular={targetableObject.targetObjectNameSingular}
-                recordId={targetableObject.id}
+                objectNameSingular={
+                  targetRecordIdentifier.targetObjectNameSingular
+                }
+                recordId={targetRecordIdentifier.id}
               />,
             ]}
           />

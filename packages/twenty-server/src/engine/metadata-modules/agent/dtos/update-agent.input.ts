@@ -11,6 +11,7 @@ import GraphQLJSON from 'graphql-type-json';
 
 import { UUIDScalarType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars';
 import { ModelId } from 'src/engine/core-modules/ai/constants/ai-models.const';
+import { ModelConfiguration } from 'src/engine/metadata-modules/agent/types/modelConfiguration';
 
 @InputType()
 export class UpdateAgentInput {
@@ -21,8 +22,18 @@ export class UpdateAgentInput {
 
   @IsString()
   @IsOptional()
-  @Field()
+  @Field({ nullable: true })
   name?: string;
+
+  @IsString()
+  @IsOptional()
+  @Field({ nullable: true })
+  label?: string;
+
+  @IsString()
+  @IsOptional()
+  @Field({ nullable: true })
+  icon?: string;
 
   @IsString()
   @IsOptional()
@@ -31,16 +42,26 @@ export class UpdateAgentInput {
 
   @IsString()
   @IsOptional()
-  @Field()
+  @Field({ nullable: true })
   prompt?: string;
 
   @IsString()
   @IsOptional()
-  @Field(() => String)
+  @Field(() => String, { nullable: true })
   modelId?: ModelId;
+
+  @IsUUID()
+  @IsOptional()
+  @Field(() => UUIDScalarType, { nullable: true })
+  roleId?: string;
 
   @IsObject()
   @IsOptional()
   @Field(() => GraphQLJSON, { nullable: true })
   responseFormat?: object;
+
+  @IsObject()
+  @IsOptional()
+  @Field(() => GraphQLJSON, { nullable: true })
+  modelConfiguration?: ModelConfiguration;
 }

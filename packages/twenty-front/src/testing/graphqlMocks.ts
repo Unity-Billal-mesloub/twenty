@@ -1,12 +1,13 @@
 import { getOperationName } from '@apollo/client/utilities';
-import { graphql, GraphQLQuery, http, HttpResponse } from 'msw';
+import { graphql, type GraphQLQuery, http, HttpResponse } from 'msw';
 
 import { TRACK_ANALYTICS } from '@/analytics/graphql/queries/track';
 import { FIND_MANY_OBJECT_METADATA_ITEMS } from '@/object-metadata/graphql/queries';
 import { GET_CURRENT_USER } from '@/users/graphql/queries/getCurrentUser';
 import { REACT_APP_SERVER_BASE_URL } from '~/config';
+import { mockedApiKeys } from '~/testing/mock-data/api-keys';
 import {
-  getCompaniesMock,
+  getCompaniesRecordConnectionMock,
   getCompanyDuplicateMock,
 } from '~/testing/mock-data/companies';
 import { mockedClientConfig } from '~/testing/mock-data/config';
@@ -21,8 +22,10 @@ import { mockedViewsData } from '~/testing/mock-data/views';
 import { mockWorkspaceMembers } from '~/testing/mock-data/workspace-members';
 
 import { GET_PUBLIC_WORKSPACE_DATA_BY_DOMAIN } from '@/auth/graphql/queries/getPublicWorkspaceDataByDomain';
+import { LIST_PLANS } from '@/billing/graphql/queries/listPlans';
 import { GET_ROLES } from '@/settings/roles/graphql/queries/getRolesQuery';
 import { isDefined } from 'twenty-shared/utils';
+import { mockBillingPlans } from '~/testing/mock-data/billing-plans';
 import { mockedStandardObjectMetadataQueryResult } from '~/testing/mock-data/generated/mock-metadata-query-result';
 import { getRolesMock } from '~/testing/mock-data/roles';
 import { mockedTasks } from '~/testing/mock-data/tasks';
@@ -36,7 +39,7 @@ import { mockedRemoteServers } from './mock-data/remote-servers';
 import { mockedViewFieldsData } from './mock-data/view-fields';
 
 const peopleMock = getPeopleRecordConnectionMock();
-const companiesMock = getCompaniesMock();
+const companiesMock = getCompaniesRecordConnectionMock();
 const duplicateCompanyMock = getCompanyDuplicateMock();
 
 export const metadataGraphql = graphql.link(
@@ -381,6 +384,7 @@ export const graphqlMocks = {
               startCursor: null,
               endCursor: null,
             },
+            totalCount: mockedData.length,
           },
         },
       });
@@ -650,26 +654,6 @@ export const graphqlMocks = {
         });
       },
     ),
-    graphql.query<GraphQLQuery, { objectRecordId: string }>(
-      'FindOneWebhook',
-      ({ variables: { objectRecordId } }) => {
-        return HttpResponse.json({
-          data: {
-            webhook: {
-              __typename: 'Webhook',
-              id: objectRecordId,
-              createdAt: '2021-08-27T12:00:00Z',
-              updatedAt: '2021-08-27T12:00:00Z',
-              deletedAt: null,
-              targetUrl: 'https://example.com/webhook',
-              description: 'A Sample Description',
-              operations: ['*.created', '*.updated'],
-              secret: 'sample-secret',
-            },
-          },
-        });
-      },
-    ),
     graphql.query('FindManyWorkflows', () => {
       return HttpResponse.json({
         data: workflowQueryResult,
@@ -701,6 +685,11 @@ export const graphqlMocks = {
         },
       });
     }),
+    graphql.query(getOperationName(LIST_PLANS) ?? '', () => {
+      return HttpResponse.json({
+        data: mockBillingPlans,
+      });
+    }),
     http.get('https://chat-assets.frontapp.com/v1/chat.bundle.js', () => {
       return HttpResponse.text(
         `
@@ -710,6 +699,142 @@ export const graphqlMocks = {
         `,
         { status: 200 },
       );
+    }),
+    metadataGraphql.query('GetApiKeys', () => {
+      return HttpResponse.json({
+        data: {
+          apiKeys: mockedApiKeys.map((apiKey) => ({
+            __typename: 'ApiKey',
+            ...apiKey,
+            revokedAt: null,
+          })),
+        },
+      });
+    }),
+    metadataGraphql.query('GetApiKey', ({ variables }) => {
+      const apiKeyId = variables.input?.id;
+      const apiKey = mockedApiKeys.find((key) => key.id === apiKeyId);
+
+      return HttpResponse.json({
+        data: {
+          apiKey: apiKey
+            ? {
+                __typename: 'ApiKey',
+                ...apiKey,
+                revokedAt: null,
+              }
+            : null,
+        },
+      });
+    }),
+    metadataGraphql.mutation('CreateApiKey', ({ variables }) => {
+      const input = variables.input;
+      const newApiKey = {
+        __typename: 'ApiKey',
+        id: '20202020-1234-1234-1234-123456789012',
+        name: input.name,
+        expiresAt: input.expiresAt,
+        revokedAt: null,
+        role: {
+          __typename: 'Role',
+          id: input.roleId,
+          label: input.roleId === '2' ? 'Guest' : 'Admin',
+          icon: input.roleId === '2' ? 'IconUser' : 'IconSettings',
+        },
+      };
+
+      return HttpResponse.json({
+        data: {
+          createApiKey: newApiKey,
+        },
+      });
+    }),
+    metadataGraphql.mutation('AssignRoleToApiKey', () => {
+      return HttpResponse.json({
+        data: {
+          assignRoleToApiKey: true,
+        },
+      });
+    }),
+    metadataGraphql.mutation('GenerateApiKeyToken', () => {
+      return HttpResponse.json({
+        data: {
+          generateApiKeyToken: {
+            __typename: 'ApiKeyToken',
+            token: 'test-api-key-token-12345',
+          },
+        },
+      });
+    }),
+    metadataGraphql.mutation('RevokeApiKey', ({ variables }) => {
+      return HttpResponse.json({
+        data: {
+          revokeApiKey: {
+            __typename: 'ApiKey',
+            id: variables.input?.id,
+            name: 'Zapier Integration',
+            expiresAt: '2100-11-06T23:59:59.825Z',
+            revokedAt: new Date().toISOString(),
+            role: {
+              __typename: 'Role',
+              id: '1',
+              label: 'Admin',
+              icon: 'IconSettings',
+            },
+          },
+        },
+      });
+    }),
+    metadataGraphql.mutation('UpdateApiKey', ({ variables }) => {
+      return HttpResponse.json({
+        data: {
+          updateApiKey: {
+            __typename: 'ApiKey',
+            id: variables.input.id,
+            name: variables.input.name || 'Updated API Key',
+            expiresAt: '2100-11-06T23:59:59.825Z',
+            revokedAt: null,
+            role: {
+              __typename: 'Role',
+              id: '1',
+              label: 'Admin',
+              icon: 'IconSettings',
+            },
+          },
+        },
+      });
+    }),
+    metadataGraphql.query('GetWebhooks', () => {
+      return HttpResponse.json({
+        data: {
+          webhooks: [
+            {
+              __typename: 'Webhook',
+              id: '1234',
+              targetUrl: 'https://api.slackbot.io/webhooks/twenty',
+              operations: ['*.created', '*.updated'],
+              description: 'Slack notifications for lead updates',
+              secret: 'sample-secret',
+            },
+          ],
+        },
+      });
+    }),
+    metadataGraphql.query('GetWebhook', ({ variables }) => {
+      const webhookId = variables.input?.id;
+
+      return HttpResponse.json({
+        data: {
+          webhook: {
+            __typename: 'Webhook',
+            id: webhookId || '1234',
+            targetUrl: 'https://api.slackbot.io/webhooks/twenty',
+            operations: ['*.created', '*.updated'],
+            description: 'Slack notifications for lead updates',
+            secret: 'sample-secret',
+          },
+        },
+      });
     }),
   ],
 };

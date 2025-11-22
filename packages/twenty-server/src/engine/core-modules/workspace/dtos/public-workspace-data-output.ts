@@ -1,15 +1,16 @@
-import { ObjectType, Field } from '@nestjs/graphql';
+import { Field, ObjectType } from '@nestjs/graphql';
 
-import { Workspace } from 'src/engine/core-modules/workspace/workspace.entity';
+import { UUIDScalarType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars';
 import {
   IdentityProviderType,
   SSOIdentityProviderStatus,
 } from 'src/engine/core-modules/sso/workspace-sso-identity-provider.entity';
-import { WorkspaceUrls } from 'src/engine/core-modules/workspace/dtos/workspace-urls.dto';
+import { WorkspaceUrlsDTO } from 'src/engine/core-modules/workspace/dtos/workspace-urls.dto';
+import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 
-@ObjectType()
-export class SSOIdentityProvider {
-  @Field(() => String)
+@ObjectType('SSOIdentityProvider')
+export class SSOIdentityProviderDTO {
+  @Field(() => UUIDScalarType)
   id: string;
 
   @Field(() => String)
@@ -25,10 +26,10 @@ export class SSOIdentityProvider {
   issuer: string;
 }
 
-@ObjectType()
-export class AuthProviders {
-  @Field(() => [SSOIdentityProvider])
-  sso: Array<SSOIdentityProvider>;
+@ObjectType('AuthProviders')
+export class AuthProvidersDTO {
+  @Field(() => [SSOIdentityProviderDTO])
+  sso: Array<SSOIdentityProviderDTO>;
 
   @Field(() => Boolean)
   google: boolean;
@@ -43,20 +44,35 @@ export class AuthProviders {
   microsoft: boolean;
 }
 
-@ObjectType()
+@ObjectType('AuthBypassProviders')
+export class AuthBypassProvidersDTO {
+  @Field(() => Boolean)
+  google: boolean;
+
+  @Field(() => Boolean)
+  password: boolean;
+
+  @Field(() => Boolean)
+  microsoft: boolean;
+}
+
+@ObjectType('PublicWorkspaceDataOutput')
 export class PublicWorkspaceDataOutput {
-  @Field(() => String)
+  @Field(() => UUIDScalarType)
   id: string;
 
-  @Field(() => AuthProviders)
-  authProviders: AuthProviders;
+  @Field(() => AuthProvidersDTO)
+  authProviders: AuthProvidersDTO;
+
+  @Field(() => AuthBypassProvidersDTO, { nullable: true })
+  authBypassProviders?: AuthBypassProvidersDTO;
 
   @Field(() => String, { nullable: true })
-  logo: Workspace['logo'];
+  logo: WorkspaceEntity['logo'];
 
   @Field(() => String, { nullable: true })
-  displayName: Workspace['displayName'];
+  displayName: WorkspaceEntity['displayName'];
 
-  @Field(() => WorkspaceUrls)
-  workspaceUrls: WorkspaceUrls;
+  @Field(() => WorkspaceUrlsDTO)
+  workspaceUrls: WorkspaceUrlsDTO;
 }

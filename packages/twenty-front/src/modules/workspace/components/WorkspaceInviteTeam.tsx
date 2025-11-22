@@ -5,7 +5,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
-import { TextInput } from '@/ui/input/components/TextInput';
+import { SettingsTextInput } from '@/ui/input/components/SettingsTextInput';
 import { sanitizeEmailList } from '@/workspace/utils/sanitizeEmailList';
 import { useLingui } from '@lingui/react/macro';
 import { isDefined } from 'twenty-shared/utils';
@@ -25,7 +25,7 @@ const StyledLinkContainer = styled.div`
 `;
 
 const emailValidationSchema = (email: string) =>
-  z.string().email(`Invalid email '${email}'`);
+  z.email(`Invalid email '${email}'`);
 
 const validationSchema = () =>
   z
@@ -37,9 +37,8 @@ const validationSchema = () =>
         const emails = sanitizeEmailList(value.split(','));
         if (emails.length === 0) {
           ctx.addIssue({
-            code: z.ZodIssueCode.invalid_string,
+            code: 'custom',
             message: 'Emails should not be empty',
-            validation: 'email',
           });
         }
         const invalidEmails: string[] = [];
@@ -51,12 +50,11 @@ const validationSchema = () =>
         }
         if (invalidEmails.length > 0) {
           ctx.addIssue({
-            code: z.ZodIssueCode.invalid_string,
+            code: 'custom',
             message:
               invalidEmails.length > 1
                 ? 'Emails "' + invalidEmails.join('", "') + '" are invalid'
                 : 'Email "' + invalidEmails.join('", "') + '" is invalid',
-            validation: 'email',
           });
         }
       }),
@@ -122,7 +120,7 @@ export const WorkspaceInviteTeam = () => {
             control={control}
             render={({ field: { value, onChange }, fieldState: { error } }) => {
               return (
-                <TextInput
+                <SettingsTextInput
                   instanceId="workspace-invite-team-emails"
                   placeholder="tim@apple.com, jony.ive@apple.dev"
                   value={value}

@@ -1,9 +1,9 @@
 import { registerEnumType } from '@nestjs/graphql';
 
 import { msg } from '@lingui/core/macro';
-import { FieldMetadataType } from 'twenty-shared/types';
+import { FieldMetadataType, RelationOnDeleteAction } from 'twenty-shared/types';
+import { STANDARD_OBJECT_IDS } from 'twenty-shared/metadata';
 
-import { RelationOnDeleteAction } from 'src/engine/metadata-modules/field-metadata/interfaces/relation-on-delete-action.interface';
 import { RelationType } from 'src/engine/metadata-modules/field-metadata/interfaces/relation-type.interface';
 import { Relation } from 'src/engine/workspace-manager/workspace-sync-metadata/interfaces/relation.interface';
 
@@ -17,7 +17,6 @@ import { WorkspaceJoinColumn } from 'src/engine/twenty-orm/decorators/workspace-
 import { WorkspaceRelation } from 'src/engine/twenty-orm/decorators/workspace-relation.decorator';
 import { MESSAGE_CHANNEL_STANDARD_FIELD_IDS } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-field-ids';
 import { STANDARD_OBJECT_ICONS } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-object-icons';
-import { STANDARD_OBJECT_IDS } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-object-ids';
 import { ConnectedAccountWorkspaceEntity } from 'src/modules/connected-account/standard-objects/connected-account.workspace-entity';
 import { MessageChannelMessageAssociationWorkspaceEntity } from 'src/modules/messaging/common/standard-objects/message-channel-message-association.workspace-entity';
 import { MessageFolderWorkspaceEntity } from 'src/modules/messaging/common/standard-objects/message-folder.workspace-entity';
@@ -31,10 +30,12 @@ export enum MessageChannelSyncStatus {
 }
 
 export enum MessageChannelSyncStage {
-  FULL_MESSAGE_LIST_FETCH_PENDING = 'FULL_MESSAGE_LIST_FETCH_PENDING',
-  PARTIAL_MESSAGE_LIST_FETCH_PENDING = 'PARTIAL_MESSAGE_LIST_FETCH_PENDING',
+  PENDING_CONFIGURATION = 'PENDING_CONFIGURATION',
+  MESSAGE_LIST_FETCH_PENDING = 'MESSAGE_LIST_FETCH_PENDING',
+  MESSAGE_LIST_FETCH_SCHEDULED = 'MESSAGE_LIST_FETCH_SCHEDULED',
   MESSAGE_LIST_FETCH_ONGOING = 'MESSAGE_LIST_FETCH_ONGOING',
   MESSAGES_IMPORT_PENDING = 'MESSAGES_IMPORT_PENDING',
+  MESSAGES_IMPORT_SCHEDULED = 'MESSAGES_IMPORT_SCHEDULED',
   MESSAGES_IMPORT_ONGOING = 'MESSAGES_IMPORT_ONGOING',
   FAILED = 'FAILED',
 }
@@ -53,6 +54,17 @@ export enum MessageChannelType {
 export enum MessageChannelContactAutoCreationPolicy {
   SENT_AND_RECEIVED = 'SENT_AND_RECEIVED',
   SENT = 'SENT',
+  NONE = 'NONE',
+}
+
+export enum MessageFolderImportPolicy {
+  ALL_FOLDERS = 'ALL_FOLDERS',
+  SELECTED_FOLDERS = 'SELECTED_FOLDERS',
+}
+
+export enum MessageChannelPendingGroupEmailsAction {
+  GROUP_EMAILS_DELETION = 'GROUP_EMAILS_DELETION',
+  GROUP_EMAILS_IMPORT = 'GROUP_EMAILS_IMPORT',
   NONE = 'NONE',
 }
 
@@ -76,8 +88,17 @@ registerEnumType(MessageChannelContactAutoCreationPolicy, {
   name: 'MessageChannelContactAutoCreationPolicy',
 });
 
+registerEnumType(MessageFolderImportPolicy, {
+  name: 'MessageFolderImportPolicy',
+});
+
+registerEnumType(MessageChannelPendingGroupEmailsAction, {
+  name: 'MessageChannelPendingGroupEmailsAction',
+});
+
 @WorkspaceEntity({
   standardId: STANDARD_OBJECT_IDS.messageChannel,
+
   namePlural: 'messageChannels',
   labelSingular: msg`Message Channel`,
   labelPlural: msg`Message Channels`,
@@ -193,6 +214,30 @@ export class MessageChannelWorkspaceEntity extends BaseWorkspaceEntity {
   contactAutoCreationPolicy: MessageChannelContactAutoCreationPolicy;
 
   @WorkspaceField({
+    standardId: MESSAGE_CHANNEL_STANDARD_FIELD_IDS.messageFolderImportPolicy,
+    type: FieldMetadataType.SELECT,
+    label: msg`Message folder import policy`,
+    description: msg`Message folder import policy`,
+    icon: 'IconFolder',
+    options: [
+      {
+        value: MessageFolderImportPolicy.ALL_FOLDERS,
+        label: 'All folders',
+        position: 0,
+        color: 'green',
+      },
+      {
+        value: MessageFolderImportPolicy.SELECTED_FOLDERS,
+        label: 'Selected folders',
+        position: 1,
+        color: 'blue',
+      },
+    ],
+    defaultValue: `'${MessageFolderImportPolicy.ALL_FOLDERS}'`,
+  })
+  messageFolderImportPolicy: MessageFolderImportPolicy;
+
+  @WorkspaceField({
     standardId: MESSAGE_CHANNEL_STANDARD_FIELD_IDS.excludeNonProfessionalEmails,
     type: FieldMetadataType.BOOLEAN,
     label: msg`Exclude non professional emails`,
@@ -211,6 +256,36 @@ export class MessageChannelWorkspaceEntity extends BaseWorkspaceEntity {
     defaultValue: true,
   })
   excludeGroupEmails: boolean;
+
+  @WorkspaceField({
+    standardId: MESSAGE_CHANNEL_STANDARD_FIELD_IDS.pendingGroupEmailsAction,
+    type: FieldMetadataType.SELECT,
+    label: msg`Pending group emails action`,
+    description: msg`Pending action for group emails`,
+    icon: 'IconUsersGroup',
+    options: [
+      {
+        value: MessageChannelPendingGroupEmailsAction.GROUP_EMAILS_DELETION,
+        label: 'Group emails deletion',
+        position: 0,
+        color: 'red',
+      },
+      {
+        value: MessageChannelPendingGroupEmailsAction.GROUP_EMAILS_IMPORT,
+        label: 'Group emails import',
+        position: 1,
+        color: 'green',
+      },
+      {
+        value: MessageChannelPendingGroupEmailsAction.NONE,
+        label: 'None',
+        position: 2,
+        color: 'blue',
+      },
+    ],
+    defaultValue: `'${MessageChannelPendingGroupEmailsAction.NONE}'`,
+  })
+  pendingGroupEmailsAction: MessageChannelPendingGroupEmailsAction;
 
   @WorkspaceField({
     standardId: MESSAGE_CHANNEL_STANDARD_FIELD_IDS.isSyncEnabled,
@@ -291,16 +366,16 @@ export class MessageChannelWorkspaceEntity extends BaseWorkspaceEntity {
     icon: 'IconStatusChange',
     options: [
       {
-        value: MessageChannelSyncStage.FULL_MESSAGE_LIST_FETCH_PENDING,
-        label: 'Full messages list fetch pending',
+        value: MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING,
+        label: 'Messages list fetch pending',
         position: 0,
         color: 'blue',
       },
       {
-        value: MessageChannelSyncStage.PARTIAL_MESSAGE_LIST_FETCH_PENDING,
-        label: 'Partial messages list fetch pending',
+        value: MessageChannelSyncStage.MESSAGE_LIST_FETCH_SCHEDULED,
+        label: 'Messages list fetch scheduled',
         position: 1,
-        color: 'blue',
+        color: 'green',
       },
       {
         value: MessageChannelSyncStage.MESSAGE_LIST_FETCH_ONGOING,
@@ -315,19 +390,31 @@ export class MessageChannelWorkspaceEntity extends BaseWorkspaceEntity {
         color: 'blue',
       },
       {
+        value: MessageChannelSyncStage.MESSAGES_IMPORT_SCHEDULED,
+        label: 'Messages import scheduled',
+        position: 4,
+        color: 'green',
+      },
+      {
         value: MessageChannelSyncStage.MESSAGES_IMPORT_ONGOING,
         label: 'Messages import ongoing',
-        position: 4,
+        position: 5,
         color: 'orange',
       },
       {
         value: MessageChannelSyncStage.FAILED,
         label: 'Failed',
-        position: 5,
+        position: 6,
         color: 'red',
       },
+      {
+        value: MessageChannelSyncStage.PENDING_CONFIGURATION,
+        label: 'Pending configuration',
+        position: 7,
+        color: 'gray',
+      },
     ],
-    defaultValue: `'${MessageChannelSyncStage.FULL_MESSAGE_LIST_FETCH_PENDING}'`,
+    defaultValue: `'${MessageChannelSyncStage.PENDING_CONFIGURATION}'`,
   })
   syncStage: MessageChannelSyncStage;
 

@@ -1,10 +1,10 @@
 import styled from '@emotion/styled';
-import { ClipboardEvent, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ClipboardEvent } from 'react';
 import { Key } from 'ts-key-enum';
 
-import { RecordFieldComponentInstanceContext } from '@/object-record/record-field/states/contexts/RecordFieldComponentInstanceContext';
-import { FieldDoubleText } from '@/object-record/record-field/types/FieldDoubleText';
-import { TextInputV2 } from '@/ui/input/components/TextInputV2';
+import { RecordFieldComponentInstanceContext } from '@/object-record/record-field/ui/states/contexts/RecordFieldComponentInstanceContext';
+import { type FieldDoubleText } from '@/object-record/record-field/ui/types/FieldDoubleText';
+import { TextInput } from '@/ui/input/components/TextInput';
 import { useHotkeysOnFocusedElement } from '@/ui/utilities/hotkey/hooks/useHotkeysOnFocusedElement';
 import { useListenClickOutside } from '@/ui/utilities/pointer-event/hooks/useListenClickOutside';
 import { useAvailableComponentInstanceIdOrThrow } from '@/ui/utilities/state/component-state/hooks/useAvailableComponentInstanceIdOrThrow';
@@ -28,7 +28,6 @@ type RecordTitleDoubleTextInputProps = {
   secondValue: string;
   firstValuePlaceholder: string;
   secondValuePlaceholder: string;
-  hotkeyScope: string;
   onEnter: (newDoubleTextValue: FieldDoubleText) => void;
   onEscape: (newDoubleTextValue: FieldDoubleText) => void;
   onTab?: (newDoubleTextValue: FieldDoubleText) => void;
@@ -39,7 +38,7 @@ type RecordTitleDoubleTextInputProps = {
   ) => void;
   onChange?: (newDoubleTextValue: FieldDoubleText) => void;
   onPaste?: (newDoubleTextValue: FieldDoubleText) => void;
-  sizeVariant?: 'xs' | 'md';
+  sizeVariant?: 'xs' | 'sm' | 'md';
 };
 
 export const RecordTitleDoubleTextInput = ({
@@ -47,7 +46,6 @@ export const RecordTitleDoubleTextInput = ({
   secondValue,
   firstValuePlaceholder,
   secondValuePlaceholder,
-  hotkeyScope,
   onClickOutside,
   onEnter,
   onEscape,
@@ -96,7 +94,6 @@ export const RecordTitleDoubleTextInput = ({
         secondValue: secondInternalValue,
       });
     },
-    scope: hotkeyScope,
     focusId: instanceId,
     dependencies: [onEnter, firstInternalValue, secondInternalValue],
   });
@@ -109,7 +106,6 @@ export const RecordTitleDoubleTextInput = ({
         secondValue: secondInternalValue,
       });
     },
-    scope: hotkeyScope,
     focusId: instanceId,
     dependencies: [onEscape, firstInternalValue, secondInternalValue],
   });
@@ -127,7 +123,6 @@ export const RecordTitleDoubleTextInput = ({
         });
       }
     },
-    scope: hotkeyScope,
     focusId: instanceId,
     dependencies: [
       onTab,
@@ -150,7 +145,6 @@ export const RecordTitleDoubleTextInput = ({
         });
       }
     },
-    scope: hotkeyScope,
     focusId: instanceId,
     dependencies: [
       onShiftTab,
@@ -199,7 +193,7 @@ export const RecordTitleDoubleTextInput = ({
   return (
     <StyledContainer ref={containerRef}>
       <StyledTextInputWrapper>
-        <TextInputV2
+        <TextInput
           autoGrow
           sizeVariant={sizeVariant}
           autoComplete="off"
@@ -227,7 +221,7 @@ export const RecordTitleDoubleTextInput = ({
         />
       </StyledTextInputWrapper>
       <StyledTextInputWrapper>
-        <TextInputV2
+        <TextInput
           autoGrow
           sizeVariant={sizeVariant}
           autoComplete="off"

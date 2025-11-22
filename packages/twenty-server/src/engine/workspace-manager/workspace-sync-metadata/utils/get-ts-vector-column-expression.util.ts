@@ -1,6 +1,8 @@
-import { FieldMetadataType } from 'twenty-shared/types';
+import {
+  FieldMetadataType,
+  compositeTypeDefinitions,
+} from 'twenty-shared/types';
 
-import { compositeTypeDefinitions } from 'src/engine/metadata-modules/field-metadata/composite-types';
 import {
   computeColumnName,
   computeCompositeColumnName,
@@ -12,7 +14,7 @@ import {
 } from 'src/engine/metadata-modules/workspace-migration/workspace-migration.exception';
 import {
   isSearchableFieldType,
-  SearchableFieldType,
+  type SearchableFieldType,
 } from 'src/engine/workspace-manager/workspace-sync-metadata/utils/is-searchable-field.util';
 import { isSearchableSubfield } from 'src/engine/workspace-manager/workspace-sync-metadata/utils/is-searchable-subfield.util';
 
@@ -55,7 +57,7 @@ const getColumnExpressionsFromField = (
       );
     }
 
-    return compositeType.properties
+    const baseExpressions = compositeType.properties
       .filter((property) =>
         isSearchableSubfield(compositeType.type, property.type, property.name),
       )
@@ -67,6 +69,21 @@ const getColumnExpressionsFromField = (
 
         return getColumnExpression(columnName, fieldMetadataTypeAndName.type);
       });
+
+    if (fieldMetadataTypeAndName.type === FieldMetadataType.PHONES) {
+      const phoneNumberColumn = `"${fieldMetadataTypeAndName.name}PrimaryPhoneNumber"`;
+      const callingCodeColumn = `"${fieldMetadataTypeAndName.name}PrimaryPhoneCallingCode"`;
+
+      const internationalFormats = [
+        `COALESCE(${callingCodeColumn} || ${phoneNumberColumn}, '')`,
+        `COALESCE(REPLACE(${callingCodeColumn}, '+', '') || ${phoneNumberColumn}, '')`,
+        `COALESCE('0' || ${phoneNumberColumn}, '')`,
+      ];
+
+      return [...baseExpressions, ...internationalFormats];
+    }
+
+    return baseExpressions;
   }
   const columnName = computeColumnName(fieldMetadataTypeAndName.name);
 
@@ -82,10 +99,13 @@ const getColumnExpression = (
   switch (fieldType) {
     case FieldMetadataType.EMAILS:
       return `
-      COALESCE(${quotedColumnName}, '') || ' ' ||
-      COALESCE(SPLIT_PART(${quotedColumnName}, '@', 2), '')`;
+      COALESCE(public.unaccent_immutable(${quotedColumnName}), '') || ' ' ||
+      COALESCE(public.unaccent_immutable(SPLIT_PART(${quotedColumnName}, '@', 2)), '')`;
+
+    case FieldMetadataType.PHONES:
+      return `COALESCE(${quotedColumnName}, '')`;
 
     default:
-      return `COALESCE(${quotedColumnName}, '')`;
+      return `COALESCE(public.unaccent_immutable(${quotedColumnName}), '')`;
   }
 };

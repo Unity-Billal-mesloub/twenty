@@ -1,14 +1,14 @@
 import { useEffect } from 'react';
 
 import { DIALOG_FOCUS_ID } from '@/ui/feedback/dialog-manager/constants/DialogFocusId';
-import { DIALOG_MANAGER_HOTKEY_SCOPE_MEMOIZE_KEY } from '@/ui/feedback/dialog-manager/constants/DialogManagerHotkeyScopeMemoizeKey';
-import { DialogHotkeyScope } from '@/ui/feedback/dialog-manager/types/DialogHotkeyScope';
 import { usePushFocusItemToFocusStack } from '@/ui/utilities/focus/hooks/usePushFocusItemToFocusStack';
 import { FocusComponentType } from '@/ui/utilities/focus/types/FocusComponentType';
-import { useDialogManagerScopedStates } from '../hooks/internal/useDialogManagerScopedStates';
+
+import { dialogInternalComponentState } from '@/ui/feedback/dialog-manager/states/dialogInternalComponentState';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
 
 export const DialogManagerEffect = () => {
-  const { dialogInternal } = useDialogManagerScopedStates();
+  const dialogInternal = useRecoilComponentValue(dialogInternalComponentState);
 
   const { pushFocusItemToFocusStack } = usePushFocusItemToFocusStack();
 
@@ -23,10 +23,6 @@ export const DialogManagerEffect = () => {
         type: FocusComponentType.DIALOG,
         instanceId: DIALOG_FOCUS_ID,
       },
-      hotkeyScope: {
-        scope: DialogHotkeyScope.Dialog,
-      },
-      memoizeKey: DIALOG_MANAGER_HOTKEY_SCOPE_MEMOIZE_KEY,
     });
   }, [dialogInternal.queue, pushFocusItemToFocusStack]);
 

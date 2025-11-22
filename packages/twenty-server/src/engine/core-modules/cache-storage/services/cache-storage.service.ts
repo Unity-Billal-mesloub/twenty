@@ -1,8 +1,8 @@
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 import { Inject, Injectable } from '@nestjs/common';
 
-import { Milliseconds } from 'cache-manager';
-import { RedisCache } from 'cache-manager-redis-yet';
+import { type Milliseconds } from 'cache-manager';
+import { type RedisCache } from 'cache-manager-redis-yet';
 
 import { CacheStorageNamespace } from 'src/engine/core-modules/cache-storage/types/cache-storage-namespace.enum';
 
@@ -15,7 +15,9 @@ export class CacheStorageService {
   ) {}
 
   async get<T>(key: string): Promise<T | undefined> {
-    return this.cache.get(this.getKey(key));
+    const value = await this.cache.get<T>(this.getKey(key));
+
+    return value;
   }
 
   async set<T>(key: string, value: T, ttl?: Milliseconds) {
@@ -24,6 +26,51 @@ export class CacheStorageService {
 
   async del(key: string) {
     return this.cache.del(this.getKey(key));
+  }
+
+  async mget<T = unknown>(keys: string[]): Promise<(T | undefined)[]> {
+    if (this.isRedisCache()) {
+      const prefixedKeys = keys.map((k) => this.getKey(k));
+      const values = await (this.cache as RedisCache).store.client.mGet(
+        prefixedKeys,
+      );
+
+      return values.map((v) => {
+        if (v === null || v === undefined) return undefined;
+        try {
+          return JSON.parse(v) as T;
+        } catch {
+          return v as T;
+        }
+      });
+    }
+
+    return Promise.all(keys.map((k) => this.get<T>(k)));
+  }
+
+  async mset<T = unknown>(
+    entries: Array<{ key: string; value: T; ttl?: Milliseconds }>,
+  ): Promise<void> {
+    if (this.isRedisCache()) {
+      const pipeline = (this.cache as RedisCache).store.client.multi();
+
+      entries.forEach(({ key, value, ttl }) => {
+        const prefixedKey = this.getKey(key);
+
+        pipeline.set(prefixedKey, JSON.stringify(value));
+        if (ttl) {
+          pipeline.expire(prefixedKey, Math.floor(ttl / 1000));
+        }
+      });
+
+      await pipeline.exec();
+
+      return;
+    }
+
+    await Promise.all(
+      entries.map(({ key, value, ttl }) => this.set(key, value, ttl)),
+    );
   }
 
   async setAdd(key: string, value: string[], ttl?: Milliseconds) {
@@ -107,7 +154,7 @@ export class CacheStorageService {
 
     do {
       const result = await redisClient.scan(cursor, {
-        MATCH: scanPattern,
+        MATCH: `${this.namespace}:${scanPattern}`,
         COUNT: 100,
       });
 

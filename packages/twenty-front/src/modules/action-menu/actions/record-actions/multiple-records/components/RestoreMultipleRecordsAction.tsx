@@ -1,22 +1,25 @@
 import { ActionModal } from '@/action-menu/actions/components/ActionModal';
-import { useContextStoreObjectMetadataItemOrThrow } from '@/context-store/hooks/useContextStoreObjectMetadataItemOrThrow';
+import { contextStoreAnyFieldFilterValueComponentState } from '@/context-store/states/contextStoreAnyFieldFilterValueComponentState';
 import { contextStoreCurrentViewIdComponentState } from '@/context-store/states/contextStoreCurrentViewIdComponentState';
+import { contextStoreFilterGroupsComponentState } from '@/context-store/states/contextStoreFilterGroupsComponentState';
 import { contextStoreFiltersComponentState } from '@/context-store/states/contextStoreFiltersComponentState';
 import { contextStoreTargetedRecordsRuleComponentState } from '@/context-store/states/contextStoreTargetedRecordsRuleComponentState';
 import { computeContextStoreFilters } from '@/context-store/utils/computeContextStoreFilters';
 import { DEFAULT_QUERY_PAGE_SIZE } from '@/object-record/constants/DefaultQueryPageSize';
-import { RecordGqlOperationFilter } from '@/object-record/graphql/types/RecordGqlOperationFilter';
 import { useLazyFetchAllRecords } from '@/object-record/hooks/useLazyFetchAllRecords';
 import { useRestoreManyRecords } from '@/object-record/hooks/useRestoreManyRecords';
 import { useFilterValueDependencies } from '@/object-record/record-filter/hooks/useFilterValueDependencies';
-import { useRecordTable } from '@/object-record/record-table/hooks/useRecordTable';
-import { getRecordIndexIdFromObjectNamePluralAndViewId } from '@/object-record/utils/getRecordIndexIdFromObjectNamePluralAndViewId';
-import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
+import { useRecordIndexIdFromCurrentContextStore } from '@/object-record/record-index/hooks/useRecordIndexIdFromCurrentContextStore';
+import { useResetTableRowSelection } from '@/object-record/record-table/hooks/internal/useResetTableRowSelection';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
+import { t } from '@lingui/core/macro';
+import { type RecordGqlOperationFilter } from 'twenty-shared/types';
 
 export const RestoreMultipleRecordsAction = () => {
-  const { objectMetadataItem } = useContextStoreObjectMetadataItemOrThrow();
+  const { recordIndexId, objectMetadataItem } =
+    useRecordIndexIdFromCurrentContextStore();
 
-  const contextStoreCurrentViewId = useRecoilComponentValueV2(
+  const contextStoreCurrentViewId = useRecoilComponentValue(
     contextStoreCurrentViewIdComponentState,
   );
 
@@ -24,23 +27,26 @@ export const RestoreMultipleRecordsAction = () => {
     throw new Error('Current view ID is not defined');
   }
 
-  const { resetTableRowSelection } = useRecordTable({
-    recordTableId: getRecordIndexIdFromObjectNamePluralAndViewId(
-      objectMetadataItem.namePlural,
-      contextStoreCurrentViewId,
-    ),
-  });
+  const { resetTableRowSelection } = useResetTableRowSelection(recordIndexId);
 
   const { restoreManyRecords } = useRestoreManyRecords({
     objectNameSingular: objectMetadataItem.nameSingular,
   });
 
-  const contextStoreTargetedRecordsRule = useRecoilComponentValueV2(
+  const contextStoreTargetedRecordsRule = useRecoilComponentValue(
     contextStoreTargetedRecordsRuleComponentState,
   );
 
-  const contextStoreFilters = useRecoilComponentValueV2(
+  const contextStoreFilters = useRecoilComponentValue(
     contextStoreFiltersComponentState,
+  );
+
+  const contextStoreFilterGroups = useRecoilComponentValue(
+    contextStoreFilterGroupsComponentState,
+  );
+
+  const contextStoreAnyFieldFilterValue = useRecoilComponentValue(
+    contextStoreAnyFieldFilterValueComponentState,
   );
 
   const { filterValueDependencies } = useFilterValueDependencies();
@@ -50,12 +56,14 @@ export const RestoreMultipleRecordsAction = () => {
   };
 
   const graphqlFilter = {
-    ...computeContextStoreFilters(
+    ...computeContextStoreFilters({
       contextStoreTargetedRecordsRule,
       contextStoreFilters,
+      contextStoreFilterGroups,
       objectMetadataItem,
       filterValueDependencies,
-    ),
+      contextStoreAnyFieldFilterValue,
+    }),
     ...deletedAtFilter,
   };
 
@@ -79,10 +87,10 @@ export const RestoreMultipleRecordsAction = () => {
 
   return (
     <ActionModal
-      title="Restore Records"
-      subtitle="Are you sure you want to restore these records?"
+      title={t`Restore Records`}
+      subtitle={t`Are you sure you want to restore these records?`}
       onConfirmClick={handleRestoreClick}
-      confirmButtonText="Restore Records"
+      confirmButtonText={t`Restore Records`}
       confirmButtonAccent="default"
     />
   );

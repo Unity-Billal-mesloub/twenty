@@ -1,6 +1,6 @@
-import { WorkflowFindRecordsAction } from '@/workflow/types/Workflow';
+import { type WorkflowFindRecordsAction } from '@/workflow/types/Workflow';
 import { WorkflowEditActionFindRecords } from '@/workflow/workflow-steps/workflow-actions/find-records-action/components/WorkflowEditActionFindRecords';
-import { Meta, StoryObj } from '@storybook/react';
+import { type Meta, type StoryObj } from '@storybook/react';
 import { expect, fn, userEvent, within } from '@storybook/test';
 import { ComponentDecorator, RouterDecorator } from 'twenty-ui/testing';
 import { I18nFrontDecorator } from '~/testing/decorators/I18nFrontDecorator';
@@ -35,7 +35,7 @@ const DEFAULT_ACTION = {
 } satisfies WorkflowFindRecordsAction;
 
 const meta: Meta<typeof WorkflowEditActionFindRecords> = {
-  title: 'Modules/Workflow/WorkflowEditActionFindRecords',
+  title: 'Modules/Workflow/Actions/FindRecords/EditAction',
   component: WorkflowEditActionFindRecords,
   parameters: {
     msw: graphqlMocks,
@@ -75,15 +75,6 @@ export const DisabledWithEmptyValues: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-
-    const titleText = await canvas.findByText('Search Records');
-
-    expect(window.getComputedStyle(titleText).cursor).toBe('default');
-
-    await userEvent.click(titleText);
-
-    const titleInput = canvas.queryByDisplayValue('Search Records');
-    expect(titleInput).not.toBeInTheDocument();
 
     const objectSelectCurrentValue = await canvas.findByText('People');
 

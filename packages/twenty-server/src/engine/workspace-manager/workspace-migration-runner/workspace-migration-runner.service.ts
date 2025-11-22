@@ -1,23 +1,29 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { InjectDataSource } from '@nestjs/typeorm';
 
+import { msg } from '@lingui/core/macro';
 import { isDefined } from 'twenty-shared/utils';
-import { QueryRunner, Table, TableColumn } from 'typeorm';
+import { DataSource, type QueryRunner, Table, type TableColumn } from 'typeorm';
 
-import { IndexType } from 'src/engine/metadata-modules/index-metadata/index-metadata.entity';
 import {
-  WorkspaceMigrationColumnAction,
+  IndexMetadataException,
+  IndexMetadataExceptionCode,
+} from 'src/engine/metadata-modules/index-metadata/index-field-metadata.exception';
+import { IndexType } from 'src/engine/metadata-modules/index-metadata/types/indexType.types';
+import {
+  type WorkspaceMigrationColumnAction,
   WorkspaceMigrationColumnActionType,
-  WorkspaceMigrationColumnCreate,
-  WorkspaceMigrationForeignTable,
-  WorkspaceMigrationIndexAction,
+  type WorkspaceMigrationColumnCreate,
+  type WorkspaceMigrationForeignTable,
+  type WorkspaceMigrationIndexAction,
   WorkspaceMigrationIndexActionType,
-  WorkspaceMigrationTableAction,
+  type WorkspaceMigrationTableAction,
   WorkspaceMigrationTableActionType,
 } from 'src/engine/metadata-modules/workspace-migration/workspace-migration.entity';
 import { WorkspaceMigrationService } from 'src/engine/metadata-modules/workspace-migration/workspace-migration.service';
-import { WorkspaceDataSourceService } from 'src/engine/workspace-datasource/workspace-datasource.service';
+import { getWorkspaceSchemaName } from 'src/engine/workspace-datasource/utils/get-workspace-schema-name.util';
 import { WorkspaceMigrationColumnService } from 'src/engine/workspace-manager/workspace-migration-runner/services/workspace-migration-column.service';
-import { PostgresQueryRunner } from 'src/engine/workspace-manager/workspace-migration-runner/types/postgres-query-runner.type';
+import { type PostgresQueryRunner } from 'src/engine/workspace-manager/workspace-migration-runner/types/postgres-query-runner.type';
 import { tableDefaultColumns } from 'src/engine/workspace-manager/workspace-migration-runner/utils/table-default-column.util';
 
 export const RELATION_MIGRATION_PRIORITY_PREFIX = '1000';
@@ -27,7 +33,8 @@ export class WorkspaceMigrationRunnerService {
   private readonly logger = new Logger(WorkspaceMigrationRunnerService.name);
 
   constructor(
-    private readonly workspaceDataSourceService: WorkspaceDataSourceService,
+    @InjectDataSource()
+    private readonly coreDataSource: DataSource,
     private readonly workspaceMigrationService: WorkspaceMigrationService,
     private readonly workspaceMigrationColumnService: WorkspaceMigrationColumnService,
   ) {}
@@ -54,17 +61,26 @@ export class WorkspaceMigrationRunnerService {
         })),
     );
 
-    const schemaName =
-      this.workspaceDataSourceService.getSchemaName(workspaceId);
+    const schemaName = getWorkspaceSchemaName(workspaceId);
 
     await transactionQueryRunner.query(
       `SET LOCAL search_path TO ${schemaName}`,
     );
 
+    // temporary fix to skip view migrations issue during upgrade 1.8 -> 1.10
+    const migrationActionsWithParentTmp = [
+      ...migrationActionsWithParent.filter(
+        ({ tableAction }) => tableAction.name !== 'view',
+      ),
+      ...migrationActionsWithParent.filter(
+        ({ tableAction }) => tableAction.name === 'view',
+      ),
+    ];
+
     for (const {
       tableAction,
       parentMigrationId,
-    } of migrationActionsWithParent) {
+    } of migrationActionsWithParentTmp) {
       await this.handleTableChanges(
         transactionQueryRunner as PostgresQueryRunner,
         schemaName,
@@ -77,21 +93,13 @@ export class WorkspaceMigrationRunnerService {
       );
     }
 
-    return migrationActionsWithParent.map((item) => item.tableAction);
+    return migrationActionsWithParentTmp.map((item) => item.tableAction);
   }
 
   public async executeMigrationFromPendingMigrations(
     workspaceId: string,
   ): Promise<WorkspaceMigrationTableAction[]> {
-    const mainDataSource =
-      await this.workspaceDataSourceService.connectToMainDataSource();
-
-    if (!mainDataSource) {
-      throw new Error('Main data source not found');
-    }
-
-    const queryRunner =
-      mainDataSource.createQueryRunner() as PostgresQueryRunner;
+    const queryRunner = this.coreDataSource.createQueryRunner();
 
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -111,7 +119,14 @@ export class WorkspaceMigrationRunnerService {
         `Error executing migration: ${error.message}`,
         error.stack,
       );
-      await queryRunner.rollbackTransaction();
+      if (queryRunner.isTransactionActive) {
+        try {
+          await queryRunner.rollbackTransaction();
+        } catch (error) {
+          // eslint-disable-next-line no-console
+          console.trace(`Failed to rollback transaction: ${error.message}`);
+        }
+      }
       throw error;
     } finally {
       await queryRunner.release();
@@ -184,10 +199,12 @@ export class WorkspaceMigrationRunnerService {
 
       case WorkspaceMigrationTableActionType.ALTER_INDEXES:
         if (tableMigration.indexes && tableMigration.indexes.length > 0) {
+          const tableName = tableMigration.newName ?? tableMigration.name;
+
           await this.handleIndexesChanges(
             queryRunner,
             schemaName,
-            tableMigration.newName ?? tableMigration.name,
+            tableName,
             tableMigration.indexes,
           );
         }
@@ -246,6 +263,17 @@ export class WorkspaceMigrationRunnerService {
       if (error.code === '42P07') {
         return;
       }
+
+      if (error.code === '23505') {
+        throw new IndexMetadataException(
+          `Unique index creation failed because of unique constraint violation`,
+          IndexMetadataExceptionCode.INDEX_CREATION_FAILED,
+          {
+            userFriendlyMessage: msg`Cannot enable uniqueness due to existing duplicate values. Please review and fix your data first (including soft deleted records).`,
+          },
+        );
+      }
+
       throw error;
     }
   }

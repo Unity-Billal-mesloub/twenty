@@ -1,5 +1,10 @@
-import { FieldMetadataType } from 'twenty-shared/types';
 import {
+  FieldMetadataType,
+  FieldMetadataSettings,
+  FieldMetadataOptions,
+} from 'twenty-shared/types';
+import {
+  Check,
   Column,
   CreateDateColumn,
   Entity,
@@ -10,26 +15,28 @@ import {
   OneToOne,
   PrimaryGeneratedColumn,
   Relation,
+  Unique,
   UpdateDateColumn,
 } from 'typeorm';
 
 import { FieldMetadataDefaultValue } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata-default-value.interface';
-import { FieldMetadataOptions } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata-options.interface';
-import { FieldMetadataSettings } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata-settings.interface';
+import { SyncableEntity } from 'src/engine/workspace-manager/workspace-sync/interfaces/syncable-entity.interface';
 
-import { FieldStandardOverridesDTO } from 'src/engine/metadata-modules/field-metadata/dtos/field-standard-overrides.dto';
+import { type FieldStandardOverridesDTO } from 'src/engine/metadata-modules/field-metadata/dtos/field-standard-overrides.dto';
+import { AssignIfIsGivenFieldMetadataType } from 'src/engine/metadata-modules/field-metadata/types/assign-if-is-given-field-metadata-type.type';
+import { AssignTypeIfIsMorphOrRelationFieldMetadataType } from 'src/engine/metadata-modules/field-metadata/types/assign-type-if-is-morph-or-relation-field-metadata-type.type';
 import { IndexFieldMetadataEntity } from 'src/engine/metadata-modules/index-metadata/index-field-metadata.entity';
 import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
+import { FieldPermissionEntity } from 'src/engine/metadata-modules/object-permission/field-permission/field-permission.entity';
+import { ViewFieldEntity } from 'src/engine/metadata-modules/view-field/entities/view-field.entity';
+import { ViewFilterEntity } from 'src/engine/metadata-modules/view-filter/entities/view-filter.entity';
+import { ViewGroupEntity } from 'src/engine/metadata-modules/view-group/entities/view-group.entity';
+import { ViewEntity } from 'src/engine/metadata-modules/view/entities/view.entity';
 
 @Entity('fieldMetadata')
-// max length of index is 63 characters
-@Index(
-  'IDX_FIELD_METADATA_NAME_OBJMID_WORKSPACE_ID_EXCEPT_MORPH_UNIQUE',
-  ['name', 'objectMetadataId', 'workspaceId'],
-  {
-    unique: true,
-    where: `"type" <> ''MORPH_RELATION''`,
-  },
+@Check(
+  'CHK_FIELD_METADATA_MORPH_RELATION_REQUIRES_MORPH_ID',
+  `("type" != 'MORPH_RELATION') OR ("type" = 'MORPH_RELATION' AND "morphId" IS NOT NULL)`,
 )
 @Index('IDX_FIELD_METADATA_RELATION_TARGET_FIELD_METADATA_ID', [
   'relationTargetFieldMetadataId',
@@ -37,13 +44,21 @@ import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadat
 @Index('IDX_FIELD_METADATA_RELATION_TARGET_OBJECT_METADATA_ID', [
   'relationTargetObjectMetadataId',
 ])
+@Unique('IDX_FIELD_METADATA_NAME_OBJECT_METADATA_ID_WORKSPACE_ID_UNIQUE', [
+  'name',
+  'objectMetadataId',
+  'workspaceId',
+])
 @Index('IDX_FIELD_METADATA_OBJECT_METADATA_ID_WORKSPACE_ID', [
   'objectMetadataId',
   'workspaceId',
 ])
 export class FieldMetadataEntity<
-  T extends FieldMetadataType = FieldMetadataType,
-> {
+    TFieldMetadataType extends FieldMetadataType = FieldMetadataType,
+  >
+  extends SyncableEntity
+  implements Required<FieldMetadataEntity>
+{
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -55,6 +70,7 @@ export class FieldMetadataEntity<
 
   @ManyToOne(() => ObjectMetadataEntity, (object) => object.fields, {
     onDelete: 'CASCADE',
+    nullable: false,
   })
   @JoinColumn({ name: 'objectMetadataId' })
   @Index('IDX_FIELD_METADATA_OBJECT_METADATA_ID', ['objectMetadataId'])
@@ -64,7 +80,7 @@ export class FieldMetadataEntity<
     nullable: false,
     type: 'varchar',
   })
-  type: T;
+  type: TFieldMetadataType;
 
   @Column({ nullable: false })
   name: string;
@@ -73,22 +89,22 @@ export class FieldMetadataEntity<
   label: string;
 
   @Column({ nullable: true, type: 'jsonb' })
-  defaultValue: FieldMetadataDefaultValue<T>;
+  defaultValue: FieldMetadataDefaultValue<TFieldMetadataType>;
 
   @Column({ nullable: true, type: 'text' })
-  description: string;
+  description: string | null;
 
-  @Column({ nullable: true })
-  icon: string;
+  @Column({ nullable: true, type: 'varchar' })
+  icon: string | null;
 
   @Column({ type: 'jsonb', nullable: true })
-  standardOverrides?: FieldStandardOverridesDTO;
+  standardOverrides: FieldStandardOverridesDTO | null;
 
   @Column('jsonb', { nullable: true })
-  options: FieldMetadataOptions<T>;
+  options: FieldMetadataOptions<TFieldMetadataType>;
 
   @Column('jsonb', { nullable: true })
-  settings?: FieldMetadataSettings<T>;
+  settings: FieldMetadataSettings<TFieldMetadataType>;
 
   @Column({ default: false })
   isCustom: boolean;
@@ -99,11 +115,16 @@ export class FieldMetadataEntity<
   @Column({ default: false })
   isSystem: boolean;
 
-  @Column({ nullable: true, default: true })
-  isNullable: boolean;
+  @Column({ default: false })
+  isUIReadOnly: boolean;
 
-  @Column({ nullable: true, default: false })
-  isUnique: boolean;
+  // Is this really nullable ?
+  @Column({ nullable: true, default: true, type: 'boolean' })
+  isNullable: boolean | null;
+
+  // Is this really nullable ?
+  @Column({ nullable: true, default: false, type: 'boolean' })
+  isUnique: boolean | null;
 
   @Column({ nullable: false, type: 'uuid' })
   @Index('IDX_FIELD_METADATA_WORKSPACE_ID', ['workspaceId'])
@@ -113,30 +134,49 @@ export class FieldMetadataEntity<
   isLabelSyncedWithName: boolean;
 
   @Column({ nullable: true, type: 'uuid' })
-  relationTargetFieldMetadataId: string;
+  relationTargetFieldMetadataId: AssignTypeIfIsMorphOrRelationFieldMetadataType<
+    string,
+    TFieldMetadataType
+  >;
+
   @OneToOne(
     () => FieldMetadataEntity,
-    (fieldMetadata: FieldMetadataEntity) =>
-      fieldMetadata.relationTargetFieldMetadataId,
+    (fieldMetadata) => fieldMetadata.relationTargetFieldMetadataId,
+    { nullable: true },
   )
   @JoinColumn({ name: 'relationTargetFieldMetadataId' })
-  relationTargetFieldMetadata: Relation<FieldMetadataEntity>;
+  relationTargetFieldMetadata: AssignTypeIfIsMorphOrRelationFieldMetadataType<
+    Relation<FieldMetadataEntity>,
+    TFieldMetadataType
+  >;
 
   @Column({ nullable: true, type: 'uuid' })
-  relationTargetObjectMetadataId: string;
+  relationTargetObjectMetadataId: AssignTypeIfIsMorphOrRelationFieldMetadataType<
+    string,
+    TFieldMetadataType
+  >;
+
   @ManyToOne(
     () => ObjectMetadataEntity,
-    (objectMetadata: ObjectMetadataEntity) =>
-      objectMetadata.targetRelationFields,
-    { onDelete: 'CASCADE' },
+    (objectMetadata) => objectMetadata.targetRelationFields,
+    { onDelete: 'CASCADE', nullable: true },
   )
   @JoinColumn({ name: 'relationTargetObjectMetadataId' })
-  relationTargetObjectMetadata: Relation<ObjectMetadataEntity>;
+  relationTargetObjectMetadata: AssignTypeIfIsMorphOrRelationFieldMetadataType<
+    Relation<ObjectMetadataEntity>,
+    TFieldMetadataType
+  >;
+
+  @Column({ nullable: true, type: 'uuid' })
+  morphId: AssignIfIsGivenFieldMetadataType<
+    string,
+    TFieldMetadataType,
+    FieldMetadataType.MORPH_RELATION
+  >;
 
   @OneToMany(
     () => IndexFieldMetadataEntity,
-    (indexFieldMetadata: IndexFieldMetadataEntity) =>
-      indexFieldMetadata.indexMetadata,
+    (indexFieldMetadata) => indexFieldMetadata.indexMetadata,
     {
       cascade: true,
     },
@@ -148,4 +188,28 @@ export class FieldMetadataEntity<
 
   @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
+
+  @OneToMany(
+    () => FieldPermissionEntity,
+    (fieldPermission) => fieldPermission.fieldMetadata,
+  )
+  fieldPermissions: Relation<FieldPermissionEntity[]>;
+
+  @OneToMany(() => ViewFieldEntity, (viewField) => viewField.fieldMetadata)
+  viewFields: Relation<ViewFieldEntity[]>;
+
+  @OneToMany(() => ViewFilterEntity, (viewFilter) => viewFilter.fieldMetadata)
+  viewFilters: Relation<ViewFilterEntity[]>;
+
+  @OneToMany(() => ViewGroupEntity, (viewGroup) => viewGroup.fieldMetadata)
+  viewGroups: Relation<ViewGroupEntity[]>;
+
+  @OneToMany(
+    () => ViewEntity,
+    (view) => view.kanbanAggregateOperationFieldMetadata,
+  )
+  kanbanAggregateOperationViews: Relation<ViewEntity[]>;
+
+  @OneToMany(() => ViewEntity, (view) => view.calendarFieldMetadata)
+  calendarViews: Relation<ViewEntity[]>;
 }

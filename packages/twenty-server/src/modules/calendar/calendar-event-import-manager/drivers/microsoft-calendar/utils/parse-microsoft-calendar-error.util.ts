@@ -1,4 +1,4 @@
-import { GraphError } from '@microsoft/microsoft-graph-client';
+import { type GraphError } from '@microsoft/microsoft-graph-client';
 
 import {
   CalendarEventImportDriverException,
@@ -31,6 +31,12 @@ export const parseMicrosoftCalendarError = (
       return new CalendarEventImportDriverException(
         message,
         CalendarEventImportDriverExceptionCode.NOT_FOUND,
+      );
+
+    case 410:
+      return new CalendarEventImportDriverException(
+        message,
+        CalendarEventImportDriverExceptionCode.SYNC_CURSOR_ERROR,
       );
 
     case 429:

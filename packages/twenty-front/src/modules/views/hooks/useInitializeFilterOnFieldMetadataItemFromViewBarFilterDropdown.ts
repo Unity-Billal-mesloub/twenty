@@ -1,47 +1,45 @@
-import { FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
-import { getFilterTypeFromFieldType } from '@/object-metadata/utils/formatFieldMetadataItemsAsFilterDefinitions';
+import { type FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
+import { useGetInitialFilterValue } from '@/object-record/object-filter-dropdown/hooks/useGetInitialFilterValue';
 import { useUpsertObjectFilterDropdownCurrentFilter } from '@/object-record/object-filter-dropdown/hooks/useUpsertObjectFilterDropdownCurrentFilter';
 import { fieldMetadataItemIdUsedInDropdownComponentState } from '@/object-record/object-filter-dropdown/states/fieldMetadataItemIdUsedInDropdownComponentState';
 import { objectFilterDropdownCurrentRecordFilterComponentState } from '@/object-record/object-filter-dropdown/states/objectFilterDropdownCurrentRecordFilterComponentState';
 import { objectFilterDropdownFilterIsSelectedComponentState } from '@/object-record/object-filter-dropdown/states/objectFilterDropdownFilterIsSelectedComponentState';
 import { selectedOperandInDropdownComponentState } from '@/object-record/object-filter-dropdown/states/selectedOperandInDropdownComponentState';
 import { currentRecordFiltersComponentState } from '@/object-record/record-filter/states/currentRecordFiltersComponentState';
-import { RecordFilter } from '@/object-record/record-filter/types/RecordFilter';
+import { type RecordFilter } from '@/object-record/record-filter/types/RecordFilter';
 import { findDuplicateRecordFilterInNonAdvancedRecordFilters } from '@/object-record/record-filter/utils/findDuplicateRecordFilterInNonAdvancedRecordFilters';
-import { getDateFilterDisplayValue } from '@/object-record/record-filter/utils/getDateFilterDisplayValue';
+
 import { getRecordFilterOperands } from '@/object-record/record-filter/utils/getRecordFilterOperands';
-import { DropdownHotkeyScope } from '@/ui/layout/dropdown/constants/DropdownHotkeyScope';
 import { usePushFocusItemToFocusStack } from '@/ui/utilities/focus/hooks/usePushFocusItemToFocusStack';
 import { FocusComponentType } from '@/ui/utilities/focus/types/FocusComponentType';
-import { useRecoilComponentCallbackStateV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentCallbackStateV2';
+import { useRecoilComponentCallbackState } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentCallbackState';
 import { VIEW_BAR_FILTER_DROPDOWN_ID } from '@/views/constants/ViewBarFilterDropdownId';
+
 import { useRecoilCallback } from 'recoil';
-import { isDefined } from 'twenty-shared/utils';
+import { getFilterTypeFromFieldType, isDefined } from 'twenty-shared/utils';
 import { v4 } from 'uuid';
 
 export const useInitializeFilterOnFieldMetadataItemFromViewBarFilterDropdown =
   () => {
     const selectedOperandInDropdownCallbackState =
-      useRecoilComponentCallbackStateV2(
-        selectedOperandInDropdownComponentState,
-      );
+      useRecoilComponentCallbackState(selectedOperandInDropdownComponentState);
 
-    const currentRecordFiltersCallbackState = useRecoilComponentCallbackStateV2(
+    const currentRecordFiltersCallbackState = useRecoilComponentCallbackState(
       currentRecordFiltersComponentState,
     );
 
     const objectFilterDropdownCurrentRecordFilterCallbackState =
-      useRecoilComponentCallbackStateV2(
+      useRecoilComponentCallbackState(
         objectFilterDropdownCurrentRecordFilterComponentState,
       );
 
     const fieldMetadataItemUsedInDropdownCallbackState =
-      useRecoilComponentCallbackStateV2(
+      useRecoilComponentCallbackState(
         fieldMetadataItemIdUsedInDropdownComponentState,
       );
 
     const objectFilterDropdownFilterIsSelectedCallbackState =
-      useRecoilComponentCallbackStateV2(
+      useRecoilComponentCallbackState(
         objectFilterDropdownFilterIsSelectedComponentState,
       );
 
@@ -49,6 +47,7 @@ export const useInitializeFilterOnFieldMetadataItemFromViewBarFilterDropdown =
       useUpsertObjectFilterDropdownCurrentFilter();
 
     const { pushFocusItemToFocusStack } = usePushFocusItemToFocusStack();
+    const { getInitialFilterValue } = useGetInitialFilterValue();
 
     const initializeFilterOnFieldMetataItemFromViewBarFilterDropdown =
       useRecoilCallback(
@@ -74,10 +73,9 @@ export const useInitializeFilterOnFieldMetadataItemFromViewBarFilterDropdown =
                   type: FocusComponentType.DROPDOWN,
                   instanceId: fieldMetadataItem.id,
                 },
-                hotkeyScope: {
-                  scope: DropdownHotkeyScope.Dropdown,
+                globalHotkeysConfig: {
+                  enableGlobalHotkeysConflictingWithKeyboard: false,
                 },
-                memoizeKey: fieldMetadataItem.id,
               });
             }
 
@@ -111,12 +109,9 @@ export const useInitializeFilterOnFieldMetadataItemFromViewBarFilterDropdown =
               set(selectedOperandInDropdownCallbackState, defaultOperand);
 
               if (filterType === 'DATE' || filterType === 'DATE_TIME') {
-                const date = new Date();
-                const value = date.toISOString();
-
-                const { displayValue } = getDateFilterDisplayValue(
-                  date,
+                const { displayValue, value } = getInitialFilterValue(
                   filterType,
+                  defaultOperand,
                 );
 
                 const initialDateRecordFilter: RecordFilter = {
@@ -148,6 +143,7 @@ export const useInitializeFilterOnFieldMetadataItemFromViewBarFilterDropdown =
           objectFilterDropdownCurrentRecordFilterCallbackState,
           selectedOperandInDropdownCallbackState,
           upsertObjectFilterDropdownCurrentFilter,
+          getInitialFilterValue,
         ],
       );
 

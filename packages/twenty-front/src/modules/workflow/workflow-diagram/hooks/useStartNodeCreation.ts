@@ -1,21 +1,29 @@
-import { useCallback } from 'react';
-
+import { ActionMenuContext } from '@/action-menu/contexts/ActionMenuContext';
 import { useWorkflowCommandMenu } from '@/command-menu/hooks/useWorkflowCommandMenu';
-import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
-import { useSetRecoilComponentStateV2 } from '@/ui/utilities/state/component-state/hooks/useSetRecoilComponentStateV2';
+import { commandMenuNavigationStackState } from '@/command-menu/states/commandMenuNavigationStackState';
+import { useRecoilComponentState } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentState';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
 import { workflowVisualizerWorkflowIdComponentState } from '@/workflow/states/workflowVisualizerWorkflowIdComponentState';
+import { type WorkflowStepConnectionOptions } from '@/workflow/workflow-diagram/workflow-iterator/types/WorkflowStepConnectionOptions';
 import { workflowInsertStepIdsComponentState } from '@/workflow/workflow-steps/states/workflowInsertStepIdsComponentState';
+import { useCallback, useContext } from 'react';
+import { useSetRecoilState } from 'recoil';
 import { isDefined } from 'twenty-shared/utils';
 
 export const useStartNodeCreation = () => {
-  const setWorkflowInsertStepIds = useSetRecoilComponentStateV2(
-    workflowInsertStepIdsComponentState,
+  const { isInRightDrawer } = useContext(ActionMenuContext);
+
+  const [workflowInsertStepIds, setWorkflowInsertStepIds] =
+    useRecoilComponentState(workflowInsertStepIdsComponentState);
+
+  const { openWorkflowCreateStepInCommandMenu } = useWorkflowCommandMenu();
+
+  const workflowVisualizerWorkflowId = useRecoilComponentValue(
+    workflowVisualizerWorkflowIdComponentState,
   );
 
-  const { openStepSelectInCommandMenu } = useWorkflowCommandMenu();
-
-  const workflowVisualizerWorkflowId = useRecoilComponentValueV2(
-    workflowVisualizerWorkflowIdComponentState,
+  const setCommandMenuNavigationStack = useSetRecoilState(
+    commandMenuNavigationStackState,
   );
 
   /**
@@ -26,25 +34,55 @@ export const useStartNodeCreation = () => {
     ({
       parentStepId,
       nextStepId,
+      position,
+      connectionOptions,
     }: {
       parentStepId: string | undefined;
       nextStepId: string | undefined;
+      position?: { x: number; y: number };
+      connectionOptions?: WorkflowStepConnectionOptions;
     }) => {
-      setWorkflowInsertStepIds({ parentStepId, nextStepId });
+      setWorkflowInsertStepIds({
+        parentStepId,
+        nextStepId,
+        position,
+        connectionOptions,
+      });
 
-      if (isDefined(workflowVisualizerWorkflowId)) {
-        openStepSelectInCommandMenu(workflowVisualizerWorkflowId);
+      if (!isDefined(workflowVisualizerWorkflowId)) {
         return;
       }
+
+      if (!isInRightDrawer) {
+        setCommandMenuNavigationStack([]);
+      }
+
+      openWorkflowCreateStepInCommandMenu(workflowVisualizerWorkflowId);
     },
     [
       setWorkflowInsertStepIds,
       workflowVisualizerWorkflowId,
-      openStepSelectInCommandMenu,
+      isInRightDrawer,
+      openWorkflowCreateStepInCommandMenu,
+      setCommandMenuNavigationStack,
     ],
   );
 
+  const isNodeCreationStarted = ({
+    parentStepId,
+    nextStepId,
+  }: {
+    parentStepId?: string;
+    nextStepId?: string;
+  }) => {
+    return (
+      workflowInsertStepIds.parentStepId === parentStepId &&
+      workflowInsertStepIds.nextStepId === nextStepId
+    );
+  };
+
   return {
     startNodeCreation,
+    isNodeCreationStarted,
   };
 };

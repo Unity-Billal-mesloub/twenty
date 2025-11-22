@@ -8,12 +8,14 @@ import { useFocusedRecordTableRow } from '@/object-record/record-table/hooks/use
 import { useUnfocusRecordTableCell } from '@/object-record/record-table/record-table-cell/hooks/useUnfocusRecordTableCell';
 import { hasUserSelectedAllRowsComponentState } from '@/object-record/record-table/record-table-row/states/hasUserSelectedAllRowsFamilyState';
 import { isRowSelectedComponentFamilyState } from '@/object-record/record-table/record-table-row/states/isRowSelectedComponentFamilyState';
+import { isRecordTableInitialLoadingComponentState } from '@/object-record/record-table/states/isRecordTableInitialLoadingComponentState';
 import { recordTableHoverPositionComponentState } from '@/object-record/record-table/states/recordTableHoverPositionComponentState';
-import { ObjectRecord } from '@/object-record/types/ObjectRecord';
-import { getSnapshotValue } from '@/ui/utilities/recoil-scope/utils/getSnapshotValue';
-import { useRecoilComponentCallbackStateV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentCallbackStateV2';
-import { useRecoilComponentFamilyCallbackStateV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentFamilyCallbackStateV2';
-import { useSetRecoilComponentStateV2 } from '@/ui/utilities/state/component-state/hooks/useSetRecoilComponentStateV2';
+import { recordIdByRealIndexComponentFamilyState } from '@/object-record/record-table/virtualization/states/recordIdByRealIndexComponentFamilyState';
+import { type ObjectRecord } from '@/object-record/types/ObjectRecord';
+import { useRecoilComponentCallbackState } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentCallbackState';
+import { useRecoilComponentFamilyCallbackState } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentFamilyCallbackState';
+import { useSetRecoilComponentState } from '@/ui/utilities/state/component-state/hooks/useSetRecoilComponentState';
+import { getSnapshotValue } from '@/ui/utilities/state/utils/getSnapshotValue';
 import { isDefined } from 'twenty-shared/utils';
 import { isDeeplyEqual } from '~/utils/isDeeplyEqual';
 
@@ -25,27 +27,39 @@ export const useSetRecordTableData = ({
   recordTableId,
 }: useSetRecordTableDataProps) => {
   const recordIndexRecordIdsByGroupFamilyState =
-    useRecoilComponentFamilyCallbackStateV2(
+    useRecoilComponentFamilyCallbackState(
       recordIndexRecordIdsByGroupComponentFamilyState,
       recordTableId,
     );
 
-  const recordIndexAllRecordIdsSelector = useRecoilComponentCallbackStateV2(
+  const recordIndexAllRecordIdsSelector = useRecoilComponentCallbackState(
     recordIndexAllRecordIdsComponentSelector,
     recordTableId,
   );
 
-  const isRowSelectedFamilyState = useRecoilComponentFamilyCallbackStateV2(
+  const isRowSelectedFamilyState = useRecoilComponentFamilyCallbackState(
     isRowSelectedComponentFamilyState,
     recordTableId,
   );
 
-  const hasUserSelectedAllRowsState = useRecoilComponentCallbackStateV2(
+  const hasUserSelectedAllRowsState = useRecoilComponentCallbackState(
     hasUserSelectedAllRowsComponentState,
     recordTableId,
   );
 
-  const setRecordTableHoverPosition = useSetRecoilComponentStateV2(
+  const isRecordTableInitialLoadingCallbackState =
+    useRecoilComponentCallbackState(
+      isRecordTableInitialLoadingComponentState,
+      recordTableId,
+    );
+
+  const recordIdByRealIndexCallbackState =
+    useRecoilComponentFamilyCallbackState(
+      recordIdByRealIndexComponentFamilyState,
+      recordTableId,
+    );
+
+  const setRecordTableHoverPosition = useSetRecoilComponentState(
     recordTableHoverPositionComponentState,
     recordTableId,
   );
@@ -111,6 +125,24 @@ export const useSetRecordTableData = ({
           } else {
             set(recordIndexAllRecordIdsSelector, recordIds);
           }
+
+          const isTableInitialLoading = getSnapshotValue(
+            snapshot,
+            isRecordTableInitialLoadingCallbackState,
+          );
+
+          if (isTableInitialLoading) {
+            for (const [realIndex, recordId] of recordIds.entries()) {
+              const currentRecordIdAtRealIndex = getSnapshotValue(
+                snapshot,
+                recordIdByRealIndexCallbackState({ realIndex }),
+              );
+
+              if (recordId !== currentRecordIdAtRealIndex) {
+                set(recordIdByRealIndexCallbackState({ realIndex }), recordId);
+              }
+            }
+          }
         }
       },
     [
@@ -121,6 +153,8 @@ export const useSetRecordTableData = ({
       unfocusRecordTableRow,
       setRecordTableHoverPosition,
       isRowSelectedFamilyState,
+      recordIdByRealIndexCallbackState,
+      isRecordTableInitialLoadingCallbackState,
     ],
   );
 };

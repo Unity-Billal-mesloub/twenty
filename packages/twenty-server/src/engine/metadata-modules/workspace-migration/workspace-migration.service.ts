@@ -1,17 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { IsNull, QueryRunner, Repository } from 'typeorm';
+import { IsNull, type QueryRunner, Repository } from 'typeorm';
 
 import {
   WorkspaceMigrationEntity,
-  WorkspaceMigrationTableAction,
+  type WorkspaceMigrationTableAction,
 } from './workspace-migration.entity';
 
 @Injectable()
 export class WorkspaceMigrationService {
   constructor(
-    @InjectRepository(WorkspaceMigrationEntity, 'core')
+    @InjectRepository(WorkspaceMigrationEntity)
     private readonly workspaceMigrationRepository: Repository<WorkspaceMigrationEntity>,
   ) {}
 
