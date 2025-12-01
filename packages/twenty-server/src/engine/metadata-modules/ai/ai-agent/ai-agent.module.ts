@@ -14,6 +14,7 @@ import { AiBillingModule } from 'src/engine/metadata-modules/ai/ai-billing/ai-bi
 import { AiChatRouterModule } from 'src/engine/metadata-modules/ai/ai-chat-router/ai-chat-router.module';
 import { AiModelsModule } from 'src/engine/metadata-modules/ai/ai-models/ai-models.module';
 import { AiToolsModule } from 'src/engine/metadata-modules/ai/ai-tools/ai-tools.module';
+import { WorkspaceManyOrAllFlatEntityMapsCacheModule } from 'src/engine/metadata-modules/flat-entity/services/workspace-many-or-all-flat-entity-maps-cache.module';
 import { ObjectMetadataModule } from 'src/engine/metadata-modules/object-metadata/object-metadata.module';
 import { PermissionsModule } from 'src/engine/metadata-modules/permissions/permissions.module';
 import { RoleTargetsEntity } from 'src/engine/metadata-modules/role/role-targets.entity';
@@ -21,11 +22,13 @@ import { RoleEntity } from 'src/engine/metadata-modules/role/role.entity';
 import { UserRoleModule } from 'src/engine/metadata-modules/user-role/user-role.module';
 import { WorkspacePermissionsCacheModule } from 'src/engine/metadata-modules/workspace-permissions-cache/workspace-permissions-cache.module';
 import { WorkspaceCacheStorageModule } from 'src/engine/workspace-cache-storage/workspace-cache-storage.module';
+import { WorkspaceMigrationV2Module } from 'src/engine/workspace-manager/workspace-migration-v2/workspace-migration-v2.module';
 import { WorkflowToolsModule } from 'src/modules/workflow/workflow-tools/workflow-tools.module';
 
 import { AgentResolver } from './agent.resolver';
 import { AgentService } from './agent.service';
 
+import { WorkspaceMigrationBuilderGraphqlApiExceptionInterceptor } from 'src/engine/workspace-manager/workspace-migration-v2/interceptors/workspace-migration-builder-graphql-api-exception.interceptor';
 import { AgentEntity } from './entities/agent.entity';
 import { AgentActorContextService } from './services/agent-actor-context.service';
 import { AgentExecutionService } from './services/agent-execution.service';
@@ -55,6 +58,8 @@ import { AgentToolGeneratorService } from './services/agent-tool-generator.servi
     WorkflowToolsModule,
     UserWorkspaceModule,
     UserRoleModule,
+    WorkspaceManyOrAllFlatEntityMapsCacheModule,
+    WorkspaceMigrationV2Module,
   ],
   providers: [
     AgentResolver,
@@ -65,6 +70,7 @@ import { AgentToolGeneratorService } from './services/agent-tool-generator.servi
     AgentToolGeneratorService,
     AgentTitleGenerationService,
     AgentActorContextService,
+    WorkspaceMigrationBuilderGraphqlApiExceptionInterceptor,
   ],
   exports: [
     AgentService,
