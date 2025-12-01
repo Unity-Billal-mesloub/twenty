@@ -25,13 +25,13 @@ import { WorkspacePermissionsCacheModule } from 'src/engine/metadata-modules/wor
 import { WorkspaceCacheStorageModule } from 'src/engine/workspace-cache-storage/workspace-cache-storage.module';
 import { WorkspaceMigrationV2Module } from 'src/engine/workspace-manager/workspace-migration-v2/workspace-migration-v2.module';
 import { WorkflowToolsModule } from 'src/modules/workflow/workflow-tools/workflow-tools.module';
-
-import { AgentResolver } from './agent.resolver';
-import { AgentService } from './agent.service';
-
 import { AgentGraphqlApiExceptionInterceptor } from 'src/engine/metadata-modules/ai/ai-agent/interceptors/agent-graphql-api-exception.interceptor';
 import { FlatAgentModule } from 'src/engine/metadata-modules/flat-agent/flat-agent.module';
 import { WorkspaceMigrationBuilderGraphqlApiExceptionInterceptor } from 'src/engine/workspace-manager/workspace-migration-v2/interceptors/workspace-migration-builder-graphql-api-exception.interceptor';
+
+import { AgentService } from './agent.service';
+import { AgentResolver } from './agent.resolver';
+
 import { AgentEntity } from './entities/agent.entity';
 import { AgentActorContextService } from './services/agent-actor-context.service';
 import { AgentExecutionService } from './services/agent-execution.service';
@@ -64,7 +64,7 @@ import { AgentToolGeneratorService } from './services/agent-tool-generator.servi
     WorkspaceManyOrAllFlatEntityMapsCacheModule,
     WorkspaceMigrationV2Module,
     ApplicationModule,
-    FlatAgentModule
+    FlatAgentModule,
   ],
   providers: [
     AgentResolver,
@@ -76,7 +76,7 @@ import { AgentToolGeneratorService } from './services/agent-tool-generator.servi
     AgentTitleGenerationService,
     AgentActorContextService,
     WorkspaceMigrationBuilderGraphqlApiExceptionInterceptor,
-    AgentGraphqlApiExceptionInterceptor
+    AgentGraphqlApiExceptionInterceptor,
   ],
   exports: [
     AgentService,
