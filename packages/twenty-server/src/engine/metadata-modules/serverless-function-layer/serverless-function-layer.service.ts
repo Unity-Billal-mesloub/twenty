@@ -7,9 +7,9 @@ import { isDefined } from 'twenty-shared/utils';
 import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 
 import { ServerlessFunctionLayerEntity } from 'src/engine/metadata-modules/serverless-function-layer/serverless-function-layer.entity';
-import { CreateServerlessFunctionLayerInput } from 'src/engine/metadata-modules/serverless-function-layer/dtos/create-serverless-function-layer.input';
 import { getLastCommonLayerDependencies } from 'src/engine/core-modules/serverless/drivers/utils/get-last-common-layer-dependencies';
 import { serverlessFunctionCreateHash } from 'src/engine/metadata-modules/serverless-function/utils/serverless-function-create-hash.utils';
+import { PackageJson } from 'src/engine/core-modules/application/types/application.types';
 
 @Injectable()
 export class ServerlessFunctionLayerService {
@@ -18,16 +18,12 @@ export class ServerlessFunctionLayerService {
     private readonly serverlessFunctionLayerRepository: Repository<ServerlessFunctionLayerEntity>,
   ) {}
 
-  async create(
-    { packageJson, yarnLock }: CreateServerlessFunctionLayerInput,
-    workspaceId: string,
-  ) {
-    const checksum = serverlessFunctionCreateHash(yarnLock);
+  async create(packageJson: PackageJson, workspaceId: string) {
+    const checksum = serverlessFunctionCreateHash(packageJson);
 
     const serverlessFunctionLayer =
       this.serverlessFunctionLayerRepository.create({
         packageJson,
-        yarnLock,
         checksum,
         workspaceId,
       });
@@ -39,8 +35,8 @@ export class ServerlessFunctionLayerService {
     id: string,
     data: QueryDeepPartialEntity<ServerlessFunctionLayerEntity>,
   ) {
-    const checksum = data.yarnLock
-      ? serverlessFunctionCreateHash(data.yarnLock as string)
+    const checksum = data.packageJson
+      ? serverlessFunctionCreateHash(data.packageJson as PackageJson)
       : undefined;
 
     const updateData = { ...data, ...(checksum && { checksum }) };
@@ -49,8 +45,8 @@ export class ServerlessFunctionLayerService {
   }
 
   async createCommonLayerIfNotExist(workspaceId: string) {
-    const { packageJson, yarnLock } = await getLastCommonLayerDependencies();
-    const checksum = serverlessFunctionCreateHash(yarnLock);
+    const packageJson = await getLastCommonLayerDependencies();
+    const checksum = serverlessFunctionCreateHash(packageJson);
     const commonLayer = await this.serverlessFunctionLayerRepository.findOne({
       where: {
         checksum,
@@ -62,6 +58,6 @@ export class ServerlessFunctionLayerService {
       return commonLayer;
     }
 
-    return this.create({ packageJson, yarnLock }, workspaceId);
+    return this.create(packageJson, workspaceId);
   }
 }

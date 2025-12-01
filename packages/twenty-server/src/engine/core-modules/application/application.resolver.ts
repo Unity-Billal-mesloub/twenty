@@ -49,13 +49,12 @@ export class ApplicationResolver {
 
   @Mutation(() => Boolean)
   async syncApplication(
-    @Args() { manifest, packageJson, yarnLock }: ApplicationInput,
+    @Args() { manifest, packageJson }: ApplicationInput,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
   ) {
     await this.applicationSyncService.synchronizeFromManifest({
       workspaceId,
       manifest,
-      yarnLock,
       packageJson,
     });
 

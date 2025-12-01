@@ -18,15 +18,11 @@ export const copyAndBuildDependencies = async (
 
   const packageJson = serverlessFunction.serverlessFunctionLayer.packageJson;
 
-  const yarnLock = serverlessFunction.serverlessFunctionLayer.yarnLock;
-
   await fs.writeFile(
     join(buildDirectory, 'package.json'),
     JSON.stringify(packageJson, null, 2),
     'utf8',
   );
-
-  await fs.writeFile(join(buildDirectory, 'yarn.lock'), yarnLock, 'utf8');
 
   await fs.cp(getLayerDependenciesDirName('engine'), buildDirectory, {
     recursive: true,

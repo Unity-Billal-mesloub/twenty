@@ -19,8 +19,8 @@ export class ServerlessFunctionLayerEntity {
   @Column({ type: 'jsonb', nullable: false })
   packageJson: PackageJson;
 
-  @Column({ type: 'text', nullable: false })
-  yarnLock: string;
+  @Column({ type: 'text', nullable: true })
+  yarnLock?: string;
 
   @Column({ type: 'text', nullable: false })
   checksum: string;

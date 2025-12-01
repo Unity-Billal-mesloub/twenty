@@ -1792,7 +1792,6 @@ export type Mutation = {
   createOneRole: Role;
   createOneRouteTrigger: RouteTrigger;
   createOneServerlessFunction: ServerlessFunction;
-  createOneServerlessFunctionLayer: ServerlessFunctionLayer;
   createPageLayout: PageLayout;
   createPageLayoutTab: PageLayoutTab;
   createPageLayoutWidget: PageLayoutWidget;
@@ -2124,12 +2123,6 @@ export type MutationCreateOneRouteTriggerArgs = {
 
 export type MutationCreateOneServerlessFunctionArgs = {
   input: CreateServerlessFunctionInput;
-};
-
-
-export type MutationCreateOneServerlessFunctionLayerArgs = {
-  packageJson: Scalars['JSON'];
-  yarnLock: Scalars['String'];
 };
 
 
@@ -2591,7 +2584,6 @@ export type MutationSubmitFormStepArgs = {
 export type MutationSyncApplicationArgs = {
   manifest: Scalars['JSON'];
   packageJson: Scalars['JSON'];
-  yarnLock: Scalars['String'];
 };
 
 
@@ -3926,14 +3918,6 @@ export enum ServerlessFunctionExecutionStatus {
 export type ServerlessFunctionIdInput = {
   /** The id of the function. */
   id: Scalars['ID'];
-};
-
-export type ServerlessFunctionLayer = {
-  __typename?: 'ServerlessFunctionLayer';
-  applicationId?: Maybe<Scalars['UUID']>;
-  createdAt: Scalars['DateTime'];
-  id: Scalars['UUID'];
-  updatedAt: Scalars['DateTime'];
 };
 
 export type SetupOidcSsoInput = {

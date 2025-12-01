@@ -5,19 +5,15 @@ import { getLayerDependenciesDirName } from 'src/engine/core-modules/serverless/
 import { LAST_LAYER_VERSION } from 'src/engine/core-modules/serverless/drivers/layers/last-layer-version';
 import { type PackageJson } from 'src/engine/core-modules/application/types/application.types';
 
-export type LayerDependencies = {
-  packageJson: PackageJson;
-  yarnLock: string;
-};
-
 export const getLastCommonLayerDependencies = async (
   layerVersion = LAST_LAYER_VERSION,
-): Promise<LayerDependencies> => {
+): Promise<PackageJson> => {
   const lastVersionLayerDirName = getLayerDependenciesDirName(layerVersion);
-  const [packageJson, yarnLock] = await Promise.all([
-    fs.readFile(join(lastVersionLayerDirName, 'package.json'), 'utf8'),
-    fs.readFile(join(lastVersionLayerDirName, 'yarn.lock'), 'utf8'),
-  ]);
 
-  return { packageJson: JSON.parse(packageJson), yarnLock };
+  const packageJson = await fs.readFile(
+    join(lastVersionLayerDirName, 'package.json'),
+    'utf8',
+  );
+
+  return JSON.parse(packageJson);
 };

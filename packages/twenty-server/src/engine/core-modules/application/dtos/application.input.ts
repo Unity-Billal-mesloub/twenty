@@ -14,7 +14,4 @@ export class ApplicationInput {
 
   @Field(() => GraphQLJSON, { nullable: false })
   packageJson: PackageJson;
-
-  @Field(() => String, { nullable: false })
-  yarnLock: string;
 }

@@ -4,16 +4,10 @@ import { type HTTPMethod } from 'src/engine/metadata-modules/route-trigger/route
 
 export type PackageJson = {
   name: string;
-  license: string;
-  engines: {
-    node: string;
-    npm: string;
-    yarn: string;
-  };
-  packageManager: string;
   version: string;
-  dependencies?: object;
-  devDependencies?: object;
+  license: string;
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
 };
 
 type ApplicationVariable = {

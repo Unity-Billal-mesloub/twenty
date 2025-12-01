@@ -63,7 +63,6 @@ export class ApplicationSyncService {
     workspaceId,
     manifest,
     packageJson,
-    yarnLock,
   }: ApplicationInput & {
     workspaceId: string;
   }) {
@@ -71,7 +70,6 @@ export class ApplicationSyncService {
       workspaceId,
       manifest,
       packageJson,
-      yarnLock,
     });
 
     await this.syncObjects({
@@ -104,7 +102,6 @@ export class ApplicationSyncService {
     workspaceId,
     manifest,
     packageJson,
-    yarnLock,
   }: ApplicationInput & {
     workspaceId: string;
   }): Promise<ApplicationEntity> {
@@ -130,10 +127,7 @@ export class ApplicationSyncService {
       if (!isDefined(serverlessFunctionLayerId)) {
         serverlessFunctionLayerId = (
           await this.serverlessFunctionLayerService.create(
-            {
-              packageJson,
-              yarnLock,
-            },
+            packageJson,
             workspaceId,
           )
         ).id;
@@ -141,10 +135,7 @@ export class ApplicationSyncService {
 
       await this.serverlessFunctionLayerService.update(
         serverlessFunctionLayerId,
-        {
-          packageJson,
-          yarnLock,
-        },
+        { packageJson },
       );
     }
 
